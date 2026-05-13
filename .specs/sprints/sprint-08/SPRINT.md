@@ -1,0 +1,31 @@
+---
+sprint: sprint-08
+status: todo
+start: TBD
+end: TBD
+owner: us4-core
+---
+
+# Sprint 08 — MoE Foundation (Windows)
+
+## Objetivo
+DeepSeek + Kimi MoE. Expert pager VRAM->RAM->SSD. Top-k routing. Cold expert offload.
+
+## Tasks
+- [ ] T08.1 — `runtime/moe/Router` (top-k softmax, load balance loss)
+- [ ] T08.2 — `runtime/moe/ExpertPager` (VRAM resident hot, RAM warm, SSD cold)
+- [ ] T08.3 — `runtime/adapters/deepseek/DeepSeekMoEAdapter` (shared + routed experts)
+- [ ] T08.4 — `runtime/adapters/kimi/KimiMoEAdapter`
+- [ ] T08.5 — Loader MoE: lazy load expert por demanda (mmap shards)
+- [ ] T08.6 — Telemetry: expert hit-rate, eviction count, router entropy
+
+## Test plan
+- Unit: router correctness; pager evict + re-load; load balance.
+- Regression: dense + Llama verdes.
+- E2E: DeepSeek V2/V3 Q4 em 2x RTX 4090 (NVLink) gera 100 tokens em <=15s.
+- Correctness: diff <= 1e-3.
+
+## DoD
+- DeepSeek + Kimi em FULL/BALANCED.
+- Coverage >=80% em `runtime/moe` + adapters MoE.
+- ADR-007 MoE expert paging strategy.
