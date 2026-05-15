@@ -65,6 +65,13 @@
 - Diagnose: leia `issue_codes` no JSON ou no output textual.
 - Fix: corrija o item indicado, como mismatch de versao, entrada ausente no `CHANGELOG`, build faltando ou configuracao de assinatura ausente.
 
+## MSIX install smoke fails before installation
+
+- Symptom: `scripts/install-msix-smoke.ps1` falha antes de chamar `Add-AppxPackage`.
+- Diagnose: verifique se o pacote esta assinado e se o certificado e confiavel no host atual.
+- Fix: assine o `.msix`, importe a trust chain necessaria no host de validacao e rode o smoke novamente.
+- Important: esse smoke foi feito para host apto a instalacao; ele deve falhar explicitamente quando o pacote ainda esta em estado de scaffold.
+
 ## winget manifests still contain placeholder URLs
 
 - Symptom: os manifests renderizados em `packaging/winget/manifests/` ainda apontam para `example.invalid`.

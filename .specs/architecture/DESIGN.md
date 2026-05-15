@@ -65,6 +65,7 @@ flowchart TD
     probe["HardwareProbe"]
     selector["BackendSelector"]
     scheduler["RuntimeScheduler"]
+    monitor["PowerThermalMonitor"]
   end
 
   subgraph Adapters [runtime/adapters]
@@ -101,6 +102,7 @@ flowchart TD
   runtime --> registry
   runtime --> selector
   runtime --> scheduler
+  runtime --> monitor
   registry --> dense
   registry --> moe
   registry --> ternary
@@ -126,11 +128,13 @@ flowchart TD
   runtime --> autotune
   runtime --> metrics
   scheduler --> metrics
+  monitor --> metrics
+  monitor --> scheduler
   kv --> metrics
   expert --> metrics
 ```
 
-Princípio: dependências de política ficam no core; dependências de dispositivo ficam nos backends; dependências de arquitetura de modelo ficam nos adapters.
+Princípio: dependências de política ficam no core; dependências de dispositivo ficam nos backends; dependências de arquitetura de modelo ficam nos adapters. Sinais dinâmicos de power/thermal entram no core por um monitor dedicado, não por telemetria ad-hoc em backend ou adapter.
 
 ---
 
@@ -139,11 +143,11 @@ Princípio: dependências de política ficam no core; dependências de dispositi
 | Boundary | Responsabilidade | Regra |
 |---|---|---|
 | `Entry` | Parse de CLI, flags, paths, benchmark mode, probe mode | Não implementa lógica de geração. Traduz input em config tipada. |
-| `Core` | Escolha de adapter, backend, modo e scheduler | Conhece contratos, não conhece detalhes de kernel. |
+| `Core` | Escolha de adapter, backend, modo, scheduler e downgrade dinâmico por budget | Conhece contratos, não conhece detalhes de kernel. |
 | `Adapters` | Traduz família de modelo para planos de memória, layout de KV, quantização e execução | Não escolhe hardware; adapta arquitetura do modelo ao runtime. |
 | `Memory/KV/Cache` | Planejamento de tiers VRAM/RAM/SSD, paginação, prefix reuse, expert reuse | Não muda logits; otimiza armazenamento e movimentação. |
 | `Backends` | Execução concreta em CUDA, DirectML, Vulkan, CPU ou NPU | Sempre expõem fallback seguro e métricas de uso. |
-| `Ops` | Autotune, traces, benchmark, correctness, drift | Telemetria não pode interferir no hot path sem feature flag. |
+| `Ops` | Autotune, traces, benchmark, correctness, drift | Telemetria observa sinais e efeitos; não decide downgrade sozinha. |
 
 Cruzar boundary errado é smell. Exemplo: backend consultando flags cruas de CLI ou adapter alocando SSD diretamente.
 
@@ -193,7 +197,8 @@ Quando qualquer uma dessas decisões mudar, abrir ADR em `./ADR-XXX-*.md` antes 
 6. Runtime inicializa backend, pools de memória, prefix cache e pagers necessários.
 7. `RuntimeScheduler` executa prefill e decode, opcionalmente com batching contínuo e speculative decoding.
 8. Telemetria coleta TTFT, tokens/s, uso de VRAM/RAM, page faults e logit drift.
-9. Se um caminho otimizado falhar dentro da tolerância de fallback, o runtime degrada backend ou modo sem corromper sessão.
+9. `PowerThermalMonitor` agrega sinais de ETW e `GetSystemPowerStatus` para detectar throttle, mudança de fonte de energia e pressão térmica sustentada.
+10. Se um caminho otimizado falhar ou o budget térmico/energético ficar instável dentro da tolerância de fallback, o runtime degrada backend ou modo sem corromper sessão.
 
 ---
 
@@ -230,6 +235,7 @@ Ordem padrão:
 - suporte a AVX2, AVX-512 e AMX
 - suporte a CUDA, D3D12, DirectML, Vulkan e Windows ML
 - perfil salvo do autotuner, quando existir
+- sinais dinâmicos de fonte de energia e pressão térmica quando o monitor estiver ativo
 
 ---
 
@@ -249,6 +255,7 @@ Ordem padrão:
 - Benchmarks geram saídas comparáveis por backend e perfil de hardware.
 - Correctness roda contra referência estável por backend tocado.
 - `logit drift`, page faults, fallback reasons e tempos de kernel precisam ser exportáveis para console e artefatos.
+- Eventos de downgrade térmico/energético precisam carregar origem do sinal, duração e modo/backend resultante.
 - Telemetria é parte do produto técnico, não um detalhe opcional de debug.
 
 ---
@@ -259,3 +266,22 @@ Ordem padrão:
 - Novo conceito de domínio: alinhar no mesmo PR com `../product/DOMAIN.md`.
 - Nova convenção de implementação: refletir também em `PATTERNS.md`.
 - Se o scaffold do repo mudar, manter a arquitetura descrita fiel ao contrato do runtime, não ao nome temporário das pastas.
+---
+
+## 12. ReleaseOps
+
+AlÃ©m dos subsistemas de runtime, o repositÃ³rio agora tem uma trilha operacional de release que tambÃ©m faz parte do desenho do produto tÃ©cnico:
+
+- `portable zip`
+- `MSIX`
+- `winget manifests`
+- `release preflight`
+- `checksum generation`
+- `post-publish smoke`
+- `MSIX signing`
+- `MSIX install smoke`
+
+Boundary:
+- esses componentes validam entregabilidade, instalaÃ§Ã£o e distribuiÃ§Ã£o
+- eles nÃ£o podem alterar semÃ¢ntica de inferÃªncia, logits ou seleÃ§Ã£o de backend
+- falhas de release precisam ser explÃ­citas, estruturadas e testÃ¡veis

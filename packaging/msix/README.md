@@ -7,6 +7,7 @@ Current status:
 - packaging structure exists
 - manifest template exists
 - signing scaffold exists through `scripts/sign-msix.ps1`
+- install-host smoke scaffold exists through `scripts/install-msix-smoke.ps1`
 - signed distribution is not ready yet
 - the default local script targets unsigned packaging validation only
 

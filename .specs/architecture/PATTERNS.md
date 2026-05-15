@@ -246,3 +246,12 @@ Antes de fechar uma task:
 7. Garantir que não sobraram logs de debug, TODO sem dono ou fallback quebrado.
 
 Regra do time us4-core: simplicidade operacional ganha de cleverness. O código precisa ser previsível sob pressão de memória e múltiplos backends.
+---
+
+## 13. Release and packaging scripts
+
+- Script de release precisa falhar com mensagem explÃ­cita quando faltar ferramenta, assinatura ou trust.
+- `portable zip`, `checksums`, `winget`, `preflight`, `sign` e `install smoke` sÃ£o superfÃ­cies testÃ¡veis; nÃ£o tratÃ¡-las como shell glue descartÃ¡vel.
+- ValidaÃ§Ã£o de release deve produzir saÃ­da estruturada quando o consumidor for automaÃ§Ã£o.
+- Placeholder de URL, certificado ou publisher precisa ser evidente e fÃ¡cil de detectar em teste.
+- Script que depende de segredo nunca pode embutir fallback silencioso para valor fake.

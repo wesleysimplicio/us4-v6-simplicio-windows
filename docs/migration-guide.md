@@ -46,6 +46,7 @@ The repository now includes local release scaffolding:
 - `packaging/msix/`
 - `CHANGELOG.md`
 - `scripts/preflight-release.ps1`
+- `scripts/install-msix-smoke.ps1`
 
 Current limitations still apply:
 

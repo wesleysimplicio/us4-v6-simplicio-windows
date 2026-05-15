@@ -23,6 +23,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis
 - `generate-checksums.ps1`
   - gera `SHA256SUMS.txt` para os artefatos de release em `dist/`
+- `install-msix-smoke.ps1`
+  - valida assinatura/trust e tenta instalar um `.msix` em host Windows apto, falhando claramente quando o pacote ainda nao e instalavel
 - `post-publish-smoke.ps1`
   - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
 - `preflight-release.ps1`

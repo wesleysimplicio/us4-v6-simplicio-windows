@@ -19,6 +19,7 @@ foreach ($scriptPath in @(
     (Join-Path (Get-Location) "scripts\build-portable-zip.ps1"),
     (Join-Path (Get-Location) "scripts\build-msix.ps1"),
     (Join-Path (Get-Location) "scripts\generate-checksums.ps1"),
+    (Join-Path (Get-Location) "scripts\install-msix-smoke.ps1"),
     (Join-Path (Get-Location) "scripts\post-publish-smoke.ps1"),
     (Join-Path (Get-Location) "scripts\preflight-release.ps1"),
     (Join-Path (Get-Location) "scripts\render-winget-manifests.ps1"),

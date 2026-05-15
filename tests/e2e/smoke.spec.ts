@@ -1191,4 +1191,29 @@ test.describe('us4-cli smoke', () => {
              expect(payload.status).toBe('blocked');
              expect(payload.issue_codes).toContain('signing_config_missing');
          });
+
+    test('fails MSIX install smoke with a clear signing/trust prerequisite message',
+         async ({}, testInfo) => {
+             const outputDir = testInfo.outputPath('install-msix-smoke');
+             const packagePath = path.join(outputDir, `unsigned-${packageVersion}.msix`);
+             const smokeScriptPath = path.resolve(process.cwd(), 'scripts', 'install-msix-smoke.ps1');
+
+             mkdirSync(outputDir, {recursive : true});
+             writeFileSync(packagePath, 'placeholder-msix', 'utf8');
+
+             const result = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 smokeScriptPath,
+                 '-PackagePath',
+                 packagePath,
+             ]);
+
+             await attachProcessOutput(testInfo, 'install-msix-smoke-prereq', result.stdout, result.stderr);
+
+             expect(result.exitCode).toBe(1);
+             expect(`${result.stdout}\n${result.stderr}`).toContain('MSIX package is not signed with a trusted certificate');
+         });
 });

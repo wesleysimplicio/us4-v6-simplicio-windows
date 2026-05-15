@@ -55,6 +55,14 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - CI release preflight gate before artifact packaging
 - E2E regression coverage for ready vs blocked preflight states
 
+## [0.1.23] - 2026-05-15
+
+### Added
+
+- MSIX install smoke scaffold via `scripts/install-msix-smoke.ps1`
+- stronger release architecture/pattern docs for packaging and distribution boundaries
+- E2E regression for unsigned MSIX install smoke failure
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

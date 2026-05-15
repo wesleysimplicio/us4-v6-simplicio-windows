@@ -30,6 +30,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
 - preflight de release via `scripts/preflight-release.ps1`
+- smoke de instalacao MSIX via `scripts/install-msix-smoke.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
 
