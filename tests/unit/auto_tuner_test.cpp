@@ -302,5 +302,37 @@ namespace us4::runtime::tests
                 [](const runtime::benchmarks::MatrixSample& sample)
                 { return sample.benchmarkName == "windows_ml_qwen_opt_in" && sample.supported; }));
         }
+
+        TEST(AutoTunerTest, MatrixRunnerBenchJsonCapturesUnpersistedMatrix)
+        {
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-profile-store-matrix-json";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.cpuName = "Test CPU";
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = backends::RuntimeMode::kCpuOnly;
+            request.preferredBackend = "cpu";
+
+            runtime::benchmarks::MatrixRunner runner(storePath);
+            const auto report = runner.Benchmark(request, capabilities);
+            const auto json = runtime::benchmarks::MatrixRunner::RenderJson(report);
+
+            EXPECT_FALSE(report.persisted);
+            EXPECT_NE(json.find("\"execution\": \"bench\""), std::string::npos);
+            EXPECT_NE(json.find("\"selected_profile\": \"cpu-only\""), std::string::npos);
+            EXPECT_NE(json.find("\"persisted\": false"), std::string::npos);
+            EXPECT_NE(json.find("\"benchmark\":\"dense_baseline_qwen_cpu_only\""),
+                      std::string::npos);
+
+            tuning::ProfileStore store(storePath);
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::nullopt);
+        }
     } // namespace
 } // namespace us4::runtime::tests

@@ -421,49 +421,50 @@ test.describe('us4-cli smoke', () => {
         expect(stderr).toContain('not implemented yet');
     });
 
-    test('falls back gracefully when Windows ML opt-in is requested without an NPU', async ({}, testInfo) => {
-        const cliPath = await requireCliBinary(testInfo);
+    test('falls back gracefully when Windows ML opt-in is requested without an NPU',
+         async ({}, testInfo) => {
+             const cliPath = await requireCliBinary(testInfo);
 
-        const {stdout, stderr, exitCode} = await runCli(
-            cliPath,
-            [
-                'run', '--model', 'qwen-0.5b', '--prompt', 'hello no npu', '--backend',
-                'windows-ml', '--npu'
-            ],
-            {
-                ...process.env,
-                US4_HAS_CUDA : '',
-                US4_HAS_DIRECTML : '',
-                US4_HAS_VULKAN : '1',
-                US4_HAS_NPU : '',
-                US4_GPU_NAME : 'Radeon RX Test',
-                US4_GPU_VENDOR : 'amd',
-                US4_GPU_CLASS : 'discrete',
-                US4_DEVICE_GIB : '8',
-                US4_POWER_SOURCE : 'ac',
-                US4_BATTERY_PERCENT : '100',
-                US4_BATTERY_SAVER : '0',
-                US4_THERMAL_STATE : 'nominal',
-                US4_ETW_THROTTLED : '0',
-            },
-        );
+             const {stdout, stderr, exitCode} = await runCli(
+                 cliPath,
+                 [
+                     'run', '--model', 'qwen-0.5b', '--prompt', 'hello no npu', '--backend',
+                     'windows-ml', '--npu'
+                 ],
+                 {
+                     ...process.env,
+                     US4_HAS_CUDA : '',
+                     US4_HAS_DIRECTML : '',
+                     US4_HAS_VULKAN : '1',
+                     US4_HAS_NPU : '',
+                     US4_GPU_NAME : 'Radeon RX Test',
+                     US4_GPU_VENDOR : 'amd',
+                     US4_GPU_CLASS : 'discrete',
+                     US4_DEVICE_GIB : '8',
+                     US4_POWER_SOURCE : 'ac',
+                     US4_BATTERY_PERCENT : '100',
+                     US4_BATTERY_SAVER : '0',
+                     US4_THERMAL_STATE : 'nominal',
+                     US4_ETW_THROTTLED : '0',
+                 },
+             );
 
-        await attachProcessOutput(testInfo, 'windows-ml-no-npu-fallback', stdout, stderr);
+             await attachProcessOutput(testInfo, 'windows-ml-no-npu-fallback', stdout, stderr);
 
-        expect(exitCode).toBe(2);
-        expect(stdout).toContain('backend: windows-ml');
-        expect(stdout).toContain('execution: windows-ml-dry-run');
-        expect(stdout).toContain('windows_ml.adapter_state: compiled');
-        expect(stdout).toContain('windows_ml.compile_target: cpu-fallback');
-        expect(stdout).toContain('windows_ml.fallback_reason: npu-unavailable');
-        expect(stdout).toContain('windows_ml.cpu_fallback_armed: yes');
-        expect(stdout).toContain('windows_ml.npu_partitions: 0');
-        expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
-        expect(stdout).toContain('windows_ml.mixed_dispatch_npu_dense: no');
-        expect(stdout).toContain('windows_ml.mixed_dispatch_cpu_fallback: yes');
-        expect(stdout).toContain('windows_ml.mixed_dispatch_policy_degraded: no');
-        expect(stderr).toContain('not implemented yet');
-    });
+             expect(exitCode).toBe(2);
+             expect(stdout).toContain('backend: windows-ml');
+             expect(stdout).toContain('execution: windows-ml-dry-run');
+             expect(stdout).toContain('windows_ml.adapter_state: compiled');
+             expect(stdout).toContain('windows_ml.compile_target: cpu-fallback');
+             expect(stdout).toContain('windows_ml.fallback_reason: npu-unavailable');
+             expect(stdout).toContain('windows_ml.cpu_fallback_armed: yes');
+             expect(stdout).toContain('windows_ml.npu_partitions: 0');
+             expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
+             expect(stdout).toContain('windows_ml.mixed_dispatch_npu_dense: no');
+             expect(stdout).toContain('windows_ml.mixed_dispatch_cpu_fallback: yes');
+             expect(stdout).toContain('windows_ml.mixed_dispatch_policy_degraded: no');
+             expect(stderr).toContain('not implemented yet');
+         });
 
     test('tunes and persists a cpu-only profile selection', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
@@ -493,4 +494,36 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('tune_status: completed');
         expect(existsSync(storePath)).toBeTruthy();
     });
+
+    test('exports the current bench matrix as json without persisting a profile',
+         async ({}, testInfo) => {
+             const cliPath = await requireCliBinary(testInfo);
+             const storePath = testInfo.outputPath('bench-profiles.json');
+
+             const {stdout, stderr, exitCode} = await runCli(
+                 cliPath,
+                 [
+                     'bench', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only',
+                     '--format', 'json'
+                 ],
+                 {
+                     ...process.env,
+                     US4_HAS_CUDA : '',
+                     US4_HAS_DIRECTML : '',
+                     US4_HAS_VULKAN : '',
+                     US4_HAS_NPU : '',
+                     US4_PROFILE_STORE_PATH : storePath,
+                 },
+             );
+
+             await attachProcessOutput(testInfo, 'bench-json', stdout, stderr);
+
+             expect(exitCode).toBe(0);
+             expect(stderr).toBe('');
+             expect(stdout).toContain('"execution": "bench"');
+             expect(stdout).toContain('"selected_profile": "cpu-only"');
+             expect(stdout).toContain('"persisted": false');
+             expect(stdout).toContain('"benchmark":"dense_baseline_qwen_cpu_only"');
+             expect(existsSync(storePath)).toBeFalsy();
+         });
 });

@@ -720,6 +720,40 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ReturnsBenchJsonWithoutPersistingProfile)
+        {
+            ClearProbeEnv();
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-cli-bench-profile-store";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+#if defined(_WIN32)
+            _putenv_s("US4_PROFILE_STORE_PATH", storePath.string().c_str());
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kBench;
+            command.modelId = "qwen-0.5b";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.format = "json";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(output.stderrText.empty());
+            EXPECT_NE(output.stdoutText.find("\"execution\": \"bench\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"selected_profile\": \"cpu-only\""),
+                      std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"persisted\": false"), std::string::npos);
+
+            us4::runtime::tuning::ProfileStore store(storePath);
+            const auto capabilities = us4::runtime::backends::HardwareProbe::DetectHost();
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::nullopt);
+
+            ClearProbeEnv();
+        }
+
         TEST(HardwareProbeTest, ReturnsCudaDryRunPlanForExplicitCudaBackend)
         {
             ClearProbeEnv();

@@ -40,6 +40,10 @@ namespace us4::runtime::benchmarks
         explicit MatrixRunner(std::filesystem::path storePath = {});
 
         [[nodiscard]] MatrixTuneReport
+        Benchmark(const backends::SessionRequest& request,
+                  const backends::HardwareCapabilities& capabilities) const;
+
+        [[nodiscard]] MatrixTuneReport
         Tune(const backends::SessionRequest& request,
              const backends::HardwareCapabilities& capabilities) const;
 
@@ -47,7 +51,14 @@ namespace us4::runtime::benchmarks
         ExecutePlan(const tuning::TuningPlan& plan, const backends::SessionRequest& request,
                     const backends::HardwareCapabilities& capabilities) const;
 
+        [[nodiscard]] static std::string RenderJson(const MatrixTuneReport& report);
+
       private:
+        [[nodiscard]] MatrixTuneReport
+        EvaluatePlan(const tuning::TuningPlan& plan, const backends::SessionRequest& request,
+                     const backends::HardwareCapabilities& capabilities,
+                     bool persistSelection) const;
+
         std::filesystem::path storePath_;
     };
 

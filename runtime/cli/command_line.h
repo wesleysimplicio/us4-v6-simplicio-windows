@@ -41,6 +41,7 @@ namespace us4::cli
         kVersion,
         kProbe,
         kRun,
+        kBench,
         kTune,
         kInvalid,
     };
@@ -54,6 +55,7 @@ namespace us4::cli
         std::string backend = "auto";
         bool allowNpu = false;
         std::string mode = "auto";
+        std::string format = "text";
         std::uint32_t maxTokens = 32;
         std::string error;
     };
@@ -458,6 +460,10 @@ namespace us4::cli
                   "[--max-tokens <count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
+               << "  us4-cli bench --model <model-id> [--format <text|json>] [--max-tokens "
+                  "<count>] [--backend "
+                  "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
+                  "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
                << "  us4-cli tune --model <model-id> [--max-tokens <count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
@@ -468,6 +474,8 @@ namespace us4::cli
                << "  probe, --probe      Print detected hardware/backend summary\n"
                << "  run                 Execute CPU_ONLY baseline or print the scaffolded "
                   "execution plan\n"
+               << "  bench               Execute the matrix planner and export the current "
+                  "benchmark matrix\n"
                << "  tune                Execute the mini-bench planner and persist the best "
                   "profile for this host\n"
                << "\n"
@@ -475,6 +483,7 @@ namespace us4::cli
                << "  us4-cli probe\n"
                << "  us4-cli version\n"
                << "  us4-cli run --model qwen-0.5b --prompt \"hi\" --backend cpu\n"
+               << "  us4-cli bench --model qwen-0.5b --format json\n"
                << "  us4-cli tune --model qwen-0.5b --backend windows-ml --npu\n";
         return output.str();
     }
@@ -506,14 +515,25 @@ namespace us4::cli
             return command;
         }
 
-        if (verb != "run" && verb != "tune")
+        if (verb != "run" && verb != "bench" && verb != "tune")
         {
             command.kind = CommandKind::kInvalid;
             command.error = "Unknown command: " + std::string(verb);
             return command;
         }
 
-        command.kind = verb == "tune" ? CommandKind::kTune : CommandKind::kRun;
+        if (verb == "run")
+        {
+            command.kind = CommandKind::kRun;
+        }
+        else if (verb == "bench")
+        {
+            command.kind = CommandKind::kBench;
+        }
+        else
+        {
+            command.kind = CommandKind::kTune;
+        }
         for (int index = 2; index < argc; ++index)
         {
             const std::string_view option = argv[index];
@@ -593,6 +613,17 @@ namespace us4::cli
                     return command;
                 }
                 command.maxTokens = parsedValue;
+                continue;
+            }
+            if (option == "--format")
+            {
+                if (index + 1 >= argc)
+                {
+                    command.kind = CommandKind::kInvalid;
+                    command.error = "Missing value for --format.";
+                    return command;
+                }
+                command.format = argv[++index];
                 continue;
             }
             if (option == "--npu")
@@ -751,6 +782,64 @@ namespace us4::cli
                 output << "tune.sample_" << sampleNumber << ".score: " << sample.score << '\n';
             }
             output << "tune_status: completed\n";
+
+            return CommandOutput{
+                kSuccessExitCode,
+                output.str(),
+                {},
+            };
+        }
+
+        if (command.kind == CommandKind::kBench)
+        {
+            std::string normalizedFormat = command.format;
+            std::transform(normalizedFormat.begin(), normalizedFormat.end(),
+                           normalizedFormat.begin(), [](unsigned char character)
+                           { return static_cast<char>(std::tolower(character)); });
+            if (normalizedFormat != "text" && normalizedFormat != "json")
+            {
+                return CommandOutput{
+                    kUsageExitCode,
+                    RenderHelp(),
+                    "Unknown value for --format.\n",
+                };
+            }
+
+            const us4::runtime::benchmarks::MatrixRunner runner;
+            const auto benchReport = runner.Benchmark(request, capabilities);
+            if (normalizedFormat == "json")
+            {
+                return CommandOutput{
+                    kSuccessExitCode,
+                    us4::runtime::benchmarks::MatrixRunner::RenderJson(benchReport),
+                    {},
+                };
+            }
+
+            std::ostringstream output;
+            output << "execution: bench\n";
+            output << "bench.requested_profile: " << benchReport.requestedProfileId << '\n';
+            output << "bench.recommended_profile: " << benchReport.recommendedProfileId << '\n';
+            output << "bench.selected_profile: " << benchReport.selectedProfileId << '\n';
+            output << "bench.selected_backend: " << benchReport.selectedBackend << '\n';
+            output << "bench.selected_score: " << benchReport.selectedScore << '\n';
+            output << "bench.store_path: " << benchReport.storePath.string() << '\n';
+            output << "bench.persisted: " << (benchReport.persisted ? "yes" : "no") << '\n';
+            output << "bench.sample_count: " << benchReport.samples.size() << '\n';
+            for (std::size_t index = 0; index < benchReport.samples.size(); ++index)
+            {
+                const auto& sample = benchReport.samples[index];
+                const std::size_t sampleNumber = index + 1U;
+                output << "bench.sample_" << sampleNumber << ".benchmark: " << sample.benchmarkName
+                       << '\n';
+                output << "bench.sample_" << sampleNumber << ".backend: " << sample.backend << '\n';
+                output << "bench.sample_" << sampleNumber << ".profile: " << sample.profileId
+                       << '\n';
+                output << "bench.sample_" << sampleNumber
+                       << ".supported: " << (sample.supported ? "yes" : "no") << '\n';
+                output << "bench.sample_" << sampleNumber << ".score: " << sample.score << '\n';
+            }
+            output << "bench_status: completed\n";
 
             return CommandOutput{
                 kSuccessExitCode,

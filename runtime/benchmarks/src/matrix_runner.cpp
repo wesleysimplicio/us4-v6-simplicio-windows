@@ -7,6 +7,7 @@
 #include <cmath>
 #include <map>
 #include <optional>
+#include <sstream>
 
 namespace us4::runtime::benchmarks
 {
@@ -68,6 +69,36 @@ namespace us4::runtime::benchmarks
         bool IsExplicitWindowsMlRequest(const backends::SessionRequest& request)
         {
             return request.preferredBackend == "windows-ml" || request.preferredBackend == "npu";
+        }
+
+        std::string EscapeJson(std::string_view value)
+        {
+            std::ostringstream escaped;
+            for (const char character : value)
+            {
+                switch (character)
+                {
+                case '\\':
+                    escaped << "\\\\";
+                    break;
+                case '"':
+                    escaped << "\\\"";
+                    break;
+                case '\n':
+                    escaped << "\\n";
+                    break;
+                case '\r':
+                    escaped << "\\r";
+                    break;
+                case '\t':
+                    escaped << "\\t";
+                    break;
+                default:
+                    escaped << character;
+                    break;
+                }
+            }
+            return escaped.str();
         }
 
         bool ProbeIsSupported(const BenchmarkCase& benchmark, const tuning::TuningProbe& probe,
@@ -191,6 +222,17 @@ namespace us4::runtime::benchmarks
     {
     }
 
+    MatrixTuneReport
+    MatrixRunner::Benchmark(const backends::SessionRequest& request,
+                            const backends::HardwareCapabilities& capabilities) const
+    {
+        const auto resolvedStorePath =
+            storePath_.empty() ? tuning::ProfileStore::DefaultPath() : storePath_;
+        const tuning::AutoTuner tuner(resolvedStorePath);
+        const auto plan = tuner.BuildPlan(request, capabilities);
+        return EvaluatePlan(plan, request, capabilities, false);
+    }
+
     MatrixTuneReport MatrixRunner::Tune(const backends::SessionRequest& request,
                                         const backends::HardwareCapabilities& capabilities) const
     {
@@ -198,13 +240,21 @@ namespace us4::runtime::benchmarks
             storePath_.empty() ? tuning::ProfileStore::DefaultPath() : storePath_;
         const tuning::AutoTuner tuner(resolvedStorePath);
         const auto plan = tuner.BuildPlan(request, capabilities);
-        return ExecutePlan(plan, request, capabilities);
+        return EvaluatePlan(plan, request, capabilities, true);
     }
 
     MatrixTuneReport
     MatrixRunner::ExecutePlan(const tuning::TuningPlan& plan,
                               const backends::SessionRequest& request,
                               const backends::HardwareCapabilities& capabilities) const
+    {
+        return EvaluatePlan(plan, request, capabilities, true);
+    }
+
+    MatrixTuneReport MatrixRunner::EvaluatePlan(const tuning::TuningPlan& plan,
+                                                const backends::SessionRequest& request,
+                                                const backends::HardwareCapabilities& capabilities,
+                                                const bool persistSelection) const
     {
         const auto resolvedStorePath =
             storePath_.empty() ? tuning::ProfileStore::DefaultPath() : storePath_;
@@ -297,9 +347,61 @@ namespace us4::runtime::benchmarks
                 request.preferredBackend.empty() ? "auto" : request.preferredBackend;
         }
 
-        tuning::ProfileStore store(resolvedStorePath);
-        report.persisted = store.SaveProfileId(capabilities, report.selectedProfileId);
+        if (persistSelection)
+        {
+            tuning::ProfileStore store(resolvedStorePath);
+            report.persisted = store.SaveProfileId(capabilities, report.selectedProfileId);
+        }
         return report;
+    }
+
+    std::string MatrixRunner::RenderJson(const MatrixTuneReport& report)
+    {
+        std::ostringstream json;
+        json << "{\n";
+        json << "  \"execution\": \"bench\",\n";
+        json << "  \"requested_profile\": \"" << EscapeJson(report.requestedProfileId) << "\",\n";
+        json << "  \"recommended_profile\": \"" << EscapeJson(report.recommendedProfileId)
+             << "\",\n";
+        json << "  \"selected_profile\": \"" << EscapeJson(report.selectedProfileId) << "\",\n";
+        json << "  \"selected_backend\": \"" << EscapeJson(report.selectedBackend) << "\",\n";
+        json << "  \"selected_score\": " << report.selectedScore << ",\n";
+        json << "  \"store_path\": \"" << EscapeJson(report.storePath.string()) << "\",\n";
+        json << "  \"persisted\": " << (report.persisted ? "true" : "false") << ",\n";
+        json << "  \"decisions\": [\n";
+        for (std::size_t index = 0; index < report.plan.decisions.size(); ++index)
+        {
+            const auto& decision = report.plan.decisions[index];
+            json << "    {\"key\":\"" << EscapeJson(decision.key) << "\",\"value\":\""
+                 << EscapeJson(decision.value) << "\",\"rationale\":\""
+                 << EscapeJson(decision.rationale) << "\"}";
+            if (index + 1U < report.plan.decisions.size())
+            {
+                json << ',';
+            }
+            json << '\n';
+        }
+        json << "  ],\n";
+        json << "  \"samples\": [\n";
+        for (std::size_t index = 0; index < report.samples.size(); ++index)
+        {
+            const auto& sample = report.samples[index];
+            json << "    {\"benchmark\":\"" << EscapeJson(sample.benchmarkName)
+                 << "\",\"backend\":\"" << EscapeJson(sample.backend) << "\",\"profile\":\""
+                 << EscapeJson(sample.profileId)
+                 << "\",\"supported\":" << (sample.supported ? "true" : "false")
+                 << ",\"regression_critical\":" << (sample.regressionCritical ? "true" : "false")
+                 << ",\"score\":" << sample.score << ",\"rationale\":\""
+                 << EscapeJson(sample.rationale) << "\"}";
+            if (index + 1U < report.samples.size())
+            {
+                json << ',';
+            }
+            json << '\n';
+        }
+        json << "  ]\n";
+        json << "}\n";
+        return json.str();
     }
 
 } // namespace us4::runtime::benchmarks
