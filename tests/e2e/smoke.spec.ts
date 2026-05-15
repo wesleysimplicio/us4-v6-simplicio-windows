@@ -1057,13 +1057,78 @@ test.describe('us4-cli smoke', () => {
         expect(smoke.stdout).toContain('Portable zip smoke passed');
     });
 
-    test('renders winget manifests from repository templates', async ({}, testInfo) => {
+    test('renders and validates publishable winget manifests from repository templates', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('winget-manifests');
         const renderScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+        const validateScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-winget-manifests.ps1');
+        const portableUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}-portable.zip`;
+        const msixUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}.0.msix`;
 
         mkdirSync(outputDir, {recursive : true});
 
-        const result = await runPowerShell([
+        const renderResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderScriptPath,
+            '-Version',
+            packageVersion,
+            '-PortableUrl',
+            portableUrl,
+            '-MsixUrl',
+            msixUrl,
+            '-OutputDir',
+            outputDir,
+        ]);
+
+        await attachProcessOutput(testInfo, 'winget-render', renderResult.stdout, renderResult.stderr);
+
+        expect(renderResult.exitCode).toBe(0);
+        expect(existsSync(path.join(outputDir, 'default.yaml'))).toBeTruthy();
+        expect(existsSync(path.join(outputDir, 'installer.yaml'))).toBeTruthy();
+        expect(existsSync(path.join(outputDir, 'locale.en-US.yaml'))).toBeTruthy();
+        expect(readFileSync(path.join(outputDir, 'installer.yaml'), 'utf8')).toContain(portableUrl);
+
+        const validateResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            validateScriptPath,
+            '-ManifestDir',
+            outputDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-RequirePublishableUrls',
+            '-Format',
+            'json',
+        ]);
+
+        await attachProcessOutput(testInfo, 'winget-validate', validateResult.stdout, validateResult.stderr);
+
+        expect(validateResult.exitCode).toBe(0);
+        const payload = JSON.parse(validateResult.stdout) as
+        {
+            execution: string;
+            status: string;
+            installer_urls: string[];
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('validate-winget-manifests');
+        expect(payload.status).toBe('ready');
+        expect(payload.installer_urls).toContain(portableUrl);
+        expect(payload.issue_codes).toHaveLength(0);
+    });
+
+    test('fails winget manifest validation when placeholder URLs remain', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('winget-placeholder-manifests');
+        const renderScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+        const validateScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-winget-manifests.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const renderResult = await runPowerShell([
             '-NoProfile',
             '-ExecutionPolicy',
             'Bypass',
@@ -1074,20 +1139,38 @@ test.describe('us4-cli smoke', () => {
             '-PortableUrl',
             `https://example.invalid/us4-v6-windows-${packageVersion}-portable.zip`,
             '-MsixUrl',
-            `https://example.invalid/us4-v6-windows-${packageVersion}.msix`,
+            `https://example.invalid/us4-v6-windows-${packageVersion}.0.msix`,
             '-OutputDir',
             outputDir,
         ]);
+        await attachProcessOutput(testInfo, 'winget-render-placeholder', renderResult.stdout, renderResult.stderr);
 
-        await attachProcessOutput(testInfo, 'winget-render', result.stdout, result.stderr);
+        expect(renderResult.exitCode).toBe(0);
 
-        expect(result.exitCode).toBe(0);
-        expect(existsSync(path.join(outputDir, 'default.yaml'))).toBeTruthy();
-        expect(existsSync(path.join(outputDir, 'installer.yaml'))).toBeTruthy();
-        expect(existsSync(path.join(outputDir, 'locale.en-US.yaml'))).toBeTruthy();
-        expect(readFileSync(path.join(outputDir, 'installer.yaml'), 'utf8')).toContain(
-            `https://example.invalid/us4-v6-windows-${packageVersion}-portable.zip`
-        );
+        const validateResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            validateScriptPath,
+            '-ManifestDir',
+            outputDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-RequirePublishableUrls',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'winget-validate-placeholder', validateResult.stdout, validateResult.stderr);
+
+        expect(validateResult.exitCode).toBe(1);
+        const payload = JSON.parse(validateResult.stdout) as
+        {
+            status: string;
+            issue_codes: string[];
+        };
+        expect(payload.status).toBe('blocked');
+        expect(payload.issue_codes).toContain('installer_url_not_publishable');
     });
 
     test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {

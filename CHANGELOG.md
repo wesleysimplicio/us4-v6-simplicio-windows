@@ -63,6 +63,14 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - stronger release architecture/pattern docs for packaging and distribution boundaries
 - E2E regression for unsigned MSIX install smoke failure
 
+## [0.1.24] - 2026-05-15
+
+### Added
+
+- winget manifest validation via `scripts/validate-winget-manifests.ps1`
+- release workflow rendering and validation for publishable winget manifests
+- E2E regression coverage for valid vs placeholder winget manifest URLs
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

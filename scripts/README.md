@@ -31,6 +31,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - valida readiness de release cruzando versao, changelog, build, ferramentas de packaging e configuracao de assinatura
 - `render-winget-manifests.ps1`
   - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
+- `validate-winget-manifests.ps1`
+  - valida manifests renderizados, detecta placeholders restantes e pode exigir URLs HTTPS publicaveis
 - `sign-msix.ps1`
   - assina um `.msix` usando `signtool.exe` e configuracao de certificado via variaveis de ambiente ou caminho explicito
 

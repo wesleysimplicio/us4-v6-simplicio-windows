@@ -85,6 +85,24 @@ jobs:
       - name: Generate release checksums
         run: .\scripts\generate-checksums.ps1 -OutputDir dist
 
+      - name: Render winget manifests
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $parts = $version.Split('.')
+          $msixVersion = "{0}.{1}.{2}.0" -f $parts[0], $parts[1], $parts[2]
+          $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "v$version" }
+          $portableUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/us4-v6-windows-$version-portable.zip"
+          $msixUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/us4-v6-windows-$msixVersion.msix"
+          .\scripts\render-winget-manifests.ps1 -Version $version -PortableUrl $portableUrl -MsixUrl $msixUrl
+
+      - name: Validate winget manifests
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          .\scripts\validate-winget-manifests.ps1 `
+            -ManifestDir packaging\winget\manifests `
+            -ExpectedVersion $version `
+            -RequirePublishableUrls
+
       - name: Smoke portable release artifact
         run: |
           $zip = Get-ChildItem -Path dist -Filter *.zip | Select-Object -First 1 -ExpandProperty FullName

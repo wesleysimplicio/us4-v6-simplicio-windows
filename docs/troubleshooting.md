@@ -76,6 +76,7 @@
 
 - Symptom: os manifests renderizados em `packaging/winget/manifests/` ainda apontam para `example.invalid`.
 - Diagnose: confira os argumentos usados em `scripts/render-winget-manifests.ps1`.
+- Validate: rode `scripts/validate-winget-manifests.ps1 -ManifestDir packaging\winget\manifests -RequirePublishableUrls` para flagrar placeholders, versao divergente e URLs nao publicaveis.
 - Fix: rerenderize com os URLs reais do zip e do MSIX publicados.
 - Important: o scaffold de `winget` e versionado no repo, mas a publicacao real ainda depende dos artefatos assinados e dos URLs finais.
 

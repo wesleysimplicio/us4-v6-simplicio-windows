@@ -130,11 +130,12 @@ Release artifact helpers:
 ```powershell
 .\scripts\build-portable-zip.ps1 -BuildDir build -OutputDir dist
 .\scripts\generate-checksums.ps1 -OutputDir dist
-.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.20-portable.zip
-.\scripts\render-winget-manifests.ps1 -Version 0.1.20
-.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.20.msix
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.24-portable.zip
+.\scripts\render-winget-manifests.ps1 -Version 0.1.24
+.\scripts\validate-winget-manifests.ps1 -ManifestDir .\packaging\winget\manifests
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.24.0.msix
 .\scripts\preflight-release.ps1 -BuildDir build
-.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.20.msix
+.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.24.0.msix
 ```
 
 ## Repo Layout

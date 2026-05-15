@@ -26,6 +26,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `scripts/build-portable-zip.ps1`
 - scaffold de `packaging/msix/` + `scripts/build-msix.ps1`
 - scaffold de `packaging/winget/` + `scripts/render-winget-manifests.ps1`
+- validacao de manifests de `winget` via `scripts/validate-winget-manifests.ps1`
 - scaffold de assinatura via `scripts/sign-msix.ps1`
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
@@ -187,7 +188,7 @@ Hoje o rollback ainda e semiautomatico, mas ja existe um procedimento concreto p
 3. remova do draft release os artefatos ruins ou descarte o draft
 4. gere novamente `portable zip`, `SHA256SUMS.txt` e, se aplicavel, o MSIX
 5. rode `scripts/post-publish-smoke.ps1` contra o zip reconstruido
-6. se o problema estiver em manifests, rerenderize `packaging/winget/manifests/` com URLs corretos
+6. se o problema estiver em manifests, rerenderize `packaging/winget/manifests/` com URLs corretos e rode `scripts/validate-winget-manifests.ps1 -RequirePublishableUrls`
 7. registre o incidente em `.specs/incidents/` quando essa pasta existir
 8. adicione teste, smoke ou gate que teria evitado a regressao
 

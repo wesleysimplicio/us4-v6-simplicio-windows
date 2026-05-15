@@ -6,15 +6,20 @@ Current status:
 
 - manifest templates live under `templates/`
 - local rendering is handled by `scripts/render-winget-manifests.ps1`
-- publish URLs are still placeholders until signed release assets are available
+- local structural validation is handled by `scripts/validate-winget-manifests.ps1`
+- local examples may still use placeholders, but `release.yml` now renders publishable GitHub release URLs before validation
 
 Typical local render:
 
 ```powershell
 .\scripts\render-winget-manifests.ps1 `
-  -Version 0.1.20 `
-  -PortableUrl https://example.invalid/us4-v6-windows-0.1.20-portable.zip `
-  -MsixUrl https://example.invalid/us4-v6-windows-0.1.20.msix
+  -Version 0.1.24 `
+  -PortableUrl https://example.invalid/us4-v6-windows-0.1.24-portable.zip `
+  -MsixUrl https://example.invalid/us4-v6-windows-0.1.24.0.msix
+
+.\scripts\validate-winget-manifests.ps1 `
+  -ManifestDir packaging\winget\manifests `
+  -ExpectedVersion 0.1.24
 ```
 
 This scaffold does not publish to winget automatically yet.
