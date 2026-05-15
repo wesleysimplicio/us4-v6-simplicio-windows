@@ -8,9 +8,9 @@ Este documento descreve o que ja existe, o que falta para a primeira release dis
 
 ## 1. Estado atual
 
-Hoje o repositorio ainda nao tem pipeline de release do runtime Windows.
+Hoje o repositorio ja tem um scaffold funcional de release do runtime Windows.
 
-Faltam estes blocos basicos:
+Ainda faltam estes blocos basicos para chamar o processo de distribuicao de completo:
 
 - `packaging/winget/`
 - assinatura de binarios
@@ -22,10 +22,14 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `ctest`
 - smoke `us4-cli --probe`
 - CLI com `version`, `probe`, `run`, `bench` e `tune`
+- `release.yml` para tags `v*`
+- `CHANGELOG.md`
+- `scripts/build-portable-zip.ps1`
+- scaffold de `packaging/msix/` + `scripts/build-msix.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
 
-Conclusao pratica: o repo esta em fase de fundacao/fechamento de Sprint 12 e ainda nao deve prometer release automatizada, MSIX assinado ou publicacao via winget.
+Conclusao pratica: o repo esta em fase avancada de fechamento da Sprint 12, com release scaffold local e CI de release inicial, mas ainda nao deve prometer MSIX assinado ou publicacao via winget.
 
 ---
 
@@ -73,7 +77,9 @@ Implicacoes:
 
 ### 3.2 O que ainda nao esta pronto como contrato final
 
-- a versao do binario agora e derivada da versao do projeto no CMake, mas a trilha de release ainda nao fecha so com isso.
+- a versao do binario ja e derivada da versao do projeto no CMake, mas a trilha de release ainda nao fecha so com isso.
+- `serve` ainda e scaffold-only.
+- os caminhos `Vulkan` e `Windows ML` ainda tem trechos fortes de planner/dry-run em vez de execucao device-side completa.
 
 ### 3.3 Package version x runtime version
 
@@ -107,19 +113,24 @@ O que ainda falta e ligar isso a:
 - artefatos distribuidos
 - assinatura e publicacao
 
-### 4.3 Criar changelog
+### 4.3 Changelog
 
-Antes da primeira release, adicione `CHANGELOG.md` em ingles com entradas especificas. Nao use linhas vagas como "various improvements".
+`CHANGELOG.md` ja existe e deve continuar sendo atualizado em todo change release-relevant. Nao use linhas vagas como "various improvements".
 
 ### 4.4 Empacotamento
 
-Quando o trabalho de distribuicao comecar, ele deve entrar com arquivos reais no repo. Exemplos esperados:
+Hoje o repo ja inclui:
 
 - `packaging/msix/`
-- `packaging/winget/`
-- scripts de build e assinatura
+- `scripts/build-portable-zip.ps1`
+- `scripts/build-msix.ps1`
 
-Enquanto isso nao existir, documente qualquer entrega manual no corpo da PR ou da issue correspondente.
+O que ainda falta para fechar distribuicao:
+
+- assinatura
+- `packaging/winget/`
+- smoke de pos-publicacao
+- politica de rollback operacional
 
 ---
 
@@ -148,10 +159,10 @@ Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 - [x] `CHANGELOG.md` criado
 - [x] versao do runtime definida no build C++
 - [x] `us4-cli version` alinhado a essa fonte canonica
-- [ ] smoke de release cobrindo `probe`, `run`, `bench` e `tune`
+- [x] smoke de release cobrindo `probe`, `run`, `bench` e `tune`
 - [x] `release.yml` criado
 - [x] `packaging/msix/` criado
-- [ ] estrategia de `portable zip` definida
+- [x] estrategia de `portable zip` definida
 - [ ] assinatura de binarios definida
 - [ ] smoke de pos-publicacao definido
 - [ ] rollback documentado

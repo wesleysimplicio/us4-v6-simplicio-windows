@@ -50,10 +50,14 @@ jobs:
       - name: Build runtime
         run: cmake --build $env:BUILD_DIR --config $env:CMAKE_BUILD_TYPE --parallel
 
-      - name: Smoke version and probe
+      - name: Smoke CLI release surface
         run: |
+          $env:US4_PROFILE_STORE_PATH = Join-Path $PWD "dist\release-smoke-profiles.json"
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe version
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe --probe
+          .\$env:BUILD_DIR\runtime\cli\us4-cli.exe run --model qwen-0.5b --prompt "release smoke" --backend cpu --mode cpu-only --format json
+          .\$env:BUILD_DIR\runtime\cli\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only --format json
+          .\$env:BUILD_DIR\runtime\cli\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only --format json
 
       - name: Build portable zip
         run: .\scripts\build-portable-zip.ps1 -BuildDir $env:BUILD_DIR -OutputDir dist

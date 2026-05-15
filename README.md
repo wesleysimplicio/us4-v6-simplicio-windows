@@ -51,7 +51,7 @@ Current behavior:
 
 Not implemented yet:
 
-- MSIX packaging, portable zip automation, and release publishing are not finished.
+- signed MSIX publishing, winget packaging, and post-publish smoke are not finished.
 
 ## Matrix Bench And Tune
 
@@ -119,6 +119,12 @@ npx playwright test --project=cli
 
 If you are working only on the starter/documentation layer, [`scripts/test.ps1`](./scripts/test.ps1) still validates the packaging/bootstrap side separately.
 
+PowerShell completion setup:
+
+```powershell
+.\scripts\install-completions.ps1
+```
+
 ## Repo Layout
 
 ```text
@@ -149,13 +155,15 @@ If the change touches:
 - `tune`, include both CLI evidence and the persisted `profiles.json` artifact used during validation.
 - release or packaging flows, update [`.specs/workflow/RELEASE.md`](./.specs/workflow/RELEASE.md) in the same change.
 
+Migration notes for the current CLI/release baseline live in [`docs/migration-guide.md`](./docs/migration-guide.md).
+
 ## Next Milestones
 
 The biggest remaining milestones are:
 
 - deepen device-side execution beyond dry-run behavior for Vulkan and Windows ML
 - finish the Sprint 12 CLI/release surface around JSON parity and packaging
-- add release automation for portable zip and MSIX
+- finish signed MSIX publishing, winget packaging, and post-publish release smoke
 - align the runtime version source, changelog, and release metadata end to end
 
 ## Out of Scope

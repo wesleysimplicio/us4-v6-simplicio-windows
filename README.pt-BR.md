@@ -51,7 +51,7 @@ Comportamento atual:
 
 Ainda nao implementado:
 
-- packaging MSIX, portable zip e publicacao de release ainda nao estao fechados.
+- publicacao de MSIX assinado, pacote winget e smoke de pos-publicacao ainda nao estao fechados.
 
 ## Bench E Tune Por Matriz
 
@@ -119,6 +119,12 @@ npx playwright test --project=cli
 
 Se o foco for apenas a camada do starter/documentacao, [`scripts/test.ps1`](./scripts/test.ps1) continua validando separadamente a parte de bootstrap/packaging.
 
+Setup de completions no PowerShell:
+
+```powershell
+.\scripts\install-completions.ps1
+```
+
 ## Layout Do Repo
 
 ```text
@@ -149,13 +155,15 @@ Se a mudanca tocar:
 - `tune`, inclua evidencia da CLI e o `profiles.json` persistido usado na validacao.
 - release ou packaging, atualize [`.specs/workflow/RELEASE.md`](./.specs/workflow/RELEASE.md) no mesmo change.
 
+Notas de migracao para a baseline atual de CLI/release estao em [`docs/migration-guide.md`](./docs/migration-guide.md).
+
 ## Proximos Marcos
 
 Os maiores marcos restantes agora sao:
 
 - aprofundar a execucao device-side alem do dry-run em Vulkan e Windows ML
 - fechar a superficie de CLI/release da Sprint 12, incluindo paridade de JSON e packaging
-- adicionar automacao de release para portable zip e MSIX
+- fechar publicacao de MSIX assinado, pacote winget e smoke de release pos-publicacao
 - alinhar versao canonica do runtime, changelog e metadados de release ponta a ponta
 
 ## Fora De Escopo

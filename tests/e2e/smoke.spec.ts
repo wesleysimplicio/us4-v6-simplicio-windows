@@ -1,11 +1,15 @@
 import {expect, test} from '@playwright/test';
 import type {TestInfo} from '@playwright/test';
 import {execFile} from 'node:child_process';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
 
 const execFileAsync = promisify(execFile);
+const packageVersion = (JSON.parse(readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8')) as
+{
+    version: string;
+}).version;
 
 function resolveCliPath(): string
 {
@@ -123,6 +127,53 @@ async function runCli(
             exitCode : typeof execError.code === 'number' ? execError.code : null,
         };
     }
+}
+
+async function runPowerShell(
+    args: string[],
+    env: NodeJS.ProcessEnv = process.env,
+    ): Promise<{stdout : string; stderr : string; exitCode : number | null}>
+{
+    return runProcess(process.platform === 'win32' ? 'powershell.exe' : 'pwsh', args, env);
+}
+
+async function runProcess(
+    executable: string,
+    args: string[],
+    env: NodeJS.ProcessEnv = process.env,
+    ): Promise<{stdout : string; stderr : string; exitCode : number | null}>
+{
+    try
+    {
+        const result = await execFileAsync(executable, args, {
+            env,
+            windowsHide : true,
+        });
+        return {
+            stdout : result.stdout,
+            stderr : result.stderr,
+            exitCode : 0,
+        };
+    }
+    catch (error)
+    {
+        const execError = error as NodeJS.ErrnoException &
+        {
+            code?: number|string;
+            stdout?: string;
+            stderr?: string;
+        };
+        return {
+            stdout : execError.stdout ?? '',
+            stderr : execError.stderr ?? '',
+            exitCode : typeof execError.code === 'number' ? execError.code : null,
+        };
+    }
+}
+
+function escapePowerShellSingleQuoted(value: string): string
+{
+    return value.replaceAll('\'', '\'\'');
 }
 
 test.describe('us4-cli smoke', () => {
@@ -816,5 +867,112 @@ test.describe('us4-cli smoke', () => {
              expect(payload.selected_profile).toBe('cpu-only');
              expect(payload.selected_backend).toBe('auto');
              expect(payload.persisted).toBeFalsy();
+         });
+
+    test('builds a portable zip release artifact', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('portable-dist');
+        const zipPath = path.join(outputDir, `us4-v6-windows-${packageVersion}-portable.zip`);
+        const scriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            scriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+
+        await attachProcessOutput(testInfo, 'portable-zip', build.stdout, build.stderr);
+
+        expect(build.exitCode).toBe(0);
+        expect(existsSync(zipPath)).toBeTruthy();
+
+        const listEntries = await runPowerShell([
+            '-NoProfile',
+            '-Command',
+            [
+                'Add-Type -AssemblyName System.IO.Compression.FileSystem;',
+                `$zip = [System.IO.Compression.ZipFile]::OpenRead('${escapePowerShellSingleQuoted(zipPath)}');`,
+                '$zip.Entries | ForEach-Object { $_.FullName };',
+                '$zip.Dispose();'
+            ].join(' '),
+        ]);
+
+        await attachProcessOutput(testInfo, 'portable-zip-entries', listEntries.stdout, listEntries.stderr);
+
+        expect(listEntries.exitCode).toBe(0);
+        expect(listEntries.stdout).toContain('us4-cli.exe');
+        expect(listEntries.stdout).toContain('README.md');
+        expect(listEntries.stdout).toContain('README.pt-BR.md');
+        expect(listEntries.stdout).toContain('CHANGELOG.md');
+    });
+
+    test('installs PowerShell completions idempotently into a temporary profile',
+         async ({}, testInfo) => {
+             const profilePath = testInfo.outputPath('Microsoft.PowerShell_profile.ps1');
+             const scriptPath = path.resolve(process.cwd(), 'scripts', 'install-completions.ps1');
+             const completionPath = path.resolve(process.cwd(), 'scripts', 'completions', 'us4-cli.ps1');
+
+             mkdirSync(path.dirname(profilePath), {recursive : true});
+
+             const install = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-Command',
+                 [
+                     `$PROFILE = '${escapePowerShellSingleQuoted(profilePath)}';`,
+                     `& '${escapePowerShellSingleQuoted(scriptPath)}';`,
+                     `& '${escapePowerShellSingleQuoted(scriptPath)}';`,
+                     'Get-Content $PROFILE -Raw'
+                 ].join(' '),
+             ]);
+
+             await attachProcessOutput(testInfo, 'install-completions', install.stdout, install.stderr);
+
+             expect(install.exitCode).toBe(0);
+             expect(existsSync(profilePath)).toBeTruthy();
+             const profileContent = readFileSync(profilePath, 'utf8');
+             expect(profileContent).toContain(completionPath);
+             expect(profileContent.split(completionPath).length - 1).toBe(1);
+         });
+
+    test('builds an msix package when MakeAppx is present or fails with a clear prerequisite',
+         async ({}, testInfo) => {
+             const outputDir = testInfo.outputPath('msix-dist');
+             const scriptPath = path.resolve(process.cwd(), 'scripts', 'build-msix.ps1');
+             const cliBuildDir = path.resolve(process.cwd(), 'build');
+
+             mkdirSync(outputDir, {recursive : true});
+
+             const result = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 scriptPath,
+                 '-BuildDir',
+                 cliBuildDir,
+                 '-OutputDir',
+                 outputDir,
+             ]);
+
+             await attachProcessOutput(testInfo, 'build-msix', result.stdout, result.stderr);
+
+             if (result.exitCode === 0)
+             {
+                 expect(result.stdout).toContain('Unsigned MSIX created at');
+                 expect(result.stdout).toContain('.msix');
+                 return;
+             }
+
+             expect(`${result.stdout}\n${result.stderr}`).toContain('MakeAppx.exe not found');
          });
 });

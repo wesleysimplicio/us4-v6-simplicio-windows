@@ -11,6 +11,9 @@ if (-not (Test-Path $PROFILE)) {
 
 $loadLine = ". `"$completionScript`""
 $profileContent = Get-Content $PROFILE -Raw
+if ($null -eq $profileContent) {
+    $profileContent = ""
+}
 if ($profileContent -notlike "*$loadLine*") {
     Add-Content -Path $PROFILE -Value "`r`n$loadLine`r`n"
 }

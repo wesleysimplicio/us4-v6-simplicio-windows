@@ -38,6 +38,20 @@
 - Fix: compile `us4-cli` antes do E2E ou defina `US4_CLI_PATH` com um executavel valido.
 - Important: `skip` nao conta como evidencia valida de CLI/UX. Use `scripts/evidence.ps1` ou `scripts/evidence.sh`; eles falham se o resultado for so teste pulado.
 
+## PowerShell completions do not load
+
+- Symptom: o tab completion de `us4-cli` nao funciona mesmo apos rodar `scripts/install-completions.ps1`.
+- Diagnose: inspecione o arquivo atual de `$PROFILE` e confirme se ele contem uma linha que faz dot-source de `scripts/completions/us4-cli.ps1`.
+- Diagnose adicional: reabra o shell ou execute manualmente o profile atual depois da instalacao.
+- Fix: rode `.\scripts\install-completions.ps1` novamente; o instalador e idempotente e nao deve duplicar a entrada.
+
+## MakeAppx not found for MSIX packaging
+
+- Symptom: `scripts/build-msix.ps1` falha com `MakeAppx.exe not found`.
+- Diagnose: rode `Get-Command MakeAppx.exe`.
+- Fix: instale as ferramentas de App Packaging do Windows SDK e rode novamente `.\scripts\build-msix.ps1 -BuildDir build -OutputDir dist`.
+- Important: o empacotamento portable zip nao depende de `MakeAppx.exe`; use `scripts/build-portable-zip.ps1` enquanto esse prerequisito nao estiver disponivel.
+
 ## Build artifacts locked
 
 - Symptom: compilador nao consegue sobrescrever artefatos em `build/`.
