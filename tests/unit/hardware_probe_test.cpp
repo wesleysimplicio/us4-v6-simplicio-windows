@@ -223,6 +223,44 @@ namespace us4::core
                                     }));
         }
 
+        TEST(HardwareProbeTest, BenchmarkRegistryExposesSprint11HybridBackendCases)
+        {
+            const auto vulkanCases =
+                us4::runtime::benchmarks::BenchmarkRegistry::CasesForBackend("vulkan");
+            const auto windowsMlCases =
+                us4::runtime::benchmarks::BenchmarkRegistry::CasesForBackend("windows-ml");
+
+            EXPECT_TRUE(std::any_of(vulkanCases.begin(), vulkanCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "vulkan_qwen_balanced" &&
+                                               benchmark.modelId == "qwen-0.5b" &&
+                                               benchmark.requiresGpu && benchmark.touchesCli;
+                                    }));
+            EXPECT_TRUE(std::any_of(vulkanCases.begin(), vulkanCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "vulkan_llama_balanced" &&
+                                               benchmark.adapterId == "dense-llama" &&
+                                               benchmark.runtimeMode == "BALANCED";
+                                    }));
+            EXPECT_TRUE(std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "windows_ml_qwen_opt_in" &&
+                                               benchmark.profileId == "micro" &&
+                                               !benchmark.requiresGpu;
+                                    }));
+            EXPECT_TRUE(
+                std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
+                            [](const auto& benchmark)
+                            {
+                                return benchmark.name == "windows_ml_qwen_thermal_throttle" &&
+                                       benchmark.scenario == "npu-dense-offload-thermal-throttle" &&
+                                       benchmark.touchesCli;
+                            }));
+        }
+
         TEST(HardwareProbeTest, CpuOnlyProfileMatchesSprint02BaselineContract)
         {
             const auto profile = us4::profiles::ProfileCatalog::FindById("cpu-only");
