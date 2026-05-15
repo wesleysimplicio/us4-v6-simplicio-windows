@@ -609,8 +609,72 @@ namespace us4::core
             EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
             EXPECT_NE(result.stdoutText.find("US4 Runtime Plan"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("backend: directml"), std::string::npos);
-            EXPECT_NE(result.stdoutText.find("execution: scaffold-only"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("execution: directml-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.graph_state: ready"), std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsCudaDryRunPlanForExplicitCudaBackend)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_CUDA", "1");
+            _putenv_s("US4_GPU_NAME", "NVIDIA RTX 4090");
+            _putenv_s("US4_GPU_VENDOR", "nvidia");
+            _putenv_s("US4_DEVICE_GIB", "24");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("cuda"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("execution: cuda-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("cuda.execution_flavor:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("cuda.prefill_chunk_tokens:"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsWindowsMlDryRunPlanWhenNpuIsRequested)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_NPU_NAME", "Ryzen AI");
+            _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_HOST_GIB", "32");
+            _putenv_s("US4_DEVICE_GIB", "8");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("windows-ml"),
+                const_cast<char*>("--npu"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("execution: windows-ml-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.opt_in_satisfied: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.partition_count:"), std::string::npos);
 
             ClearProbeEnv();
         }

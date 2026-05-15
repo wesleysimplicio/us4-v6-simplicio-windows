@@ -1,147 +1,277 @@
-import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import {expect, test} from '@playwright/test';
+import type {TestInfo} from '@playwright/test';
+import {execFile} from 'node:child_process';
+import {existsSync} from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
-
-import { expect, test } from '@playwright/test';
-import type { TestInfo } from '@playwright/test';
+import {promisify} from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-function resolveCliPath(): string {
-  if (process.env.US4_CLI_PATH) {
-    return process.env.US4_CLI_PATH;
-  }
+function resolveCliPath(): string
+{
+    if (process.env.US4_CLI_PATH)
+    {
+        return process.env.US4_CLI_PATH;
+    }
 
-  const executableName = process.platform === 'win32' ? 'us4-cli.exe' : 'us4-cli';
-  const candidates = [
-    path.resolve(process.cwd(), 'build', executableName),
-    path.resolve(process.cwd(), 'build', 'runtime', 'cli', executableName),
-  ];
+    const executableName = process.platform === 'win32' ? 'us4-cli.exe' : 'us4-cli';
+    const candidates = [
+        path.resolve(process.cwd(), 'build', executableName),
+        path.resolve(process.cwd(), 'build', 'runtime', 'cli', executableName),
+    ];
 
-  const resolved = candidates.find((candidate) => existsSync(candidate));
-  return resolved ?? candidates[0];
+    const resolved = candidates.find((candidate) => existsSync(candidate));
+    return resolved ?? candidates[0];
 }
 
-async function attachTextArtifact(testInfo: TestInfo, name: string, body: string): Promise<void> {
-  await testInfo.attach(name, {
-    body: Buffer.from(body, 'utf8'),
-    contentType: 'text/plain',
-  });
-}
-
-async function attachDiagnostics(testInfo: TestInfo, cliPath: string): Promise<void> {
-  const diagnostics = {
-    cliPath,
-    cliExists: existsSync(cliPath),
-    cwd: process.cwd(),
-    platform: process.platform,
-    ci: !!process.env.CI,
-    env: {
-      US4_CLI_PATH: process.env.US4_CLI_PATH ?? null,
-      US4_HAS_CUDA: process.env.US4_HAS_CUDA ?? null,
-      US4_HAS_DIRECTML: process.env.US4_HAS_DIRECTML ?? null,
-      US4_HAS_VULKAN: process.env.US4_HAS_VULKAN ?? null,
-      US4_HAS_NPU: process.env.US4_HAS_NPU ?? null,
-      US4_CPU_NAME: process.env.US4_CPU_NAME ?? null,
-      US4_GPU_NAME: process.env.US4_GPU_NAME ?? null,
-    },
-  };
-
-  await testInfo.attach('cli-diagnostics', {
-    body: Buffer.from(JSON.stringify(diagnostics, null, 2), 'utf8'),
-    contentType: 'application/json',
-  });
-}
-
-async function requireCliBinary(testInfo: TestInfo): Promise<string> {
-  const cliPath = resolveCliPath();
-  await attachDiagnostics(testInfo, cliPath);
-
-  if (!existsSync(cliPath)) {
-    const message =
-      `CLI binary not found at ${cliPath}. ` +
-      'Build us4-cli before running E2E evidence. ' +
-      'A skipped smoke run does not satisfy the CLI/UX evidence requirement.';
-    testInfo.annotations.push({
-      type: 'toolchain-blocker',
-      description: message,
+async function attachTextArtifact(testInfo: TestInfo, name: string, body: string): Promise<void>
+{
+    await testInfo.attach(name, {
+        body : Buffer.from(body, 'utf8'),
+        contentType : 'text/plain',
     });
-    test.skip(true, message);
-  }
+}
 
-  return cliPath;
+async function attachDiagnostics(testInfo: TestInfo, cliPath: string): Promise<void>
+{
+    const diagnostics = {
+        cliPath,
+        cliExists : existsSync(cliPath),
+        cwd : process.cwd(),
+        platform : process.platform,
+        ci : !!process.env.CI,
+        env : {
+            US4_CLI_PATH : process.env.US4_CLI_PATH ?? null,
+            US4_HAS_CUDA : process.env.US4_HAS_CUDA ?? null,
+            US4_HAS_DIRECTML : process.env.US4_HAS_DIRECTML ?? null,
+            US4_HAS_VULKAN : process.env.US4_HAS_VULKAN ?? null,
+            US4_HAS_NPU : process.env.US4_HAS_NPU ?? null,
+            US4_CPU_NAME : process.env.US4_CPU_NAME ?? null,
+            US4_GPU_NAME : process.env.US4_GPU_NAME ?? null,
+        },
+    };
+
+    await testInfo.attach('cli-diagnostics', {
+        body : Buffer.from(JSON.stringify(diagnostics, null, 2), 'utf8'),
+        contentType : 'application/json',
+    });
+}
+
+async function requireCliBinary(testInfo: TestInfo): Promise<string>
+{
+    const cliPath = resolveCliPath();
+    await attachDiagnostics(testInfo, cliPath);
+
+    if (!existsSync(cliPath))
+    {
+        const message = `CLI binary not found at ${cliPath}. ` +
+                        'Build us4-cli before running E2E evidence. ' +
+                        'A skipped smoke run does not satisfy the CLI/UX evidence requirement.';
+        testInfo.annotations.push({
+            type : 'toolchain-blocker',
+            description : message,
+        });
+        test.skip(true, message);
+    }
+
+    return cliPath;
 }
 
 async function attachProcessOutput(
-  testInfo: TestInfo,
-  prefix: string,
-  stdout: string,
-  stderr: string,
-): Promise<void> {
-  await attachTextArtifact(testInfo, `${prefix}-stdout`, stdout);
-  if (stderr) {
-    await attachTextArtifact(testInfo, `${prefix}-stderr`, stderr);
-  }
+    testInfo: TestInfo,
+    prefix: string,
+    stdout: string,
+    stderr: string,
+    ): Promise<void>
+{
+    await attachTextArtifact(testInfo, `${prefix}-stdout`, stdout);
+    if (stderr)
+    {
+        await attachTextArtifact(testInfo, `${prefix}-stderr`, stderr);
+    }
+}
+
+async function runCli(
+    cliPath: string,
+    args: string[],
+    env: NodeJS.ProcessEnv = process.env,
+    ): Promise<{stdout : string; stderr : string; exitCode : number | null}>
+{
+    try
+    {
+        const result = await execFileAsync(cliPath, args, {
+            env,
+            windowsHide : true,
+        });
+        return {
+            stdout : result.stdout,
+            stderr : result.stderr,
+            exitCode : 0,
+        };
+    }
+    catch (error)
+    {
+        const execError = error as NodeJS.ErrnoException & {
+            code?: number | string;
+            stdout?: string;
+            stderr?: string;
+        };
+        return {
+            stdout : execError.stdout ?? '',
+            stderr : execError.stderr ?? '',
+            exitCode : typeof execError.code === 'number' ? execError.code : null,
+        };
+    }
 }
 
 test.describe('us4-cli smoke', () => {
-  test('prints help output', async ({}, testInfo) => {
-    const cliPath = await requireCliBinary(testInfo);
+    test('prints help output', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
 
-    const { stdout, stderr } = await execFileAsync(cliPath, ['--help'], {
-      windowsHide: true,
+        const {stdout, stderr, exitCode} = await runCli(cliPath, [ '--help' ]);
+
+        await attachProcessOutput(testInfo, 'help', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('us4-cli');
+        expect(stdout).toContain('--probe');
     });
 
-    await attachProcessOutput(testInfo, 'help', stdout, stderr);
+    test('prints probe summary', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
 
-    expect(stdout).toContain('us4-cli');
-    expect(stdout).toContain('--probe');
-  });
+        const {stdout, stderr, exitCode} = await runCli(cliPath, [ '--probe' ], {
+            ...process.env,
+            US4_HAS_DIRECTML : process.env.US4_HAS_DIRECTML ?? '1',
+            US4_CPU_NAME : process.env.US4_CPU_NAME ?? 'Playwright Test CPU',
+            US4_GPU_NAME : process.env.US4_GPU_NAME ?? 'Playwright Test GPU',
+        });
 
-  test('prints probe summary', async ({}, testInfo) => {
-    const cliPath = await requireCliBinary(testInfo);
+        await attachProcessOutput(testInfo, 'probe', stdout, stderr);
 
-    const { stdout, stderr } = await execFileAsync(cliPath, ['--probe'], {
-      env: {
-        ...process.env,
-        US4_HAS_DIRECTML: process.env.US4_HAS_DIRECTML ?? '1',
-        US4_CPU_NAME: process.env.US4_CPU_NAME ?? 'Playwright Test CPU',
-        US4_GPU_NAME: process.env.US4_GPU_NAME ?? 'Playwright Test GPU',
-      },
-      windowsHide: true,
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('US4 Windows Edition Probe');
+        expect(stdout).toContain('backend:');
+        expect(stdout).toContain('Playwright Test GPU');
     });
 
-    await attachProcessOutput(testInfo, 'probe', stdout, stderr);
+    test('runs the cpu-only scalar baseline for evidence capture', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
 
-    expect(stdout).toContain('US4 Windows Edition Probe');
-    expect(stdout).toContain('backend:');
-    expect(stdout).toContain('Playwright Test GPU');
-  });
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello from playwright', '--backend',
+                'cpu', '--max-tokens', '5'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
 
-  test('runs the cpu-only scalar baseline for evidence capture', async ({}, testInfo) => {
-    const cliPath = await requireCliBinary(testInfo);
+        await attachProcessOutput(testInfo, 'run', stdout, stderr);
 
-    const { stdout, stderr } = await execFileAsync(
-      cliPath,
-      ['run', '--model', 'qwen-0.5b', '--prompt', 'hello from playwright', '--backend', 'cpu', '--max-tokens', '5'],
-      {
-        env: {
-          ...process.env,
-          US4_HAS_CUDA: '',
-          US4_HAS_DIRECTML: '',
-          US4_HAS_VULKAN: '',
-          US4_HAS_NPU: '',
-        },
-        windowsHide: true,
-      },
-    );
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('backend: cpu-avx2');
+        expect(stdout).toContain('mode: CPU_ONLY');
+        expect(stdout).toContain('run_status: completed');
+        expect(stdout).toContain('generated_tokens:');
+    });
 
-    await attachProcessOutput(testInfo, 'run', stdout, stderr);
+    test('renders a DirectML dry-run plan', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
 
-    expect(stdout).toContain('backend: cpu-avx2');
-    expect(stdout).toContain('mode: CPU_ONLY');
-    expect(stdout).toContain('run_status: completed');
-    expect(stdout).toContain('generated_tokens:');
-  });
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello directml', '--backend', 'directml'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '1',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+                US4_CPU_NAME : 'Playwright Test CPU',
+                US4_GPU_NAME : 'Intel Arc Test',
+                US4_GPU_VENDOR : 'intel',
+                US4_GPU_CLASS : 'integrated',
+                US4_DEVICE_GIB : '8',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'directml-dry-run', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('backend: directml');
+        expect(stdout).toContain('execution: directml-dry-run');
+        expect(stdout).toContain('directml.graph_state: ready');
+        expect(stdout).toContain('directml.dispatch_ok: yes');
+        expect(stderr).toContain('not implemented yet');
+    });
+
+    test('renders a CUDA dry-run plan', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [ 'run', '--model', 'qwen-0.5b', '--prompt', 'hello cuda', '--backend', 'cuda' ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '1',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+                US4_GPU_NAME : 'NVIDIA RTX 4090',
+                US4_GPU_VENDOR : 'nvidia',
+                US4_GPU_CLASS : 'discrete',
+                US4_DEVICE_GIB : '24',
+                US4_DISCRETE_GPU_COUNT : '1',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'cuda-dry-run', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('backend: cuda');
+        expect(stdout).toContain('execution: cuda-dry-run');
+        expect(stdout).toContain('cuda.execution_flavor:');
+        expect(stdout).toContain('cuda.prefill_chunk_tokens:');
+        expect(stderr).toContain('not implemented yet');
+    });
+
+    test('renders a Windows ML dry-run plan with NPU opt-in', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello npu', '--backend', 'windows-ml',
+                '--npu'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '1',
+                US4_NPU_NAME : 'Ryzen AI Test',
+                US4_NPU_VENDOR : 'microsoft',
+                US4_DEVICE_GIB : '8',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'windows-ml-dry-run', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('backend: windows-ml');
+        expect(stdout).toContain('execution: windows-ml-dry-run');
+        expect(stdout).toContain('windows_ml.opt_in_satisfied: yes');
+        expect(stdout).toContain('windows_ml.partition_count:');
+        expect(stderr).toContain('not implemented yet');
+    });
 });

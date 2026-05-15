@@ -5,11 +5,17 @@
 #include "runtime/core/runtime_context.h"
 #include "runtime/core/runtime_mode.h"
 #include "us4/runtime/adapters/model_loader.h"
+#include "us4/runtime/backends/cuda/cuda_backend.h"
+#include "us4/runtime/backends/directml/dml_device.h"
+#include "us4/runtime/backends/directml/dml_graph.h"
 #include "us4/runtime/backends/hardware_probe.h"
+#include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
+#include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
 
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <sstream>
 #include <string>
@@ -51,6 +57,184 @@ namespace us4::cli
         std::string stdoutText;
         std::string stderrText;
     };
+
+    inline std::uint32_t EstimatePromptTokens(std::string_view prompt)
+    {
+        return std::max<std::uint32_t>(1U, static_cast<std::uint32_t>((prompt.size() + 3U) / 4U));
+    }
+
+    inline void AppendCudaDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
+                                 const us4::runtime::backends::HardwareCapabilities& capabilities,
+                                 std::string_view prompt)
+    {
+        const auto executionPlan = us4::runtime::backends::cuda::CudaBackend::BuildExecutionPlan(
+            plan.request, capabilities);
+        const auto prefill =
+            us4::runtime::backends::cuda::CudaBackend::PreparePrefill(executionPlan, prompt);
+        const auto decode = us4::runtime::backends::cuda::CudaBackend::PrepareDecode(
+            executionPlan, prefill.chunk, 0U);
+
+        output << "execution: cuda-dry-run\n";
+        output << "cuda.architecture: "
+               << us4::runtime::backends::cuda::ToString(executionPlan.device.architecture) << '\n';
+        output << "cuda.compute_capability: " << executionPlan.device.computeCapabilityMajor << '.'
+               << executionPlan.device.computeCapabilityMinor << '\n';
+        output << "cuda.execution_flavor: "
+               << us4::runtime::backends::cuda::ToString(executionPlan.flavor) << '\n';
+        output << "cuda.residency: "
+               << us4::runtime::backends::cuda::ToString(executionPlan.memory.residency) << '\n';
+        output << "cuda.prefill_streams: " << executionPlan.streams.prefillStreams << '\n';
+        output << "cuda.decode_streams: " << executionPlan.streams.decodeStreams << '\n';
+        output << "cuda.graph_capture: " << (executionPlan.graph.enableGraphCapture ? "yes" : "no")
+               << '\n';
+        output << "cuda.prefill_chunk_tokens: " << prefill.chunk.tokens.size() << '\n';
+        output << "cuda.decode_preview_tokens: " << decode.chunk.tokens.size() << '\n';
+        output << "cuda.prefill_bytes_touched: " << prefill.deviceBytesTouched << '\n';
+        output << "cuda.decode_bytes_touched: " << decode.deviceBytesTouched << '\n';
+        output << "cuda.plan_issues: " << executionPlan.issues.size() << '\n';
+    }
+
+    inline void
+    AppendDirectMlDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
+                         const us4::runtime::backends::HardwareCapabilities& capabilities,
+                         std::string_view prompt)
+    {
+        using namespace us4::runtime::backends::directml;
+
+        DmlDevice device({
+            .preferIntegratedGpu =
+                plan.backend.deviceClass == us4::runtime::backends::DeviceClass::kIntegratedGpu,
+            .preferLowLatency = plan.request.preferLowLatency,
+        });
+        const bool initialized = device.Initialize(capabilities);
+        const std::size_t persistentBytes =
+            std::max<std::size_t>(plan.residency.expectedDeviceBytes / 4U, 1024U * 1024U);
+        const bool prepared =
+            initialized &&
+            device.PrepareGraphSession(plan.model.id, DmlExecutionPhase::kPrefill, persistentBytes);
+
+        DmlGraph graph(&device);
+        graph.RecordNode({
+            .name = "prefill.matmul",
+            .kind = DmlOperatorKind::kMatMul,
+            .dataType = ToDmlDataType(plan.backend.defaultPrecision),
+            .inputCount = 2,
+            .outputCount = 1,
+            .usesPersistentWeights = true,
+            .allowChunking = true,
+            .temporaryBytes =
+                std::max<std::size_t>(plan.residency.expectedPrefillScratchBytes, 512U * 1024U),
+            .persistentBytes = persistentBytes / 2U,
+        });
+        graph.RecordNode({
+            .name = "decode.attention",
+            .kind = DmlOperatorKind::kAttention,
+            .dataType = ToDmlDataType(plan.backend.defaultPrecision),
+            .inputCount = 3,
+            .outputCount = 1,
+            .usesPersistentWeights = false,
+            .allowChunking = true,
+            .temporaryBytes =
+                std::max<std::size_t>(plan.residency.expectedDecodeScratchBytes, 256U * 1024U),
+            .persistentBytes = persistentBytes / 4U,
+        });
+
+        const auto compile = graph.Compile({
+            .precision = plan.backend.defaultPrecision,
+            .enableOperatorFusion = true,
+            .enablePersistentDescriptors = true,
+            .enableChunkedCompilation = true,
+            .maxTemporaryBytes =
+                std::max<std::size_t>(plan.residency.expectedPrefillScratchBytes, 1024U * 1024U),
+            .maxPersistentBytes = persistentBytes,
+        });
+        const auto dispatch = graph.Dispatch({
+            .phase = DmlExecutionPhase::kPrefill,
+            .tokenCount = EstimatePromptTokens(prompt),
+            .batchSize =
+                static_cast<std::uint32_t>(std::max<std::size_t>(plan.profile.targetBatchSize, 1U)),
+            .sequenceLength = std::max<std::uint32_t>(EstimatePromptTokens(prompt), 1U),
+            .allowAsyncCompletion = true,
+        });
+
+        output << "execution: directml-dry-run\n";
+        output << "directml.initialized: " << (initialized ? "yes" : "no") << '\n';
+        output << "directml.session_prepared: " << (prepared ? "yes" : "no") << '\n';
+        output << "directml.graph_state: " << ToString(graph.State()) << '\n';
+        output << "directml.compile_ok: " << (compile.compiled ? "yes" : "no") << '\n';
+        output << "directml.dispatch_ok: " << (dispatch.submitted ? "yes" : "no") << '\n';
+        output << "directml.node_count: " << graph.Nodes().size() << '\n';
+        output << "directml.dispatch_count: " << graph.Stats().dispatchCount << '\n';
+        output << "directml.fence: " << graph.Stats().lastFenceValue << '\n';
+    }
+
+    inline void AppendVulkanDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan)
+    {
+        const auto executionPlan = us4::runtime::backends::vulkan::BuildVulkanExecutionPlan({
+            .binding = plan.binding,
+            .request = plan.request,
+            .adapterId = plan.model.adapterId,
+            .targetBatchSize = plan.profile.targetBatchSize,
+            .modelSupportsMoE = plan.model.supportsMoE,
+            .modelSupportsSpeculative = plan.model.supportsSpeculative,
+        });
+
+        output << "execution: vulkan-dry-run\n";
+        output << "vulkan.step_count: " << executionPlan.steps.size() << '\n';
+        output << "vulkan.decode_micro_batch: " << executionPlan.decodeMicroBatchSize << '\n';
+        output << "vulkan.prefill_batches: " << executionPlan.maxConcurrentPrefillBatches << '\n';
+        output << "vulkan.timeline_semaphores: "
+               << (executionPlan.useTimelineSemaphores ? "yes" : "no") << '\n';
+        output << "vulkan.cpu_attention_fallback: "
+               << (executionPlan.fallbackToCpuAttention ? "yes" : "no") << '\n';
+        output << "vulkan.host_moe_route: " << (executionPlan.routeMoEOnHost ? "yes" : "no")
+               << '\n';
+        output << "vulkan.plan_issues: " << executionPlan.issues.size() << '\n';
+        if (!executionPlan.steps.empty())
+        {
+            output << "vulkan.first_stage: "
+                   << us4::runtime::backends::vulkan::ToString(executionPlan.steps.front().stage)
+                   << '\n';
+            output << "vulkan.last_stage: "
+                   << us4::runtime::backends::vulkan::ToString(executionPlan.steps.back().stage)
+                   << '\n';
+        }
+    }
+
+    inline void AppendWindowsMlDryRun(std::ostringstream& output,
+                                      const us4::core::RuntimePlan& plan)
+    {
+        const auto executionPlan = us4::runtime::backends::windows_ml::BuildWindowsMlExecutionPlan({
+            .binding = plan.binding,
+            .request = plan.request,
+            .adapterId = plan.model.adapterId,
+            .targetBatchSize = plan.profile.targetBatchSize,
+            .modelSupportsMoE = plan.model.supportsMoE,
+            .modelSupportsSpeculative = plan.model.supportsSpeculative,
+            .modelSupportsVision = plan.model.supportsVision,
+        });
+
+        output << "execution: windows-ml-dry-run\n";
+        output << "windows_ml.opt_in_satisfied: " << (executionPlan.optInSatisfied ? "yes" : "no")
+               << '\n';
+        output << "windows_ml.prefill_offload: " << (executionPlan.offloadPrefill ? "yes" : "no")
+               << '\n';
+        output << "windows_ml.decode_offload: " << (executionPlan.offloadDecode ? "yes" : "no")
+               << '\n';
+        output << "windows_ml.kv_host_compression: "
+               << (executionPlan.compressKvOnHost ? "yes" : "no") << '\n';
+        output << "windows_ml.partition_count: " << executionPlan.partitions.size() << '\n';
+        output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
+        output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
+        output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
+        if (!executionPlan.partitions.empty())
+        {
+            output << "windows_ml.last_partition: "
+                   << us4::runtime::backends::windows_ml::ToString(
+                          executionPlan.partitions.back().kind)
+                   << '\n';
+        }
+    }
 
     inline std::string RenderHelp()
     {
@@ -389,7 +573,24 @@ namespace us4::cli
             };
         }
 
-        output << "execution: scaffold-only\n";
+        switch (plan.backend.kind)
+        {
+        case us4::runtime::backends::BackendKind::kCuda:
+            AppendCudaDryRun(output, plan, capabilities, command.prompt);
+            break;
+        case us4::runtime::backends::BackendKind::kDirectML:
+            AppendDirectMlDryRun(output, plan, capabilities, command.prompt);
+            break;
+        case us4::runtime::backends::BackendKind::kVulkan:
+            AppendVulkanDryRun(output, plan);
+            break;
+        case us4::runtime::backends::BackendKind::kWindowsMl:
+            AppendWindowsMlDryRun(output, plan);
+            break;
+        case us4::runtime::backends::BackendKind::kCpu:
+            output << "execution: scaffold-only\n";
+            break;
+        }
 
         return CommandOutput{
             kNotImplementedExitCode,
