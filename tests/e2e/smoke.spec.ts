@@ -170,7 +170,8 @@ test.describe('us4-cli smoke', () => {
 
         expect(exitCode).toBe(0);
         expect(stderr).toBe('');
-        const payload = JSON.parse(stdout) as {
+        const payload = JSON.parse(stdout) as
+        {
             execution: string;
             cpu: string;
             gpu: string;
@@ -209,6 +210,45 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('generated_tokens:');
     });
 
+    test('exports the cpu-only scalar baseline as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello from playwright', '--backend',
+                'cpu', '--max-tokens', '5', '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-json-cpu', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as
+        {
+            execution: string;
+            status: string;
+            plan_execution: string;
+            backend: string;
+            generated_text: string;
+            generated_tokens: number[];
+        };
+        expect(payload.execution).toBe('run');
+        expect(payload.status).toBe('completed');
+        expect(payload.plan_execution).toBe('cpu-scalar');
+        expect(payload.backend).toBe('cpu-avx2');
+        expect(Array.isArray(payload.generated_tokens)).toBeTruthy();
+        expect(typeof payload.generated_text).toBe('string');
+    });
+
     test('renders a DirectML dry-run plan', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
 
@@ -238,6 +278,48 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('execution: directml-dry-run');
         expect(stdout).toContain('directml.graph_state: ready');
         expect(stdout).toContain('directml.dispatch_ok: yes');
+        expect(stderr).toContain('not implemented yet');
+    });
+
+    test('exports a DirectML dry-run plan as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello directml', '--backend',
+                'directml', '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '1',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+                US4_CPU_NAME : 'Playwright Test CPU',
+                US4_GPU_NAME : 'Intel Arc Test',
+                US4_GPU_VENDOR : 'intel',
+                US4_GPU_CLASS : 'integrated',
+                US4_DEVICE_GIB : '8',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'directml-dry-run-json', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        const payload = JSON.parse(stdout) as
+        {
+            execution: string;
+            status: string;
+            plan_execution: string;
+            backend: string;
+            report_text: string;
+        };
+        expect(payload.execution).toBe('run');
+        expect(payload.status).toBe('dry-run');
+        expect(payload.plan_execution).toBe('directml-dry-run');
+        expect(payload.backend).toBe('directml');
+        expect(payload.report_text).toContain('directml.graph_state: ready');
         expect(stderr).toContain('not implemented yet');
     });
 
@@ -522,41 +604,41 @@ test.describe('us4-cli smoke', () => {
         expect(readFileSync(storePath, 'utf8')).toContain('"profile_id": "cpu-only"');
     });
 
-    test('exports tune as json and persists a cpu-only profile selection',
-         async ({}, testInfo) => {
-             const cliPath = await requireCliBinary(testInfo);
-             const storePath = testInfo.outputPath('tune-json-profiles.json');
+    test('exports tune as json and persists a cpu-only profile selection', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+        const storePath = testInfo.outputPath('tune-json-profiles.json');
 
-             const {stdout, stderr, exitCode} = await runCli(
-                 cliPath,
-                 [
-                     'tune', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only',
-                     '--format', 'json'
-                 ],
-                 {
-                     ...process.env,
-                     US4_HAS_CUDA : '',
-                     US4_HAS_DIRECTML : '',
-                     US4_HAS_VULKAN : '',
-                     US4_HAS_NPU : '',
-                     US4_PROFILE_STORE_PATH : storePath,
-                 },
-             );
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'tune', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only',
+                '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+                US4_PROFILE_STORE_PATH : storePath,
+            },
+        );
 
-             await attachProcessOutput(testInfo, 'tune-json', stdout, stderr);
+        await attachProcessOutput(testInfo, 'tune-json', stdout, stderr);
 
-             expect(exitCode).toBe(0);
-             expect(stderr).toBe('');
-             const payload = JSON.parse(stdout) as {
-                 execution: string;
-                 selected_profile: string;
-                 persisted: boolean;
-             };
-             expect(payload.execution).toBe('tune');
-             expect(payload.selected_profile).toBe('cpu-only');
-             expect(payload.persisted).toBeTruthy();
-             expect(existsSync(storePath)).toBeTruthy();
-         });
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as
+        {
+            execution: string;
+            selected_profile: string;
+            persisted: boolean;
+        };
+        expect(payload.execution).toBe('tune');
+        expect(payload.selected_profile).toBe('cpu-only');
+        expect(payload.persisted).toBeTruthy();
+        expect(existsSync(storePath)).toBeTruthy();
+    });
 
     test('exports the current bench matrix as json without persisting a profile',
          async ({}, testInfo) => {
@@ -583,20 +665,18 @@ test.describe('us4-cli smoke', () => {
 
              expect(exitCode).toBe(0);
              expect(stderr).toBe('');
-             const payload = JSON.parse(stdout) as {
+             const payload = JSON.parse(stdout) as
+             {
                  execution: string;
                  selected_profile: string;
                  selected_backend: string;
                  persisted: boolean;
-                 decisions: Array<{key: string; value: string; rationale: string}>;
+                 decisions: Array<{key : string; value : string; rationale : string}>;
                  samples: Array<{
-                     benchmark: string;
-                     backend: string;
-                     profile: string;
-                     supported: boolean;
-                     regression_critical: boolean;
-                     score: number;
-                     rationale: string;
+                     benchmark : string; backend : string; profile : string; supported : boolean;
+                     regression_critical : boolean;
+                     score : number;
+                     rationale : string;
                  }>;
              };
              expect(payload.execution).toBe('bench');
@@ -664,7 +744,8 @@ test.describe('us4-cli smoke', () => {
         await attachProcessOutput(testInfo, 'serve-json', stdout, stderr);
 
         expect(exitCode).toBe(2);
-        const payload = JSON.parse(stdout) as {
+        const payload = JSON.parse(stdout) as
+        {
             execution: string;
             status: string;
             backend: string;
@@ -724,7 +805,8 @@ test.describe('us4-cli smoke', () => {
 
              expect(tune.exitCode).toBe(0);
              expect(bench.exitCode).toBe(0);
-             const payload = JSON.parse(bench.stdout) as {
+             const payload = JSON.parse(bench.stdout) as
+             {
                  recommended_profile: string;
                  selected_profile: string;
                  selected_backend: string;

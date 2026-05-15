@@ -169,6 +169,126 @@ namespace us4::cli
         return json.str();
     }
 
+    inline std::string RenderRunPlanJson(const us4::core::RuntimePlan& plan,
+                                         std::string_view prompt, std::string_view executionKind,
+                                         std::string_view status, std::string_view reportText)
+    {
+        std::ostringstream json;
+        json << "{\n";
+        json << "  \"execution\": \"run\",\n";
+        json << "  \"status\": \"" << EscapeJson(status) << "\",\n";
+        json << "  \"plan_execution\": \"" << EscapeJson(executionKind) << "\",\n";
+        json << "  \"model\": \"" << EscapeJson(plan.model.id) << "\",\n";
+        json << "  \"backend\": \"" << EscapeJson(plan.backend.name) << "\",\n";
+        json << "  \"mode\": \"" << EscapeJson(us4::core::ToString(plan.mode)) << "\",\n";
+        json << "  \"profile\": \"" << EscapeJson(plan.profile.id) << "\",\n";
+        json << "  \"allow_npu\": " << (plan.request.allowNpu ? "true" : "false") << ",\n";
+        json << "  \"prompt_chars\": " << prompt.size() << ",\n";
+        json << "  \"prompt_tokens_estimate\": " << EstimatePromptTokens(prompt) << ",\n";
+        json << "  \"issue_codes\": [";
+        for (std::size_t index = 0; index < plan.issues.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << '"' << EscapeJson(plan.issues[index].code) << '"';
+        }
+        json << "],\n";
+        json << "  \"report_text\": \"" << EscapeJson(reportText) << "\"\n";
+        json << "}\n";
+        return json.str();
+    }
+
+    inline std::string RenderRunCpuJson(const us4::core::RuntimePlan& plan, std::string_view prompt,
+                                        const us4::core::CpuScalarRunResult& runResult,
+                                        std::string_view reportText)
+    {
+        std::ostringstream json;
+        json << "{\n";
+        json << "  \"execution\": \"run\",\n";
+        json << "  \"status\": \"completed\",\n";
+        json << "  \"plan_execution\": \"cpu-scalar\",\n";
+        json << "  \"model\": \"" << EscapeJson(plan.model.id) << "\",\n";
+        json << "  \"backend\": \"" << EscapeJson(plan.backend.name) << "\",\n";
+        json << "  \"mode\": \"" << EscapeJson(us4::core::ToString(plan.mode)) << "\",\n";
+        json << "  \"profile\": \"" << EscapeJson(plan.profile.id) << "\",\n";
+        json << "  \"prompt_chars\": " << prompt.size() << ",\n";
+        json << "  \"prompt_tokens_estimate\": " << EstimatePromptTokens(prompt) << ",\n";
+        json << "  \"model_path\": \"" << EscapeJson(runResult.report.modelPath) << "\",\n";
+        json << "  \"model_format\": \""
+             << EscapeJson(us4::runtime::adapters::ToString(runResult.report.modelFormat))
+             << "\",\n";
+        json << "  \"prefill_tokens\": [";
+        for (std::size_t index = 0; index < runResult.report.prefillTokens.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << runResult.report.prefillTokens[index];
+        }
+        json << "],\n";
+        json << "  \"generated_tokens\": [";
+        for (std::size_t index = 0; index < runResult.report.generatedTokens.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << runResult.report.generatedTokens[index];
+        }
+        json << "],\n";
+        json << "  \"generated_text\": \"" << EscapeJson(runResult.report.generatedText) << "\",\n";
+        json << "  \"reached_eos\": " << (runResult.report.frame.reachedEos ? "true" : "false")
+             << ",\n";
+        json << "  \"generation\": {\n";
+        json << "    \"prefill_tokens\": " << runResult.report.frame.prefillTokens << ",\n";
+        json << "    \"decode_tokens\": " << runResult.report.frame.decodeTokens << "\n";
+        json << "  },\n";
+        json << "  \"kv\": {\n";
+        json << "    \"segment_count\": " << runResult.report.kvStats.segmentCount << ",\n";
+        json << "    \"pinned_segment_count\": " << runResult.report.kvStats.pinnedSegmentCount
+             << ",\n";
+        json << "    \"host_bytes\": " << runResult.report.kvStats.hostBytes << ",\n";
+        json << "    \"storage_bytes\": " << runResult.report.kvStats.storageBytes << ",\n";
+        json << "    \"summary_bytes\": " << runResult.report.kvStats.summaryBytes << ",\n";
+        json << "    \"evictions\": " << runResult.report.kvStats.evictionCount << "\n";
+        json << "  },\n";
+        json << "  \"prefix_cache\": {\n";
+        json << "    \"entries\": " << runResult.report.prefixCacheEntries << ",\n";
+        json << "    \"warm_entries\": " << runResult.report.prefixCacheWarmEntries << "\n";
+        json << "  },\n";
+        json << "  \"moe\": {\n";
+        json << "    \"route_count\": " << runResult.report.moeRouteCount << ",\n";
+        json << "    \"host_route_count\": " << runResult.report.moeHostRouteCount << ",\n";
+        json << "    \"router_entropy\": " << runResult.report.moeRouterEntropy << ",\n";
+        json << "    \"hot_experts\": " << runResult.report.moeHotExperts << ",\n";
+        json << "    \"warm_experts\": " << runResult.report.moeWarmExperts << ",\n";
+        json << "    \"cold_experts\": " << runResult.report.moeColdExperts << "\n";
+        json << "  },\n";
+        json << "  \"telemetry\": {\n";
+        json << "    \"events\": " << runResult.report.telemetryEventCount << "\n";
+        json << "  },\n";
+        json << "  \"checksums\": {\n";
+        json << "    \"scalar_matmul\": " << runResult.report.scalarMatMulChecksum << ",\n";
+        json << "    \"scalar_attention\": " << runResult.report.scalarAttentionChecksum << "\n";
+        json << "  },\n";
+        json << "  \"issue_codes\": [";
+        for (std::size_t index = 0; index < plan.issues.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << '"' << EscapeJson(plan.issues[index].code) << '"';
+        }
+        json << "],\n";
+        json << "  \"report_text\": \"" << EscapeJson(reportText) << "\"\n";
+        json << "}\n";
+        return json.str();
+    }
+
     inline void AppendIssueCodes(std::ostringstream& output, std::string_view prefix,
                                  const std::vector<us4::runtime::backends::RuntimeIssue>& issues)
     {
@@ -554,6 +674,7 @@ namespace us4::cli
                << "  us4-cli version\n"
                << "  us4-cli probe [--format <text|json>]\n"
                << "  us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] "
+                  "[--format <text|json>] "
                   "[--max-tokens <count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
@@ -811,7 +932,7 @@ namespace us4::cli
         {
             return CommandOutput{
                 kSuccessExitCode,
-                "us4-cli 0.1.16\n",
+                "us4-cli 0.1.17\n",
                 {},
             };
         }
@@ -1014,7 +1135,10 @@ namespace us4::cli
                 output << "execution: cpu-scalar-failed\n";
                 return CommandOutput{
                     kNotImplementedExitCode,
-                    output.str(),
+                    normalizedFormat == "json"
+                        ? RenderRunPlanJson(plan, command.prompt, "cpu-scalar-failed", "failed",
+                                            output.str())
+                        : output.str(),
                     runResult.error + '\n',
                 };
             }
@@ -1064,33 +1188,43 @@ namespace us4::cli
             output << "run_status: completed\n";
             return CommandOutput{
                 kSuccessExitCode,
-                output.str(),
+                normalizedFormat == "json"
+                    ? RenderRunCpuJson(plan, command.prompt, runResult, output.str())
+                    : output.str(),
                 {},
             };
         }
 
+        std::string_view executionKind = "scaffold-only";
         switch (plan.backend.kind)
         {
         case us4::runtime::backends::BackendKind::kCuda:
+            executionKind = "cuda-dry-run";
             AppendCudaDryRun(output, plan, capabilities, command.prompt);
             break;
         case us4::runtime::backends::BackendKind::kDirectML:
+            executionKind = "directml-dry-run";
             AppendDirectMlDryRun(output, plan, capabilities, command.prompt);
             break;
         case us4::runtime::backends::BackendKind::kVulkan:
+            executionKind = "vulkan-dry-run";
             AppendVulkanDryRun(output, plan, capabilities);
             break;
         case us4::runtime::backends::BackendKind::kWindowsMl:
+            executionKind = "windows-ml-dry-run";
             AppendWindowsMlDryRun(output, plan, capabilities);
             break;
         case us4::runtime::backends::BackendKind::kCpu:
+            executionKind = "scaffold-only";
             output << "execution: scaffold-only\n";
             break;
         }
 
         return CommandOutput{
             kNotImplementedExitCode,
-            output.str(),
+            normalizedFormat == "json"
+                ? RenderRunPlanJson(plan, command.prompt, executionKind, "dry-run", output.str())
+                : output.str(),
             "Run pipeline scaffolding is ready, but model execution is not implemented yet.\n",
         };
     }

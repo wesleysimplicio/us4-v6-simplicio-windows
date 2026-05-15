@@ -44,7 +44,7 @@ Current behavior:
 
 - `probe` prints the hardware/backend summary in text and now also supports `--format json`.
 - `serve` prints the serving scaffold for the current host and supports `--format text|json`.
-- `run` executes the CPU scalar baseline when the resolved plan is CPU-only, and prints dry-run execution plans for non-CPU backends.
+- `run` executes the CPU scalar baseline when the resolved plan is CPU-only, prints dry-run execution plans for non-CPU backends, and now also supports `--format json`.
 - `bench` evaluates the current benchmark matrix without persisting a profile. It supports `--format text` and `--format json`.
 - `tune` runs the mini-bench planner, selects the best profile for the current hardware fingerprint, persists that selection to the profile store, and now also supports `--format json`.
 - `version` exists, but the runtime version string is still hardcoded and is not yet a canonical build-generated version source.
@@ -106,6 +106,7 @@ cmake --build build -j
 ```powershell
 .\build\us4-cli.exe probe
 .\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu
+.\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu --format json
 .\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only --format json
 .\build\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only
 ```

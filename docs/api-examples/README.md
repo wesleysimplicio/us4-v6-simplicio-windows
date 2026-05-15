@@ -10,6 +10,7 @@ Este diretorio deve guardar exemplos pequenos e sanitizados dos artefatos observ
 Use este diretorio para exemplos de:
 
 - `probe` output textual
+- `run --format json`
 - `bench --format json`
 - `tune` output textual
 - `profiles.json` persistido pelo `ProfileStore`
@@ -36,9 +37,36 @@ docs/api-examples/
 ```powershell
 .\build\us4-cli.exe probe
 .\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu
+.\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu --format json
 .\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only --format json
 .\build\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only
 ```
+
+## Run JSON Example
+
+`run --format json` agora expõe um envelope estruturado para o baseline CPU scalar e para os dry-runs.
+O payload esperado inclui pelo menos:
+
+- `execution`
+- `status`
+- `plan_execution`
+- `backend`
+- `mode`
+- `profile`
+- `prompt_chars`
+- `prompt_tokens_estimate`
+- `report_text`
+
+Em CPU scalar, o payload tambem inclui:
+
+- `generated_tokens`
+- `generated_text`
+- `generation`
+- `kv`
+- `prefix_cache`
+- `moe`
+- `telemetry`
+- `checksums`
 
 ## Bench JSON Example
 

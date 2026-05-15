@@ -589,7 +589,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.16"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.17"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -637,6 +637,32 @@ namespace us4::core
             EXPECT_TRUE(result.stderrText.empty());
         }
 
+        TEST(HardwareProbeTest, ReturnsCpuOnlyRunAsJson)
+        {
+            ClearProbeEnv();
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "qwen-0.5b";
+            command.prompt = "hello runtime";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.maxTokens = 5;
+            command.format = "json";
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(result.stderrText.empty());
+            EXPECT_NE(result.stdoutText.find("\"execution\": \"run\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"plan_execution\": \"cpu-scalar\""),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"status\": \"completed\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"backend\": \"cpu-avx2\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"generated_tokens\": ["), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
+        }
+
         TEST(HardwareProbeTest, RejectsRunWithInvalidBackendValue)
         {
             const std::vector<char*> argv = {
@@ -681,6 +707,36 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("backend: directml"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("execution: directml-dry-run"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("directml.graph_state: ready"), std::string::npos);
+            EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsRunScaffoldJsonForValidatedIntent)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_DIRECTML", "1");
+            _putenv_s("US4_GPU_NAME", "Intel Arc Test");
+            _putenv_s("US4_DEVICE_GIB", "4");
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "qwen-0.5b";
+            command.prompt = "hello runtime";
+            command.mode = "auto";
+            command.format = "json";
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("\"execution\": \"run\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"status\": \"dry-run\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"plan_execution\": \"directml-dry-run\""),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"backend\": \"directml\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
 
             ClearProbeEnv();

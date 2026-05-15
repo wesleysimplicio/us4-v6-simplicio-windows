@@ -72,11 +72,11 @@ Implicacoes:
 
 - `bench` e `tune` ja sao comandos release-relevant e precisam entrar no smoke de release quando a pipeline existir.
 - `bench --format json` ja constitui contrato de saida publica e precisa ser tratado como surface versionada.
+- `run --format json` agora tambem constitui contrato de saida publica e precisa ser tratado como surface versionada.
 - `tune` escreve estado persistido em `runtime/tuning/profiles.json` ou em `US4_PROFILE_STORE_PATH`; a release precisa documentar esse comportamento.
 
 ### 3.2 O que ainda nao esta pronto como contrato final
 
-- `run` ainda nao possui saida JSON padronizada no mesmo nivel de `bench`, `probe`, `serve` e `tune`.
 - a string exibida por `us4-cli version` existe, mas ainda nao e derivada de uma fonte unica gerada no build.
 
 ### 3.3 Package version x runtime version
@@ -139,6 +139,7 @@ Mas esse versionamento so passa a valer como processo operacional quando a fonte
 Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 
 - formato JSON de `bench`
+- formato JSON de `run`
 - formato textual de `probe`, `run` e `tune`
 - local e estrutura do `profiles.json`
 - nomes de comandos e flags publicas

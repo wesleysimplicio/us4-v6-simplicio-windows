@@ -92,6 +92,7 @@ Depois do build:
 .\build\us4-cli.exe probe
 .\build\us4-cli.exe version
 .\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu
+.\build\us4-cli.exe run --model qwen-0.5b --prompt "hi" --backend cpu --format json
 .\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only
 .\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only --format json
 .\build\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only
@@ -101,6 +102,7 @@ O que esperar hoje:
 
 - `probe` retorna resumo textual do host.
 - `run --backend cpu` executa o baseline CPU scalar.
+- `run --format json` expõe o mesmo contrato em JSON para CPU scalar e dry-run.
 - `run` para CUDA, DirectML, Vulkan e Windows ML retorna planos dry-run.
 - `bench --format json` exporta a matriz atual sem persistir profile.
 - `tune` persiste o melhor profile para o host atual em `runtime/tuning/profiles.json` ou em `US4_PROFILE_STORE_PATH`.
