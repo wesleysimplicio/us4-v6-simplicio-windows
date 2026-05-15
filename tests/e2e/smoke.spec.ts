@@ -1118,4 +1118,77 @@ test.describe('us4-cli smoke', () => {
         expect(result.exitCode).toBe(1);
         expect(`${result.stdout}\n${result.stderr}`).toContain('MSIX signing requires certificate configuration');
     });
+
+    test('exports release preflight as json for the current local state', async ({}, testInfo) => {
+        const preflightScriptPath = path.resolve(process.cwd(), 'scripts', 'preflight-release.ps1');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            preflightScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-Format',
+            'json',
+        ]);
+
+        await attachProcessOutput(testInfo, 'release-preflight-json', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            execution: string;
+            status: string;
+            package_version: string;
+            cmake_version: string;
+            changelog_has_current_version: boolean;
+            has_cli_binary: boolean;
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('release-preflight');
+        expect(payload.status).toBe('ready');
+        expect(payload.package_version).toBe(packageVersion);
+        expect(payload.cmake_version).toBe(packageVersion);
+        expect(payload.changelog_has_current_version).toBeTruthy();
+        expect(payload.has_cli_binary).toBeTruthy();
+        expect(payload.issue_codes).toHaveLength(0);
+    });
+
+    test('fails release preflight when signing is required without certificate configuration',
+         async ({}, testInfo) => {
+             const preflightScriptPath = path.resolve(process.cwd(), 'scripts', 'preflight-release.ps1');
+             const cliBuildDir = path.resolve(process.cwd(), 'build');
+
+             const result = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 preflightScriptPath,
+                 '-BuildDir',
+                 cliBuildDir,
+                 '-Format',
+                 'json',
+                 '-RequireSigning',
+             ], {
+                 ...process.env,
+                 US4_SIGN_CERT_PATH : '',
+                 US4_SIGN_CERT_BASE64 : '',
+                 US4_SIGN_CERT_PASSWORD : '',
+             });
+
+             await attachProcessOutput(testInfo, 'release-preflight-signing-blocked', result.stdout, result.stderr);
+
+             expect(result.exitCode).toBe(1);
+             const payload = JSON.parse(result.stdout) as
+             {
+                 status: string;
+                 issue_codes: string[];
+             };
+             expect(payload.status).toBe('blocked');
+             expect(payload.issue_codes).toContain('signing_config_missing');
+         });
 });

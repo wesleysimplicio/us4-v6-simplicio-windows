@@ -47,6 +47,14 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - CI-aware release signing hook in `release.yml`
 - E2E regression for missing signing certificate prerequisites
 
+## [0.1.22] - 2026-05-15
+
+### Added
+
+- release readiness preflight via `scripts/preflight-release.ps1`
+- CI release preflight gate before artifact packaging
+- E2E regression coverage for ready vs blocked preflight states
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

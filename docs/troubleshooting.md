@@ -59,6 +59,12 @@
 - Fix: injete esses valores no ambiente local ou no CI antes de rodar a etapa de assinatura.
 - Important: sem assinatura, o scaffold de release continua util para zip portatil, checksums e manifests, mas nao fecha distribuicao instalada.
 
+## Release preflight reports blocked status
+
+- Symptom: `scripts/preflight-release.ps1` retorna `blocked`.
+- Diagnose: leia `issue_codes` no JSON ou no output textual.
+- Fix: corrija o item indicado, como mismatch de versao, entrada ausente no `CHANGELOG`, build faltando ou configuracao de assinatura ausente.
+
 ## winget manifests still contain placeholder URLs
 
 - Symptom: os manifests renderizados em `packaging/winget/manifests/` ainda apontam para `example.invalid`.

@@ -45,6 +45,7 @@ The repository now includes local release scaffolding:
 - `.github/workflows/release.yml`
 - `packaging/msix/`
 - `CHANGELOG.md`
+- `scripts/preflight-release.ps1`
 
 Current limitations still apply:
 

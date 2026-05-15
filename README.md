@@ -133,6 +133,7 @@ Release artifact helpers:
 .\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.20-portable.zip
 .\scripts\render-winget-manifests.ps1 -Version 0.1.20
 .\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.20.msix
+.\scripts\preflight-release.ps1 -BuildDir build
 ```
 
 ## Repo Layout

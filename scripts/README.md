@@ -25,6 +25,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - gera `SHA256SUMS.txt` para os artefatos de release em `dist/`
 - `post-publish-smoke.ps1`
   - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
+- `preflight-release.ps1`
+  - valida readiness de release cruzando versao, changelog, build, ferramentas de packaging e configuracao de assinatura
 - `render-winget-manifests.ps1`
   - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
 - `sign-msix.ps1`

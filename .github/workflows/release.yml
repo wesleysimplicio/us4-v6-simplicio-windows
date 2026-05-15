@@ -50,6 +50,9 @@ jobs:
       - name: Build runtime
         run: cmake --build $env:BUILD_DIR --config $env:CMAKE_BUILD_TYPE --parallel
 
+      - name: Release preflight
+        run: .\scripts\preflight-release.ps1 -BuildDir $env:BUILD_DIR
+
       - name: Smoke CLI release surface
         run: |
           $env:US4_PROFILE_STORE_PATH = Join-Path $PWD "dist\release-smoke-profiles.json"
