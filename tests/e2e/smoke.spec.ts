@@ -297,6 +297,11 @@ test.describe('us4-cli smoke', () => {
                 US4_NPU_NAME : 'Ryzen AI Test',
                 US4_NPU_VENDOR : 'microsoft',
                 US4_DEVICE_GIB : '8',
+                US4_POWER_SOURCE : 'ac',
+                US4_BATTERY_PERCENT : '100',
+                US4_BATTERY_SAVER : '0',
+                US4_THERMAL_STATE : 'nominal',
+                US4_ETW_THROTTLED : '0',
             },
         );
 
@@ -310,10 +315,13 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('windows_ml.npu_partitions:');
         expect(stdout).toContain('windows_ml.dispatch_table_size: 5');
         expect(stdout).toContain('windows_ml.first_dispatch_target: npu');
+        expect(stdout).toContain('windows_ml.power_policy: nominal');
+        expect(stdout).toContain('windows_ml.synthetic_power_telemetry: yes');
         expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
         expect(stdout).toContain('windows_ml.mixed_dispatch_slice_count: 5');
         expect(stdout).toContain('windows_ml.mixed_dispatch_gpu_primary: yes');
         expect(stdout).toContain('windows_ml.mixed_dispatch_npu_dense: yes');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_policy_degraded: no');
         expect(stdout).toContain('windows_ml.partition_count:');
         expect(stderr).toContain('not implemented yet');
     });
@@ -339,6 +347,11 @@ test.describe('us4-cli smoke', () => {
                 US4_NPU_NAME : 'Ryzen AI Test',
                 US4_NPU_VENDOR : 'microsoft',
                 US4_DEVICE_GIB : '8',
+                US4_POWER_SOURCE : 'ac',
+                US4_BATTERY_PERCENT : '100',
+                US4_BATTERY_SAVER : '0',
+                US4_THERMAL_STATE : 'nominal',
+                US4_ETW_THROTTLED : '0',
             },
         );
 
@@ -351,9 +364,53 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('windows_ml.opt_in_satisfied: no');
         expect(stdout).toContain('windows_ml.cpu_fallback_partitions: 1');
         expect(stdout).toContain('windows_ml.last_dispatch_target: host-assist');
+        expect(stdout).toContain('windows_ml.power_policy: nominal');
         expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
         expect(stdout).toContain('windows_ml.mixed_dispatch_cpu_fallback: yes');
         expect(stdout).toContain('windows_ml.issue_codes: windows_ml.opt_in_required');
+        expect(stderr).toContain('not implemented yet');
+    });
+
+    test('downgrades Windows ML mixed dispatch under thermal pressure', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello thermal', '--backend',
+                'windows-ml', '--npu'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '1',
+                US4_HAS_NPU : '1',
+                US4_GPU_NAME : 'Radeon RX Test',
+                US4_GPU_VENDOR : 'amd',
+                US4_GPU_CLASS : 'discrete',
+                US4_NPU_NAME : 'Ryzen AI Test',
+                US4_NPU_VENDOR : 'microsoft',
+                US4_DEVICE_GIB : '8',
+                US4_POWER_SOURCE : 'battery',
+                US4_BATTERY_PERCENT : '18',
+                US4_BATTERY_SAVER : '1',
+                US4_THERMAL_STATE : 'throttled',
+                US4_ETW_THROTTLED : '1',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'windows-ml-thermal-throttle', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('windows_ml.power_policy: thermal-throttle');
+        expect(stdout).toContain('windows_ml.synthetic_power_telemetry: yes');
+        expect(stdout).toContain(
+            'windows_ml.power.issue_codes: windows_ml.power.thermal_throttle,windows_ml.power.etw_signal',
+        );
+        expect(stdout).toContain('windows_ml.mixed_dispatch_npu_dense: no');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_policy_degraded: yes');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_npu_demotions: 3');
         expect(stderr).toContain('not implemented yet');
     });
 });

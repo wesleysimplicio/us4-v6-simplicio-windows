@@ -37,9 +37,18 @@ namespace us4::core
             _putenv_s("US4_HAS_AMX", "");
             _putenv_s("US4_CPU_NAME", "");
             _putenv_s("US4_GPU_NAME", "");
+            _putenv_s("US4_NPU_NAME", "");
+            _putenv_s("US4_GPU_VENDOR", "");
+            _putenv_s("US4_NPU_VENDOR", "");
+            _putenv_s("US4_GPU_CLASS", "");
             _putenv_s("US4_HOST_GIB", "");
             _putenv_s("US4_DEVICE_GIB", "");
             _putenv_s("US4_STORAGE_GIB", "");
+            _putenv_s("US4_POWER_SOURCE", "");
+            _putenv_s("US4_BATTERY_PERCENT", "");
+            _putenv_s("US4_BATTERY_SAVER", "");
+            _putenv_s("US4_THERMAL_STATE", "");
+            _putenv_s("US4_ETW_THROTTLED", "");
 #else
             unsetenv("US4_HAS_CUDA");
             unsetenv("US4_HAS_DIRECTML");
@@ -49,9 +58,18 @@ namespace us4::core
             unsetenv("US4_HAS_AMX");
             unsetenv("US4_CPU_NAME");
             unsetenv("US4_GPU_NAME");
+            unsetenv("US4_NPU_NAME");
+            unsetenv("US4_GPU_VENDOR");
+            unsetenv("US4_NPU_VENDOR");
+            unsetenv("US4_GPU_CLASS");
             unsetenv("US4_HOST_GIB");
             unsetenv("US4_DEVICE_GIB");
             unsetenv("US4_STORAGE_GIB");
+            unsetenv("US4_POWER_SOURCE");
+            unsetenv("US4_BATTERY_PERCENT");
+            unsetenv("US4_BATTERY_SAVER");
+            unsetenv("US4_THERMAL_STATE");
+            unsetenv("US4_ETW_THROTTLED");
 #endif
         }
 
@@ -659,6 +677,11 @@ namespace us4::core
             _putenv_s("US4_GPU_CLASS", "discrete");
             _putenv_s("US4_HOST_GIB", "32");
             _putenv_s("US4_DEVICE_GIB", "8");
+            _putenv_s("US4_POWER_SOURCE", "ac");
+            _putenv_s("US4_BATTERY_PERCENT", "100");
+            _putenv_s("US4_BATTERY_SAVER", "0");
+            _putenv_s("US4_THERMAL_STATE", "nominal");
+            _putenv_s("US4_ETW_THROTTLED", "0");
 #endif
 
             const std::vector<char*> argv = {
@@ -694,6 +717,10 @@ namespace us4::core
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_dense: yes"),
                       std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.power_policy: nominal"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_policy_degraded: no"),
+                      std::string::npos);
 
             ClearProbeEnv();
         }
@@ -711,6 +738,11 @@ namespace us4::core
             _putenv_s("US4_GPU_CLASS", "discrete");
             _putenv_s("US4_HOST_GIB", "32");
             _putenv_s("US4_DEVICE_GIB", "8");
+            _putenv_s("US4_POWER_SOURCE", "ac");
+            _putenv_s("US4_BATTERY_PERCENT", "100");
+            _putenv_s("US4_BATTERY_SAVER", "0");
+            _putenv_s("US4_THERMAL_STATE", "nominal");
+            _putenv_s("US4_ETW_THROTTLED", "0");
 #endif
 
             const std::vector<char*> argv = {
@@ -736,6 +768,60 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_active: yes"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_cpu_fallback: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.power_policy: nominal"),
+                      std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, DowngradesWindowsMlMixedDispatchWhenThermallyThrottled)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_NPU_NAME", "Ryzen AI");
+            _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_HOST_GIB", "32");
+            _putenv_s("US4_DEVICE_GIB", "8");
+            _putenv_s("US4_POWER_SOURCE", "battery");
+            _putenv_s("US4_BATTERY_PERCENT", "18");
+            _putenv_s("US4_BATTERY_SAVER", "1");
+            _putenv_s("US4_THERMAL_STATE", "throttled");
+            _putenv_s("US4_ETW_THROTTLED", "1");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("windows-ml"),
+                const_cast<char*>("--npu"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("windows_ml.power_policy: thermal-throttle"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.synthetic_power_telemetry: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.power.issue_codes: "
+                                             "windows_ml.power.thermal_throttle,"
+                                             "windows_ml.power.etw_signal"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_dense: no"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_policy_degraded: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_demotions: 3"),
                       std::string::npos);
 
             ClearProbeEnv();

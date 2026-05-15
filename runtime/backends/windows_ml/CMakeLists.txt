@@ -2,6 +2,7 @@ add_library(
     us4_runtime_backends_windows_ml
     src/winml_adapter.cpp
     src/layer_offloader.cpp
+    src/power_thermal_monitor.cpp
     src/mixed_dispatch_planner.cpp)
 
 target_include_directories(

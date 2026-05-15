@@ -13,6 +13,7 @@
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/layer_offloader.h"
 #include "us4/runtime/backends/windows_ml/mixed_dispatch_planner.h"
+#include "us4/runtime/backends/windows_ml/power_thermal_monitor.h"
 #include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/winml_adapter.h"
 
@@ -287,6 +288,10 @@ namespace us4::cli
         };
         const bool initialized = adapter.Initialize(capabilities);
         const bool compiled = initialized && adapter.CompileGraph(plan.model.id, executionPlan);
+        const auto powerSnapshot =
+            us4::runtime::backends::windows_ml::PowerThermalMonitor::Sample();
+        const auto powerIssues =
+            us4::runtime::backends::windows_ml::PowerThermalMonitor::BuildIssues(powerSnapshot);
         const auto dispatchTable =
             us4::runtime::backends::windows_ml::LayerOffloader::BuildDispatchTable(executionPlan,
                                                                                    sampleLayers);
@@ -313,7 +318,24 @@ namespace us4::cli
         output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
         output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
         output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
+        output << "windows_ml.power_source: "
+               << us4::runtime::backends::windows_ml::ToString(powerSnapshot.powerSource) << '\n';
+        output << "windows_ml.battery_percent: " << powerSnapshot.batteryPercent << '\n';
+        output << "windows_ml.battery_saver: " << (powerSnapshot.batterySaverActive ? "yes" : "no")
+               << '\n';
+        output << "windows_ml.thermal_state: "
+               << us4::runtime::backends::windows_ml::ToString(powerSnapshot.thermalState) << '\n';
+        output << "windows_ml.etw_throttled: " << (powerSnapshot.etwThrottleActive ? "yes" : "no")
+               << '\n';
+        output << "windows_ml.power_policy: "
+               << us4::runtime::backends::windows_ml::ToString(
+                      us4::runtime::backends::windows_ml::PowerThermalMonitor::SelectPolicy(
+                          powerSnapshot))
+               << '\n';
+        output << "windows_ml.synthetic_power_telemetry: "
+               << (powerSnapshot.usingSyntheticTelemetry ? "yes" : "no") << '\n';
         AppendIssueCodes(output, "windows_ml", executionPlan.issues);
+        AppendIssueCodes(output, "windows_ml.power", powerIssues);
         if (!dispatchTable.empty())
         {
             output << "windows_ml.first_dispatch_target: "
@@ -365,7 +387,7 @@ namespace us4::cli
             });
             const auto mixedDispatchPlan =
                 us4::runtime::backends::windows_ml::MixedDispatchPlanner::Build(
-                    gpuPlan, executionPlan, sampleLayers);
+                    gpuPlan, executionPlan, sampleLayers, powerSnapshot);
             output << "windows_ml.mixed_dispatch_slice_count: " << mixedDispatchPlan.slices.size()
                    << '\n';
             output << "windows_ml.mixed_dispatch_gpu_primary: "
@@ -376,6 +398,13 @@ namespace us4::cli
                    << (mixedDispatchPlan.hostAssistRequired ? "yes" : "no") << '\n';
             output << "windows_ml.mixed_dispatch_cpu_fallback: "
                    << (mixedDispatchPlan.cpuFallbackPresent ? "yes" : "no") << '\n';
+            output << "windows_ml.mixed_dispatch_policy: "
+                   << us4::runtime::backends::windows_ml::ToString(mixedDispatchPlan.policy)
+                   << '\n';
+            output << "windows_ml.mixed_dispatch_policy_degraded: "
+                   << (mixedDispatchPlan.degradedByPolicy ? "yes" : "no") << '\n';
+            output << "windows_ml.mixed_dispatch_npu_demotions: "
+                   << mixedDispatchPlan.npuDemotionCount << '\n';
             if (!mixedDispatchPlan.slices.empty())
             {
                 output << "windows_ml.mixed_dispatch_first_target: "

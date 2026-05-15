@@ -9,8 +9,9 @@
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/layer_offloader.h"
 #include "us4/runtime/backends/windows_ml/mixed_dispatch_planner.h"
-#include "us4/runtime/backends/windows_ml/winml_adapter.h"
+#include "us4/runtime/backends/windows_ml/power_thermal_monitor.h"
 #include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
+#include "us4/runtime/backends/windows_ml/winml_adapter.h"
 
 #include <gtest/gtest.h>
 
@@ -18,6 +19,23 @@ namespace us4::runtime::tests
 {
     namespace
     {
+        void ClearPowerTelemetryEnv()
+        {
+#if defined(_WIN32)
+            _putenv_s("US4_POWER_SOURCE", "");
+            _putenv_s("US4_BATTERY_PERCENT", "");
+            _putenv_s("US4_BATTERY_SAVER", "");
+            _putenv_s("US4_THERMAL_STATE", "");
+            _putenv_s("US4_ETW_THROTTLED", "");
+#else
+            unsetenv("US4_POWER_SOURCE");
+            unsetenv("US4_BATTERY_PERCENT");
+            unsetenv("US4_BATTERY_SAVER");
+            unsetenv("US4_THERMAL_STATE");
+            unsetenv("US4_ETW_THROTTLED");
+#endif
+        }
+
         adapters::RuntimeBinding MakeBinding(const backends::BackendDescriptor& backend,
                                              const std::string& modelId,
                                              const backends::RuntimeMode mode,
@@ -178,7 +196,8 @@ namespace us4::runtime::tests
             ASSERT_TRUE(context.Initialize(capabilities));
             ASSERT_TRUE(context.BindExecutionPlan("qwen-0.5b", plan));
             EXPECT_EQ(context.State(), backends::vulkan::VulkanContextState::kBound);
-            EXPECT_EQ(context.Queue().queueClass, backends::vulkan::VulkanQueueClass::kDedicatedCompute);
+            EXPECT_EQ(context.Queue().queueClass,
+                      backends::vulkan::VulkanQueueClass::kDedicatedCompute);
             EXPECT_GE(context.DescriptorArena().setCount, 1U);
             EXPECT_GT(context.Stats().pipelineStageCount, 0U);
             EXPECT_NE(context.DescribeSession().find("backend=vulkan"), std::string::npos);
@@ -307,8 +326,7 @@ namespace us4::runtime::tests
             request.preferLowLatency = true;
 
             const auto plan = backends::windows_ml::BuildWindowsMlExecutionPlan({
-                .binding =
-                    MakeBinding(backend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .binding = MakeBinding(backend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
                 .request = request,
                 .adapterId = "dense-qwen",
                 .targetBatchSize = 2U,
@@ -391,7 +409,8 @@ namespace us4::runtime::tests
                 .modelSupportsSpeculative = true,
             });
             const auto npuPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
-                .binding = MakeBinding(npuBackend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .binding =
+                    MakeBinding(npuBackend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
                 .request = request,
                 .adapterId = "dense-qwen",
                 .targetBatchSize = 2U,
@@ -417,6 +436,186 @@ namespace us4::runtime::tests
                       backends::windows_ml::MixedDispatchTarget::kCpuFallback);
             EXPECT_EQ(mixedPlan.slices[3].target,
                       backends::windows_ml::MixedDispatchTarget::kHostAssist);
+        }
+
+        TEST(BackendPlannerTest, PowerThermalMonitorBuildsSyntheticBatterySnapshot)
+        {
+            ClearPowerTelemetryEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_POWER_SOURCE", "battery");
+            _putenv_s("US4_BATTERY_PERCENT", "19");
+            _putenv_s("US4_BATTERY_SAVER", "1");
+            _putenv_s("US4_THERMAL_STATE", "warm");
+            _putenv_s("US4_ETW_THROTTLED", "0");
+#endif
+
+            const auto snapshot = backends::windows_ml::PowerThermalMonitor::Sample();
+            EXPECT_EQ(snapshot.powerSource, backends::windows_ml::PowerSource::kBattery);
+            EXPECT_EQ(snapshot.batteryPercent, 19U);
+            EXPECT_TRUE(snapshot.batterySaverActive);
+            EXPECT_EQ(snapshot.thermalState, backends::windows_ml::ThermalState::kWarm);
+            EXPECT_TRUE(snapshot.usingSyntheticTelemetry);
+            EXPECT_EQ(backends::windows_ml::PowerThermalMonitor::SelectPolicy(snapshot),
+                      backends::windows_ml::PowerDispatchPolicy::kPreferEfficiency);
+
+            ClearPowerTelemetryEnv();
+        }
+
+        TEST(BackendPlannerTest, MixedDispatchPlannerDemotesDecodeInEfficiencyMode)
+        {
+            backends::BackendDescriptor gpuBackend{};
+            gpuBackend.kind = backends::BackendKind::kVulkan;
+            gpuBackend.name = "vulkan";
+            gpuBackend.displayName = "Vulkan Compute";
+            gpuBackend.deviceClass = backends::DeviceClass::kDiscreteGpu;
+            gpuBackend.vendor = backends::BackendVendor::kAmd;
+            gpuBackend.defaultPrecision = backends::PrecisionMode::kFp16;
+            gpuBackend.supportsPagedKv = true;
+            gpuBackend.supportsSpeculative = true;
+            gpuBackend.maxContextTokensHint = 8192U;
+
+            backends::BackendDescriptor npuBackend{};
+            npuBackend.kind = backends::BackendKind::kWindowsMl;
+            npuBackend.name = "windows-ml";
+            npuBackend.displayName = "Windows ML";
+            npuBackend.deviceClass = backends::DeviceClass::kNpu;
+            npuBackend.vendor = backends::BackendVendor::kMicrosoft;
+            npuBackend.defaultPrecision = backends::PrecisionMode::kInt8;
+            npuBackend.supportsNpuOffload = true;
+            npuBackend.requiresOptIn = true;
+            npuBackend.maxContextTokensHint = 4096U;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.preferredBackend = "windows-ml";
+            request.maxContextTokens = 4096U;
+            request.preferLowLatency = true;
+
+            const auto gpuPlan = backends::vulkan::BuildVulkanExecutionPlan({
+                .binding = MakeBinding(gpuBackend, "qwen-0.5b", backends::RuntimeMode::kBalanced),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsMoE = false,
+                .modelSupportsSpeculative = true,
+            });
+            const auto npuPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
+                .binding =
+                    MakeBinding(npuBackend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsSpeculative = false,
+            });
+
+            const std::vector<backends::windows_ml::LayerDescriptor> layers = {
+                {.name = "prefill.ffn", .kind = backends::windows_ml::LayerKind::kDensePrefill},
+                {.name = "decode.ffn",
+                 .kind = backends::windows_ml::LayerKind::kDenseDecode,
+                 .latencySensitive = true},
+            };
+
+            const backends::windows_ml::PowerThermalSnapshot snapshot{
+                .powerSource = backends::windows_ml::PowerSource::kBattery,
+                .thermalState = backends::windows_ml::ThermalState::kWarm,
+                .batteryPercent = 20U,
+                .batterySaverActive = true,
+            };
+
+            const auto mixedPlan = backends::windows_ml::MixedDispatchPlanner::Build(
+                gpuPlan, npuPlan, layers, snapshot);
+            EXPECT_EQ(mixedPlan.policy,
+                      backends::windows_ml::PowerDispatchPolicy::kPreferEfficiency);
+            EXPECT_TRUE(mixedPlan.degradedByPolicy);
+            EXPECT_TRUE(mixedPlan.npuDenseActive);
+            EXPECT_EQ(mixedPlan.npuDemotionCount, 1U);
+            ASSERT_EQ(mixedPlan.slices.size(), layers.size());
+            EXPECT_EQ(mixedPlan.slices[0].target,
+                      backends::windows_ml::MixedDispatchTarget::kNpuDense);
+            EXPECT_EQ(mixedPlan.slices[1].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+        }
+
+        TEST(BackendPlannerTest, MixedDispatchPlannerDemotesAllNpuDenseSlicesWhenThrottled)
+        {
+            backends::BackendDescriptor gpuBackend{};
+            gpuBackend.kind = backends::BackendKind::kVulkan;
+            gpuBackend.name = "vulkan";
+            gpuBackend.displayName = "Vulkan Compute";
+            gpuBackend.deviceClass = backends::DeviceClass::kDiscreteGpu;
+            gpuBackend.vendor = backends::BackendVendor::kAmd;
+            gpuBackend.defaultPrecision = backends::PrecisionMode::kFp16;
+            gpuBackend.supportsPagedKv = true;
+            gpuBackend.supportsSpeculative = true;
+            gpuBackend.maxContextTokensHint = 8192U;
+
+            backends::BackendDescriptor npuBackend{};
+            npuBackend.kind = backends::BackendKind::kWindowsMl;
+            npuBackend.name = "windows-ml";
+            npuBackend.displayName = "Windows ML";
+            npuBackend.deviceClass = backends::DeviceClass::kNpu;
+            npuBackend.vendor = backends::BackendVendor::kMicrosoft;
+            npuBackend.defaultPrecision = backends::PrecisionMode::kInt8;
+            npuBackend.supportsNpuOffload = true;
+            npuBackend.requiresOptIn = true;
+            npuBackend.maxContextTokensHint = 4096U;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.preferredBackend = "windows-ml";
+            request.maxContextTokens = 4096U;
+            request.preferLowLatency = true;
+
+            const auto gpuPlan = backends::vulkan::BuildVulkanExecutionPlan({
+                .binding = MakeBinding(gpuBackend, "qwen-0.5b", backends::RuntimeMode::kBalanced),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsMoE = false,
+                .modelSupportsSpeculative = true,
+            });
+            const auto npuPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
+                .binding =
+                    MakeBinding(npuBackend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsSpeculative = false,
+            });
+
+            const std::vector<backends::windows_ml::LayerDescriptor> layers = {
+                {.name = "embed", .kind = backends::windows_ml::LayerKind::kEmbedding},
+                {.name = "prefill.ffn", .kind = backends::windows_ml::LayerKind::kDensePrefill},
+                {.name = "decode.ffn",
+                 .kind = backends::windows_ml::LayerKind::kDenseDecode,
+                 .latencySensitive = true},
+                {.name = "attention", .kind = backends::windows_ml::LayerKind::kAttention},
+            };
+
+            const backends::windows_ml::PowerThermalSnapshot snapshot{
+                .powerSource = backends::windows_ml::PowerSource::kAc,
+                .thermalState = backends::windows_ml::ThermalState::kThrottled,
+                .batteryPercent = 100U,
+                .batterySaverActive = false,
+                .etwThrottleActive = true,
+            };
+
+            const auto mixedPlan = backends::windows_ml::MixedDispatchPlanner::Build(
+                gpuPlan, npuPlan, layers, snapshot);
+            EXPECT_EQ(mixedPlan.policy,
+                      backends::windows_ml::PowerDispatchPolicy::kThermalThrottle);
+            EXPECT_TRUE(mixedPlan.degradedByPolicy);
+            EXPECT_FALSE(mixedPlan.npuDenseActive);
+            EXPECT_EQ(mixedPlan.npuDemotionCount, 3U);
+            ASSERT_EQ(mixedPlan.slices.size(), layers.size());
+            EXPECT_EQ(mixedPlan.slices[0].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+            EXPECT_EQ(mixedPlan.slices[1].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+            EXPECT_EQ(mixedPlan.slices[2].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+            EXPECT_EQ(mixedPlan.slices[3].target,
+                      backends::windows_ml::MixedDispatchTarget::kCpuFallback);
         }
 
         TEST(BackendPlannerTest, CpuKernelAndOneDnnPlansStayConsistent)
