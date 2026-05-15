@@ -29,10 +29,14 @@ Os scripts deste repositorio cobrem dois cenarios:
   - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
 - `preflight-release.ps1`
   - valida readiness de release cruzando versao, changelog, build, ferramentas de packaging e configuracao de assinatura
+- `render-release-manifest.ps1`
+  - gera `release-manifest.json` a partir de artefatos, checksums e URLs renderizadas de distribuicao
 - `render-winget-manifests.ps1`
   - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
 - `validate-winget-manifests.ps1`
   - valida manifests renderizados, detecta placeholders restantes e pode exigir URLs HTTPS publicaveis
+- `validate-release-assets.ps1`
+  - cruza artefatos em `dist/`, `SHA256SUMS.txt` e manifests renderizados para garantir nomes, versoes e URLs coerentes antes do upload
 - `sign-msix.ps1`
   - assina um `.msix` usando `signtool.exe` e configuracao de certificado via variaveis de ambiente ou caminho explicito
 

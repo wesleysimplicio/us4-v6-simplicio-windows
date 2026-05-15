@@ -1173,6 +1173,270 @@ test.describe('us4-cli smoke', () => {
         expect(payload.issue_codes).toContain('installer_url_not_publishable');
     });
 
+    test('validates the generated release asset set against checksums and winget manifests',
+         async ({}, testInfo) => {
+             const outputDir = testInfo.outputPath('release-assets-dist');
+             const manifestDir = testInfo.outputPath('release-assets-winget');
+             const cliBuildDir = path.resolve(process.cwd(), 'build');
+             const portableScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+             const checksumScriptPath = path.resolve(process.cwd(), 'scripts', 'generate-checksums.ps1');
+             const renderScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+             const validateScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-release-assets.ps1');
+             const portableUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}-portable.zip`;
+             const msixUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}.0.msix`;
+
+             mkdirSync(outputDir, {recursive : true});
+             mkdirSync(manifestDir, {recursive : true});
+
+             const build = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 portableScriptPath,
+                 '-BuildDir',
+                 cliBuildDir,
+                 '-OutputDir',
+                 outputDir,
+             ]);
+             await attachProcessOutput(testInfo, 'release-assets-build-portable', build.stdout, build.stderr);
+             expect(build.exitCode).toBe(0);
+
+             const checksum = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 checksumScriptPath,
+                 '-OutputDir',
+                 outputDir,
+             ]);
+             await attachProcessOutput(testInfo, 'release-assets-checksums', checksum.stdout, checksum.stderr);
+             expect(checksum.exitCode).toBe(0);
+
+             const render = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 renderScriptPath,
+                 '-Version',
+                 packageVersion,
+                 '-PortableUrl',
+                 portableUrl,
+                 '-MsixUrl',
+                 msixUrl,
+                 '-OutputDir',
+                 manifestDir,
+             ]);
+             await attachProcessOutput(testInfo, 'release-assets-winget-render', render.stdout, render.stderr);
+             expect(render.exitCode).toBe(0);
+
+             const validate = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 validateScriptPath,
+                 '-OutputDir',
+                 outputDir,
+                 '-ManifestDir',
+                 manifestDir,
+                 '-ExpectedVersion',
+                 packageVersion,
+                 '-Format',
+                 'json',
+             ]);
+             await attachProcessOutput(testInfo, 'release-assets-validate', validate.stdout, validate.stderr);
+
+             expect(validate.exitCode).toBe(0);
+             const payload = JSON.parse(validate.stdout) as
+             {
+                 execution: string;
+                 status: string;
+                 artifacts: string[];
+                 issue_codes: string[];
+             };
+             expect(payload.execution).toBe('validate-release-assets');
+             expect(payload.status).toBe('ready');
+             expect(payload.artifacts).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
+             expect(payload.artifacts).toContain('SHA256SUMS.txt');
+             expect(payload.issue_codes).toHaveLength(0);
+         });
+
+    test('fails release asset validation when checksums are missing', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-assets-missing-checksums');
+        const manifestDir = testInfo.outputPath('release-assets-missing-checksums-winget');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const portableScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const renderScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+        const validateScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-release-assets.ps1');
+        const portableUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}-portable.zip`;
+        const msixUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}.0.msix`;
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            portableScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-assets-missing-checksums-build', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const render = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderScriptPath,
+            '-Version',
+            packageVersion,
+            '-PortableUrl',
+            portableUrl,
+            '-MsixUrl',
+            msixUrl,
+            '-OutputDir',
+            manifestDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-assets-missing-checksums-render', render.stdout, render.stderr);
+        expect(render.exitCode).toBe(0);
+
+        const validate = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            validateScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-assets-missing-checksums-validate', validate.stdout, validate.stderr);
+
+        expect(validate.exitCode).toBe(1);
+        const payload = JSON.parse(validate.stdout) as
+        {
+            status: string;
+            issue_codes: string[];
+        };
+        expect(payload.status).toBe('blocked');
+        expect(payload.issue_codes).toContain('checksums_missing');
+    });
+
+    test('renders a release manifest from artifacts, checksums, and winget urls', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-manifest-dist');
+        const manifestDir = testInfo.outputPath('release-manifest-winget');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const portableScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const checksumScriptPath = path.resolve(process.cwd(), 'scripts', 'generate-checksums.ps1');
+        const renderWingetScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+        const renderManifestScriptPath = path.resolve(process.cwd(), 'scripts', 'render-release-manifest.ps1');
+        const portableUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}-portable.zip`;
+        const msixUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}.0.msix`;
+        const releaseManifestPath = path.join(outputDir, 'release-manifest.json');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            portableScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-manifest-build-portable', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const checksum = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            checksumScriptPath,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-manifest-checksums', checksum.stdout, checksum.stderr);
+        expect(checksum.exitCode).toBe(0);
+
+        const renderWinget = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderWingetScriptPath,
+            '-Version',
+            packageVersion,
+            '-PortableUrl',
+            portableUrl,
+            '-MsixUrl',
+            msixUrl,
+            '-OutputDir',
+            manifestDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-manifest-winget-render', renderWinget.stdout, renderWinget.stderr);
+        expect(renderWinget.exitCode).toBe(0);
+
+        const renderManifest = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderManifestScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-OutputPath',
+            releaseManifestPath,
+        ]);
+        await attachProcessOutput(testInfo, 'release-manifest-render', renderManifest.stdout, renderManifest.stderr);
+        expect(renderManifest.exitCode).toBe(0);
+        expect(existsSync(releaseManifestPath)).toBeTruthy();
+
+        const payload = JSON.parse(readFileSync(releaseManifestPath, 'utf8')) as
+        {
+            version: string;
+            installer_urls: {
+                portable: string | null;
+                msix: string | null;
+            };
+            artifacts: Array<{
+                name: string;
+                type: string;
+                sha256: string;
+                url: string | null;
+            }>;
+        };
+        expect(payload.version).toBe(packageVersion);
+        expect(payload.installer_urls.portable).toBe(portableUrl);
+        expect(payload.installer_urls.msix).toBe(msixUrl);
+        expect(payload.artifacts.some((artifact) => artifact.name === `us4-v6-windows-${packageVersion}-portable.zip` &&
+                                                     artifact.type === 'portable-zip' &&
+                                                     artifact.url === portableUrl &&
+                                                     artifact.sha256.length === 64)).toBeTruthy();
+    });
+
     test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('signing');
         const packagePath = path.join(outputDir, `unsigned-${packageVersion}.msix`);

@@ -71,6 +71,22 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - release workflow rendering and validation for publishable winget manifests
 - E2E regression coverage for valid vs placeholder winget manifest URLs
 
+## [0.1.25] - 2026-05-15
+
+### Added
+
+- release asset set validation via `scripts/validate-release-assets.ps1`
+- CI gate that cross-checks generated artifacts, checksums, and winget manifests before upload
+- E2E regression coverage for coherent vs blocked release asset sets
+
+## [0.1.26] - 2026-05-15
+
+### Added
+
+- `release-manifest.json` generation via `scripts/render-release-manifest.ps1`
+- CI release metadata render step after asset validation
+- E2E regression coverage for release manifest generation from artifacts, checksums, and distribution URLs
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

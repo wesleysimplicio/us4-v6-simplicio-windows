@@ -80,6 +80,19 @@
 - Fix: rerenderize com os URLs reais do zip e do MSIX publicados.
 - Important: o scaffold de `winget` e versionado no repo, mas a publicacao real ainda depende dos artefatos assinados e dos URLs finais.
 
+## Release asset set is inconsistent
+
+- Symptom: `scripts/validate-release-assets.ps1` retorna `blocked`.
+- Diagnose: confira se `dist/` contem o zip esperado, `SHA256SUMS.txt` e manifests renderizados para a mesma versao.
+- Validate: use `scripts/validate-release-assets.ps1 -OutputDir dist -ManifestDir packaging\winget\manifests -ExpectedVersion <version>`.
+- Fix: regenere `build-portable-zip`, `generate-checksums` e `render-winget-manifests` no mesmo ciclo antes de subir os artefatos.
+
+## Release manifest is missing or stale
+
+- Symptom: `release-manifest.json` nao foi gerado ou ficou sem checksums/URLs esperadas.
+- Diagnose: confira `SHA256SUMS.txt` e `packaging/winget/manifests/installer.yaml`.
+- Fix: rode `scripts/render-release-manifest.ps1 -OutputDir dist -ManifestDir packaging\winget\manifests` depois de validar o pacote de release.
+
 ## Build artifacts locked
 
 - Symptom: compilador nao consegue sobrescrever artefatos em `build/`.

@@ -103,6 +103,31 @@ jobs:
             -ExpectedVersion $version `
             -RequirePublishableUrls
 
+      - name: Validate release asset set
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $requireMsix = Test-Path (Join-Path $PWD "dist\*.msix")
+          if ($requireMsix) {
+            .\scripts\validate-release-assets.ps1 `
+              -OutputDir dist `
+              -ManifestDir packaging\winget\manifests `
+              -ExpectedVersion $version `
+              -RequireMsix
+          } else {
+            .\scripts\validate-release-assets.ps1 `
+              -OutputDir dist `
+              -ManifestDir packaging\winget\manifests `
+              -ExpectedVersion $version
+          }
+
+      - name: Render release manifest
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          .\scripts\render-release-manifest.ps1 `
+            -OutputDir dist `
+            -ManifestDir packaging\winget\manifests `
+            -ExpectedVersion $version
+
       - name: Smoke portable release artifact
         run: |
           $zip = Get-ChildItem -Path dist -Filter *.zip | Select-Object -First 1 -ExpandProperty FullName
