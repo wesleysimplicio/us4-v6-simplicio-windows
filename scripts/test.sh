@@ -23,6 +23,11 @@ if [[ -f build/runtime/benchmarks/correctness_diff.exe ]]; then
   build/runtime/benchmarks/correctness_diff.exe
 fi
 
+if [[ -f build/runtime/benchmarks/hybrid_planner_gate.exe ]]; then
+  echo "Detected hybrid planner gate binary. Running Vulkan/Windows ML correctness validation."
+  build/runtime/benchmarks/hybrid_planner_gate.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

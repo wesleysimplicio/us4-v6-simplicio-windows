@@ -51,3 +51,17 @@ target_link_libraries(correctness_diff
     us4_build_options
     us4_build_warnings
 )
+
+add_executable(hybrid_planner_gate
+  src/hybrid_planner_gate.cpp
+)
+
+target_link_libraries(hybrid_planner_gate
+  PRIVATE
+    us4_runtime_benchmark_registry
+    us4_runtime_backends_vulkan
+    us4_runtime_backends_windows_ml
+    us4_profiles
+    us4_build_options
+    us4_build_warnings
+)

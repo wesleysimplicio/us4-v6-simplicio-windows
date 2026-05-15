@@ -235,30 +235,33 @@ namespace us4::core
                                     {
                                         return benchmark.name == "vulkan_qwen_balanced" &&
                                                benchmark.modelId == "qwen-0.5b" &&
-                                               benchmark.requiresGpu && benchmark.touchesCli;
+                                               benchmark.requiresGpu && benchmark.touchesCli &&
+                                               benchmark.participatesInCorrectnessGate;
                                     }));
             EXPECT_TRUE(std::any_of(vulkanCases.begin(), vulkanCases.end(),
                                     [](const auto& benchmark)
                                     {
                                         return benchmark.name == "vulkan_llama_balanced" &&
                                                benchmark.adapterId == "dense-llama" &&
-                                               benchmark.runtimeMode == "BALANCED";
+                                               benchmark.runtimeMode == "BALANCED" &&
+                                               benchmark.participatesInCorrectnessGate;
                                     }));
             EXPECT_TRUE(std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
                                     [](const auto& benchmark)
                                     {
                                         return benchmark.name == "windows_ml_qwen_opt_in" &&
                                                benchmark.profileId == "micro" &&
-                                               !benchmark.requiresGpu;
+                                               !benchmark.requiresGpu &&
+                                               benchmark.participatesInCorrectnessGate;
                                     }));
-            EXPECT_TRUE(
-                std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
-                            [](const auto& benchmark)
-                            {
-                                return benchmark.name == "windows_ml_qwen_thermal_throttle" &&
-                                       benchmark.scenario == "npu-dense-offload-thermal-throttle" &&
-                                       benchmark.touchesCli;
-                            }));
+            EXPECT_TRUE(std::any_of(
+                windowsMlCases.begin(), windowsMlCases.end(),
+                [](const auto& benchmark)
+                {
+                    return benchmark.name == "windows_ml_qwen_thermal_throttle" &&
+                           benchmark.scenario == "npu-dense-offload-thermal-throttle" &&
+                           benchmark.touchesCli && benchmark.participatesInCorrectnessGate;
+                }));
         }
 
         TEST(HardwareProbeTest, CpuOnlyProfileMatchesSprint02BaselineContract)

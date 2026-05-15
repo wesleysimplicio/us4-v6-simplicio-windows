@@ -33,6 +33,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")) {
     & (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe")) {
+    Write-Host "Detected hybrid planner gate binary. Running Vulkan/Windows ML correctness validation."
+    & (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe")
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

@@ -115,7 +115,7 @@ namespace us4::runtime::benchmarks
                 .promptTokens = 256,
                 .generationTokens = 32,
                 .requiresGpu = true,
-                .participatesInCorrectnessGate = false,
+                .participatesInCorrectnessGate = true,
                 .touchesCli = true,
             },
             BenchmarkCase{
@@ -129,7 +129,7 @@ namespace us4::runtime::benchmarks
                 .promptTokens = 256,
                 .generationTokens = 32,
                 .requiresGpu = true,
-                .participatesInCorrectnessGate = false,
+                .participatesInCorrectnessGate = true,
                 .touchesCli = true,
             },
             BenchmarkCase{
@@ -143,7 +143,7 @@ namespace us4::runtime::benchmarks
                 .promptTokens = 256,
                 .generationTokens = 32,
                 .requiresGpu = false,
-                .participatesInCorrectnessGate = false,
+                .participatesInCorrectnessGate = true,
                 .touchesCli = true,
             },
             BenchmarkCase{
@@ -157,7 +157,7 @@ namespace us4::runtime::benchmarks
                 .promptTokens = 256,
                 .generationTokens = 32,
                 .requiresGpu = false,
-                .participatesInCorrectnessGate = false,
+                .participatesInCorrectnessGate = true,
                 .touchesCli = true,
             },
             BenchmarkCase{
