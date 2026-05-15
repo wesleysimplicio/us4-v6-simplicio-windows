@@ -52,6 +52,13 @@
 - Fix: instale as ferramentas de App Packaging do Windows SDK e rode novamente `.\scripts\build-msix.ps1 -BuildDir build -OutputDir dist`.
 - Important: o empacotamento portable zip nao depende de `MakeAppx.exe`; use `scripts/build-portable-zip.ps1` enquanto esse prerequisito nao estiver disponivel.
 
+## MSIX signing prerequisites missing
+
+- Symptom: `scripts/sign-msix.ps1` falha dizendo que a configuracao do certificado esta ausente.
+- Diagnose: confirme se `US4_SIGN_CERT_PASSWORD` esta definido e se voce forneceu `US4_SIGN_CERT_PATH` ou `US4_SIGN_CERT_BASE64`.
+- Fix: injete esses valores no ambiente local ou no CI antes de rodar a etapa de assinatura.
+- Important: sem assinatura, o scaffold de release continua util para zip portatil, checksums e manifests, mas nao fecha distribuicao instalada.
+
 ## winget manifests still contain placeholder URLs
 
 - Symptom: os manifests renderizados em `packaging/winget/manifests/` ainda apontam para `example.invalid`.

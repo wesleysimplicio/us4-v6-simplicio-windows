@@ -27,6 +27,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
 - `render-winget-manifests.ps1`
   - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
+- `sign-msix.ps1`
+  - assina um `.msix` usando `signtool.exe` e configuracao de certificado via variaveis de ambiente ou caminho explicito
 
 ## Regras
 

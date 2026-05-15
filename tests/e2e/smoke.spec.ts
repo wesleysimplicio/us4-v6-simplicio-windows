@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 import type {TestInfo} from '@playwright/test';
 import {execFile} from 'node:child_process';
-import {existsSync, mkdirSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
 
@@ -1088,5 +1088,34 @@ test.describe('us4-cli smoke', () => {
         expect(readFileSync(path.join(outputDir, 'installer.yaml'), 'utf8')).toContain(
             `https://example.invalid/us4-v6-windows-${packageVersion}-portable.zip`
         );
+    });
+
+    test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('signing');
+        const packagePath = path.join(outputDir, `unsigned-${packageVersion}.msix`);
+        const signScriptPath = path.resolve(process.cwd(), 'scripts', 'sign-msix.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+        writeFileSync(packagePath, 'placeholder-msix', 'utf8');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            signScriptPath,
+            '-PackagePath',
+            packagePath,
+        ], {
+            ...process.env,
+            US4_SIGN_CERT_PATH : '',
+            US4_SIGN_CERT_BASE64 : '',
+            US4_SIGN_CERT_PASSWORD : '',
+        });
+
+        await attachProcessOutput(testInfo, 'sign-msix-prereq', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(1);
+        expect(`${result.stdout}\n${result.stderr}`).toContain('MSIX signing requires certificate configuration');
     });
 });

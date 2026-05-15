@@ -12,9 +12,8 @@ Hoje o repositorio ja tem um scaffold funcional de release do runtime Windows.
 
 Ainda faltam estes blocos basicos para chamar o processo de distribuicao de completo:
 
-- `packaging/winget/`
-- assinatura de binarios
-- smoke de pos-publicacao
+- assinatura efetiva com certificado real
+- smoke de pos-publicacao em host de instalacao
 
 O que existe hoje e suficiente para validar base de engenharia:
 
@@ -27,6 +26,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `scripts/build-portable-zip.ps1`
 - scaffold de `packaging/msix/` + `scripts/build-msix.ps1`
 - scaffold de `packaging/winget/` + `scripts/render-winget-manifests.ps1`
+- scaffold de assinatura via `scripts/sign-msix.ps1`
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
@@ -133,7 +133,7 @@ Hoje o repo ja inclui:
 
 O que ainda falta para fechar distribuicao:
 
-- assinatura
+- assinatura com certificado real em CI
 - smoke de pos-publicacao em host real para MSIX
 - politica de rollback operacional
 
@@ -169,7 +169,7 @@ Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 - [x] `packaging/msix/` criado
 - [x] `packaging/winget/` criado
 - [x] estrategia de `portable zip` definida
-- [ ] assinatura de binarios definida
+- [x] assinatura de binarios definida
 - [x] smoke de pos-publicacao definido
 - [x] rollback documentado
 - [ ] branch protection atualizada se novos checks forem obrigatorios

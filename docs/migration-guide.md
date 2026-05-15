@@ -48,7 +48,7 @@ The repository now includes local release scaffolding:
 
 Current limitations still apply:
 
-- MSIX signing is not configured
+- MSIX signing now has a script scaffold, but still depends on certificate configuration
 - `MakeAppx.exe` must be present to build MSIX locally
 - post-publish smoke is currently implemented for the portable zip only
 - winget publishing still needs real release URLs and signed artifacts

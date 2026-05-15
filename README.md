@@ -132,6 +132,7 @@ Release artifact helpers:
 .\scripts\generate-checksums.ps1 -OutputDir dist
 .\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.20-portable.zip
 .\scripts\render-winget-manifests.ps1 -Version 0.1.20
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.20.msix
 ```
 
 ## Repo Layout
@@ -172,7 +173,7 @@ The biggest remaining milestones are:
 
 - deepen device-side execution beyond dry-run behavior for Vulkan and Windows ML
 - finish the Sprint 12 CLI/release surface around JSON parity and packaging
-- finish signed MSIX publishing and install-host validation for published MSIX artifacts
+- finish certificate-backed MSIX signing on CI and install-host validation for published MSIX artifacts
 - align the runtime version source, changelog, and release metadata end to end
 
 ## Out of Scope

@@ -39,6 +39,14 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 - release workflow now generates checksums and validates the portable release artifact before upload
 
+## [0.1.21] - 2026-05-15
+
+### Added
+
+- MSIX signing scaffold via `scripts/sign-msix.ps1`
+- CI-aware release signing hook in `release.yml`
+- E2E regression for missing signing certificate prerequisites
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

@@ -66,6 +66,19 @@ jobs:
         run: .\scripts\build-msix.ps1 -BuildDir $env:BUILD_DIR -OutputDir dist
         continue-on-error: true
 
+      - name: Sign MSIX when certificate secrets are configured
+        if: ${{ secrets.US4_SIGN_CERT_PASSWORD != '' && (secrets.US4_SIGN_CERT_BASE64 != '' || secrets.US4_SIGN_CERT_PATH != '') }}
+        env:
+          US4_SIGN_CERT_BASE64: ${{ secrets.US4_SIGN_CERT_BASE64 }}
+          US4_SIGN_CERT_PATH: ${{ secrets.US4_SIGN_CERT_PATH }}
+          US4_SIGN_CERT_PASSWORD: ${{ secrets.US4_SIGN_CERT_PASSWORD }}
+        run: |
+          $msix = Get-ChildItem -Path dist -Filter *.msix | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $msix) {
+            throw "MSIX artifact not found for signing."
+          }
+          .\scripts\sign-msix.ps1 -PackagePath $msix -WorkingDir dist\signing
+
       - name: Generate release checksums
         run: .\scripts\generate-checksums.ps1 -OutputDir dist
 

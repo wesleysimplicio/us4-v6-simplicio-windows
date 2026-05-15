@@ -132,6 +132,7 @@ Helpers de artefato de release:
 .\scripts\generate-checksums.ps1 -OutputDir dist
 .\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.20-portable.zip
 .\scripts\render-winget-manifests.ps1 -Version 0.1.20
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.20.msix
 ```
 
 ## Layout Do Repo
@@ -172,7 +173,7 @@ Os maiores marcos restantes agora sao:
 
 - aprofundar a execucao device-side alem do dry-run em Vulkan e Windows ML
 - fechar a superficie de CLI/release da Sprint 12, incluindo paridade de JSON e packaging
-- fechar publicacao de MSIX assinado e validacao em host real para artefatos publicados
+- fechar assinatura de MSIX com certificado no CI e validacao em host real para artefatos publicados
 - alinhar versao canonica do runtime, changelog e metadados de release ponta a ponta
 
 ## Fora De Escopo

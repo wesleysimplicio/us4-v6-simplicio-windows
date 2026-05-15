@@ -21,6 +21,7 @@ foreach ($scriptPath in @(
     (Join-Path (Get-Location) "scripts\generate-checksums.ps1"),
     (Join-Path (Get-Location) "scripts\post-publish-smoke.ps1"),
     (Join-Path (Get-Location) "scripts\render-winget-manifests.ps1"),
+    (Join-Path (Get-Location) "scripts\sign-msix.ps1"),
     (Join-Path (Get-Location) "scripts\completions\us4-cli.ps1")
 )) {
     $tokens = $null
