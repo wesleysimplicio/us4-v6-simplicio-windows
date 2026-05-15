@@ -111,8 +111,9 @@ async function runCli(
     }
     catch (error)
     {
-        const execError = error as NodeJS.ErrnoException & {
-            code?: number | string;
+        const execError = error as NodeJS.ErrnoException &
+        {
+            code?: number|string;
             stdout?: string;
             stderr?: string;
         };
@@ -268,7 +269,9 @@ test.describe('us4-cli smoke', () => {
         expect(exitCode).toBe(2);
         expect(stdout).toContain('backend: vulkan');
         expect(stdout).toContain('execution: vulkan-dry-run');
+        expect(stdout).toContain('vulkan.context_state: bound');
         expect(stdout).toContain('vulkan.step_count:');
+        expect(stdout).toContain('vulkan.descriptor_sets:');
         expect(stdout).toContain('vulkan.timeline_semaphores:');
         expect(stderr).toContain('not implemented yet');
     });
@@ -286,8 +289,11 @@ test.describe('us4-cli smoke', () => {
                 ...process.env,
                 US4_HAS_CUDA : '',
                 US4_HAS_DIRECTML : '',
-                US4_HAS_VULKAN : '',
+                US4_HAS_VULKAN : '1',
                 US4_HAS_NPU : '1',
+                US4_GPU_NAME : 'Radeon RX Test',
+                US4_GPU_VENDOR : 'amd',
+                US4_GPU_CLASS : 'discrete',
                 US4_NPU_NAME : 'Ryzen AI Test',
                 US4_NPU_VENDOR : 'microsoft',
                 US4_DEVICE_GIB : '8',
@@ -299,8 +305,55 @@ test.describe('us4-cli smoke', () => {
         expect(exitCode).toBe(2);
         expect(stdout).toContain('backend: windows-ml');
         expect(stdout).toContain('execution: windows-ml-dry-run');
+        expect(stdout).toContain('windows_ml.adapter_state: compiled');
         expect(stdout).toContain('windows_ml.opt_in_satisfied: yes');
+        expect(stdout).toContain('windows_ml.npu_partitions:');
+        expect(stdout).toContain('windows_ml.dispatch_table_size: 5');
+        expect(stdout).toContain('windows_ml.first_dispatch_target: npu');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_slice_count: 5');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_gpu_primary: yes');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_npu_dense: yes');
         expect(stdout).toContain('windows_ml.partition_count:');
+        expect(stderr).toContain('not implemented yet');
+    });
+
+    test('renders a Windows ML fallback plan when opt-in is missing', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'qwen-0.5b', '--prompt', 'hello fallback', '--backend',
+                'windows-ml'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '1',
+                US4_HAS_NPU : '1',
+                US4_GPU_NAME : 'Radeon RX Test',
+                US4_GPU_VENDOR : 'amd',
+                US4_GPU_CLASS : 'discrete',
+                US4_NPU_NAME : 'Ryzen AI Test',
+                US4_NPU_VENDOR : 'microsoft',
+                US4_DEVICE_GIB : '8',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'windows-ml-fallback', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('backend: windows-ml');
+        expect(stdout).toContain('execution: windows-ml-dry-run');
+        expect(stdout).toContain('windows_ml.adapter_state: compiled');
+        expect(stdout).toContain('windows_ml.opt_in_satisfied: no');
+        expect(stdout).toContain('windows_ml.cpu_fallback_partitions: 1');
+        expect(stdout).toContain('windows_ml.last_dispatch_target: host-assist');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_active: yes');
+        expect(stdout).toContain('windows_ml.mixed_dispatch_cpu_fallback: yes');
+        expect(stdout).toContain('windows_ml.issue_codes: windows_ml.opt_in_required');
         expect(stderr).toContain('not implemented yet');
     });
 });

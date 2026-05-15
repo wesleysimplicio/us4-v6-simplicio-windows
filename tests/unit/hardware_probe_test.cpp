@@ -651,8 +651,12 @@ namespace us4::core
             ClearProbeEnv();
 #if defined(_WIN32)
             _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_HAS_VULKAN", "1");
             _putenv_s("US4_NPU_NAME", "Ryzen AI");
             _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
             _putenv_s("US4_HOST_GIB", "32");
             _putenv_s("US4_DEVICE_GIB", "8");
 #endif
@@ -675,6 +679,21 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("windows_ml.opt_in_satisfied: yes"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.partition_count:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.adapter_state: compiled"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.npu_partitions:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.dispatch_table_size: 5"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.first_dispatch_target: npu"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_active: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_slice_count: 5"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_gpu_primary: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_dense: yes"),
+                      std::string::npos);
 
             ClearProbeEnv();
         }
@@ -684,8 +703,12 @@ namespace us4::core
             ClearProbeEnv();
 #if defined(_WIN32)
             _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_HAS_VULKAN", "1");
             _putenv_s("US4_NPU_NAME", "Ryzen AI");
             _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
             _putenv_s("US4_HOST_GIB", "32");
             _putenv_s("US4_DEVICE_GIB", "8");
 #endif
@@ -703,9 +726,16 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
             EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
-            EXPECT_NE(result.stdoutText.find("windows_ml.opt_in_satisfied: no"),
-                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.opt_in_satisfied: no"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.issue_codes: windows_ml.opt_in_required"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.cpu_fallback_partitions: 1"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.last_dispatch_target: host-assist"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_active: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_cpu_fallback: yes"),
                       std::string::npos);
 
             ClearProbeEnv();
@@ -737,7 +767,9 @@ namespace us4::core
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
             EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
             EXPECT_NE(result.stdoutText.find("execution: vulkan-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.context_state: bound"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.step_count:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.descriptor_sets:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.timeline_semaphores:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.issue_codes: vulkan.npu.bypass"),
                       std::string::npos);

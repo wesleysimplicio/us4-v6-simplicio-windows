@@ -7,11 +7,14 @@ npm run test:cli
 npm run pack:dry
 
 if [[ -f CMakeLists.txt && -d build ]]; then
-  if command -v ctest >/dev/null 2>&1; then
-    echo "Detected runtime scaffold/build. Running CTest as additional validation."
+  if command -v cmake >/dev/null 2>&1 && command -v ctest >/dev/null 2>&1; then
+    echo "Detected runtime scaffold/build. Refreshing CMake configuration and rebuilding before CTest."
+    cmake -S . -B build
+    cmake --build build -j 8
+    echo "Running CTest on the rebuilt runtime artifacts."
     ctest --test-dir build --output-on-failure
   else
-    echo "Build directory found, but ctest is not available in PATH. Skipping runtime test invocation."
+    echo "Build directory found, but cmake/ctest is not available in PATH. Skipping runtime rebuild and test invocation."
   fi
 fi
 

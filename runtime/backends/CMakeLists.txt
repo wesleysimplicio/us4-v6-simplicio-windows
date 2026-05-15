@@ -8,6 +8,14 @@ if(US4_ENABLE_DIRECTML)
     add_subdirectory(directml)
 endif()
 
+if(US4_ENABLE_VULKAN)
+    add_subdirectory(vulkan)
+endif()
+
+if(US4_ENABLE_WINDOWS_ML)
+    add_subdirectory(windows_ml)
+endif()
+
 add_library(
     us4_runtime_backends
     src/backend_selector.cpp
@@ -49,4 +57,18 @@ if(US4_ENABLE_DIRECTML)
         us4_runtime_backends
         PUBLIC
             us4_runtime_backends_directml)
+endif()
+
+if(US4_ENABLE_VULKAN)
+    target_link_libraries(
+        us4_runtime_backends
+        PUBLIC
+            us4_runtime_backends_vulkan)
+endif()
+
+if(US4_ENABLE_WINDOWS_ML)
+    target_link_libraries(
+        us4_runtime_backends
+        PUBLIC
+            us4_runtime_backends_windows_ml)
 endif()

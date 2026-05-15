@@ -50,6 +50,12 @@ namespace us4::runtime::backends
             return NormalizeBackendName(descriptor.name) == normalized;
         }
 
+        bool IsExplicitWindowsMlRequest(std::string_view preferredBackend)
+        {
+            const std::string normalized = NormalizeBackendName(preferredBackend);
+            return normalized == "windows-ml" || normalized == "npu";
+        }
+
         constexpr std::size_t kGiB = 1024ULL * 1024ULL * 1024ULL;
 
         std::uint32_t ComputeContextHint(const HardwareCapabilities& capabilities,
@@ -162,7 +168,7 @@ namespace us4::runtime::backends
 
             if (descriptor.kind == BackendKind::kWindowsMl && !request.allowNpu)
             {
-                return false;
+                return IsExplicitWindowsMlRequest(request.preferredBackend);
             }
 
             if (request.requireDeterministic && descriptor.kind == BackendKind::kVulkan)

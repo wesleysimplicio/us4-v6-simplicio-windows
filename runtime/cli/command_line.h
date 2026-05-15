@@ -9,8 +9,12 @@
 #include "us4/runtime/backends/directml/dml_device.h"
 #include "us4/runtime/backends/directml/dml_graph.h"
 #include "us4/runtime/backends/hardware_probe.h"
+#include "us4/runtime/backends/vulkan/vulkan_context.h"
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
+#include "us4/runtime/backends/windows_ml/layer_offloader.h"
+#include "us4/runtime/backends/windows_ml/mixed_dispatch_planner.h"
 #include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
+#include "us4/runtime/backends/windows_ml/winml_adapter.h"
 
 #include <algorithm>
 #include <cctype>
@@ -63,10 +67,8 @@ namespace us4::cli
         return std::max<std::uint32_t>(1U, static_cast<std::uint32_t>((prompt.size() + 3U) / 4U));
     }
 
-    inline void AppendIssueCodes(
-        std::ostringstream& output,
-        std::string_view prefix,
-        const std::vector<us4::runtime::backends::RuntimeIssue>& issues)
+    inline void AppendIssueCodes(std::ostringstream& output, std::string_view prefix,
+                                 const std::vector<us4::runtime::backends::RuntimeIssue>& issues)
     {
         if (issues.empty())
         {
@@ -191,7 +193,8 @@ namespace us4::cli
         output << "directml.fence: " << graph.Stats().lastFenceValue << '\n';
     }
 
-    inline void AppendVulkanDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan)
+    inline void AppendVulkanDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
+                                   const us4::runtime::backends::HardwareCapabilities& capabilities)
     {
         const auto executionPlan = us4::runtime::backends::vulkan::BuildVulkanExecutionPlan({
             .binding = plan.binding,
@@ -201,11 +204,27 @@ namespace us4::cli
             .modelSupportsMoE = plan.model.supportsMoE,
             .modelSupportsSpeculative = plan.model.supportsSpeculative,
         });
+        us4::runtime::backends::vulkan::VulkanContext context({
+            .preferIntegratedGpu =
+                plan.backend.deviceClass == us4::runtime::backends::DeviceClass::kIntegratedGpu,
+            .enableValidationLayer = false,
+            .allowDescriptorBuffer = true,
+            .preferAsyncTransfers = true,
+        });
+        const bool initialized = context.Initialize(capabilities);
+        const bool bound = initialized && context.BindExecutionPlan(plan.model.id, executionPlan);
 
         output << "execution: vulkan-dry-run\n";
+        output << "vulkan.context_initialized: " << (initialized ? "yes" : "no") << '\n';
+        output << "vulkan.context_bound: " << (bound ? "yes" : "no") << '\n';
+        output << "vulkan.context_state: "
+               << us4::runtime::backends::vulkan::ToString(context.State()) << '\n';
         output << "vulkan.step_count: " << executionPlan.steps.size() << '\n';
         output << "vulkan.decode_micro_batch: " << executionPlan.decodeMicroBatchSize << '\n';
         output << "vulkan.prefill_batches: " << executionPlan.maxConcurrentPrefillBatches << '\n';
+        output << "vulkan.descriptor_sets: " << context.DescriptorArena().setCount << '\n';
+        output << "vulkan.persistent_bytes: " << context.DescriptorArena().persistentBytes << '\n';
+        output << "vulkan.transient_bytes: " << context.DescriptorArena().transientBytes << '\n';
         output << "vulkan.timeline_semaphores: "
                << (executionPlan.useTimelineSemaphores ? "yes" : "no") << '\n';
         output << "vulkan.cpu_attention_fallback: "
@@ -225,8 +244,9 @@ namespace us4::cli
         }
     }
 
-    inline void AppendWindowsMlDryRun(std::ostringstream& output,
-                                      const us4::core::RuntimePlan& plan)
+    inline void
+    AppendWindowsMlDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
+                          const us4::runtime::backends::HardwareCapabilities& capabilities)
     {
         const auto executionPlan = us4::runtime::backends::windows_ml::BuildWindowsMlExecutionPlan({
             .binding = plan.binding,
@@ -237,8 +257,45 @@ namespace us4::cli
             .modelSupportsSpeculative = plan.model.supportsSpeculative,
             .modelSupportsVision = plan.model.supportsVision,
         });
+        us4::runtime::backends::windows_ml::WinMlAdapter adapter({
+            .allowCpuFallback = true,
+            .preferStaticShapes = true,
+            .enableTelemetry = true,
+        });
+        const std::vector<us4::runtime::backends::windows_ml::LayerDescriptor> sampleLayers = {
+            {
+                .name = "embed",
+                .kind = us4::runtime::backends::windows_ml::LayerKind::kEmbedding,
+            },
+            {
+                .name = "prefill.ffn",
+                .kind = us4::runtime::backends::windows_ml::LayerKind::kDensePrefill,
+            },
+            {
+                .name = "decode.ffn",
+                .kind = us4::runtime::backends::windows_ml::LayerKind::kDenseDecode,
+                .latencySensitive = true,
+            },
+            {
+                .name = "attention",
+                .kind = us4::runtime::backends::windows_ml::LayerKind::kAttention,
+            },
+            {
+                .name = "kv-compress",
+                .kind = us4::runtime::backends::windows_ml::LayerKind::kKvCompression,
+            },
+        };
+        const bool initialized = adapter.Initialize(capabilities);
+        const bool compiled = initialized && adapter.CompileGraph(plan.model.id, executionPlan);
+        const auto dispatchTable =
+            us4::runtime::backends::windows_ml::LayerOffloader::BuildDispatchTable(executionPlan,
+                                                                                   sampleLayers);
 
         output << "execution: windows-ml-dry-run\n";
+        output << "windows_ml.adapter_initialized: " << (initialized ? "yes" : "no") << '\n';
+        output << "windows_ml.graph_compiled: " << (compiled ? "yes" : "no") << '\n';
+        output << "windows_ml.adapter_state: "
+               << us4::runtime::backends::windows_ml::ToString(adapter.State()) << '\n';
         output << "windows_ml.opt_in_satisfied: " << (executionPlan.optInSatisfied ? "yes" : "no")
                << '\n';
         output << "windows_ml.prefill_offload: " << (executionPlan.offloadPrefill ? "yes" : "no")
@@ -248,16 +305,88 @@ namespace us4::cli
         output << "windows_ml.kv_host_compression: "
                << (executionPlan.compressKvOnHost ? "yes" : "no") << '\n';
         output << "windows_ml.partition_count: " << executionPlan.partitions.size() << '\n';
+        output << "windows_ml.npu_partitions: " << adapter.Stats().npuPartitionCount << '\n';
+        output << "windows_ml.host_partitions: " << adapter.Stats().hostPartitionCount << '\n';
+        output << "windows_ml.cpu_fallback_partitions: "
+               << adapter.Stats().cpuFallbackPartitionCount << '\n';
+        output << "windows_ml.dispatch_table_size: " << dispatchTable.size() << '\n';
         output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
         output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
         output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
         AppendIssueCodes(output, "windows_ml", executionPlan.issues);
+        if (!dispatchTable.empty())
+        {
+            output << "windows_ml.first_dispatch_target: "
+                   << us4::runtime::backends::windows_ml::ToString(dispatchTable.front().target)
+                   << '\n';
+            output << "windows_ml.last_dispatch_target: "
+                   << us4::runtime::backends::windows_ml::ToString(dispatchTable.back().target)
+                   << '\n';
+        }
         if (!executionPlan.partitions.empty())
         {
             output << "windows_ml.last_partition: "
                    << us4::runtime::backends::windows_ml::ToString(
                           executionPlan.partitions.back().kind)
                    << '\n';
+        }
+
+        output << "windows_ml.mixed_dispatch_active: " << (capabilities.hasVulkan ? "yes" : "no")
+               << '\n';
+        if (capabilities.hasVulkan)
+        {
+            auto gpuBinding = plan.binding;
+            gpuBinding.backend = us4::runtime::backends::BackendDescriptor{
+                .kind = us4::runtime::backends::BackendKind::kVulkan,
+                .name = "vulkan",
+                .displayName = "Vulkan Compute",
+                .deviceClass = capabilities.primaryAdapterClass,
+                .vendor = capabilities.primaryAdapterVendor,
+                .availability = us4::runtime::backends::BackendAvailability::kAvailable,
+                .defaultPrecision = us4::runtime::backends::PrecisionMode::kFp16,
+                .maxContextTokensHint = std::max<std::uint32_t>(
+                    plan.request.maxContextTokens, plan.binding.backend.maxContextTokensHint == 0
+                                                       ? 4096U
+                                                       : plan.binding.backend.maxContextTokensHint),
+                .supportsPagedKv = true,
+                .supportsSpeculative = true,
+                .supportsUnifiedMemory = capabilities.hasUnifiedMemory ||
+                                         capabilities.primaryAdapterClass ==
+                                             us4::runtime::backends::DeviceClass::kIntegratedGpu,
+                .budget = capabilities.budget,
+            };
+            const auto gpuPlan = us4::runtime::backends::vulkan::BuildVulkanExecutionPlan({
+                .binding = gpuBinding,
+                .request = plan.request,
+                .adapterId = plan.model.adapterId,
+                .targetBatchSize = plan.profile.targetBatchSize,
+                .modelSupportsMoE = plan.model.supportsMoE,
+                .modelSupportsSpeculative = plan.model.supportsSpeculative,
+            });
+            const auto mixedDispatchPlan =
+                us4::runtime::backends::windows_ml::MixedDispatchPlanner::Build(
+                    gpuPlan, executionPlan, sampleLayers);
+            output << "windows_ml.mixed_dispatch_slice_count: " << mixedDispatchPlan.slices.size()
+                   << '\n';
+            output << "windows_ml.mixed_dispatch_gpu_primary: "
+                   << (mixedDispatchPlan.gpuPrimaryActive ? "yes" : "no") << '\n';
+            output << "windows_ml.mixed_dispatch_npu_dense: "
+                   << (mixedDispatchPlan.npuDenseActive ? "yes" : "no") << '\n';
+            output << "windows_ml.mixed_dispatch_host_assist: "
+                   << (mixedDispatchPlan.hostAssistRequired ? "yes" : "no") << '\n';
+            output << "windows_ml.mixed_dispatch_cpu_fallback: "
+                   << (mixedDispatchPlan.cpuFallbackPresent ? "yes" : "no") << '\n';
+            if (!mixedDispatchPlan.slices.empty())
+            {
+                output << "windows_ml.mixed_dispatch_first_target: "
+                       << us4::runtime::backends::windows_ml::ToString(
+                              mixedDispatchPlan.slices.front().target)
+                       << '\n';
+                output << "windows_ml.mixed_dispatch_last_target: "
+                       << us4::runtime::backends::windows_ml::ToString(
+                              mixedDispatchPlan.slices.back().target)
+                       << '\n';
+            }
         }
     }
 
@@ -607,10 +736,10 @@ namespace us4::cli
             AppendDirectMlDryRun(output, plan, capabilities, command.prompt);
             break;
         case us4::runtime::backends::BackendKind::kVulkan:
-            AppendVulkanDryRun(output, plan);
+            AppendVulkanDryRun(output, plan, capabilities);
             break;
         case us4::runtime::backends::BackendKind::kWindowsMl:
-            AppendWindowsMlDryRun(output, plan);
+            AppendWindowsMlDryRun(output, plan, capabilities);
             break;
         case us4::runtime::backends::BackendKind::kCpu:
             output << "execution: scaffold-only\n";

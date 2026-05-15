@@ -16,11 +16,15 @@ if ($errors.Count -gt 0) {
 
 if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
     [void](Enable-MsvcToolchain)
-    if (Get-Command ctest -ErrorAction SilentlyContinue) {
-        Write-Host "Detected runtime scaffold/build. Running CTest as additional validation."
+    if ((Get-Command cmake -ErrorAction SilentlyContinue) -and
+        (Get-Command ctest -ErrorAction SilentlyContinue)) {
+        Write-Host "Detected runtime scaffold/build. Refreshing CMake configuration and rebuilding before CTest."
+        cmake -S . -B build
+        cmake --build build -j 8
+        Write-Host "Running CTest on the rebuilt runtime artifacts."
         ctest --test-dir build --output-on-failure
     } else {
-        Write-Host "Build directory found, but ctest is not available in PATH. Skipping runtime test invocation."
+        Write-Host "Build directory found, but cmake/ctest is not available in PATH. Skipping runtime rebuild and test invocation."
     }
 }
 

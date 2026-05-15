@@ -10,7 +10,7 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `start.ps1` / `start.sh`
   - validam toolchain, configuram o build local e falham com mensagem direta quando `cmake`, `ninja` ou compilador nao estao expostos no shell
 - `test.ps1` / `test.sh`
-  - validam a camada do starter com `npm run test:cli`, `npm run pack:dry`, parse do `bootstrap.ps1` e smoke Playwright quando `us4-cli` ja existe
+  - validam a camada do starter com `npm run test:cli`, `npm run pack:dry`, parse do `bootstrap.ps1`, reconfiguram/rebuildam `build/` e rodam `ctest` + smoke Playwright quando `us4-cli` ja existe
 - `evidence.ps1` / `evidence.sh`
   - rodam Playwright para o `us4-cli`, exigem binario existente, verificam os artefatos gerados e falham se o resultado for so `skip`
 - `update-starter.ps1` / `update-starter.sh`

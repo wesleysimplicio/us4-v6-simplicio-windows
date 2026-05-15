@@ -12,6 +12,7 @@ Fluxo atual:
 - dry-run de `CUDA`
 - dry-run de `Vulkan`
 - dry-run de `Windows ML / NPU`
+- dry-run de fallback de `Windows ML` sem opt-in
 - anexos de stdout/stderr em `test-results/`
 - anexo `cli-diagnostics` com caminho resolvido do binario e overrides relevantes
 - relatorio HTML em `playwright-report/`
