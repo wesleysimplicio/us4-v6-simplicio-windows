@@ -62,6 +62,7 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             tests/unit/bitnet_ternary_test.cpp
             tests/unit/cuda_backend_test.cpp
             tests/unit/hardware_probe_test.cpp
+            tests/unit/auto_tuner_test.cpp
             tests/unit/kv_runtime_test.cpp
             tests/unit/llama_runtime_test.cpp
             tests/unit/moe_runtime_test.cpp)

@@ -9,6 +9,7 @@ target_include_directories(us4_runtime_tuning
 
 target_link_libraries(us4_runtime_tuning
   PUBLIC
+    us4_profiles
     us4_runtime_backends
     us4_build_options
     us4_build_warnings
