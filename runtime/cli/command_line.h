@@ -322,6 +322,26 @@ namespace us4::cli
         output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
         output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
         output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
+        const auto sessionArtifact = adapter.SessionArtifact();
+        if (sessionArtifact.has_value())
+        {
+            output << "windows_ml.compile_target: "
+                   << us4::runtime::backends::windows_ml::ToString(sessionArtifact->compileTarget)
+                   << '\n';
+            output << "windows_ml.cpu_fallback_armed: "
+                   << (sessionArtifact->cpuFallbackArmed ? "yes" : "no") << '\n';
+            output << "windows_ml.graph_reusable: "
+                   << (sessionArtifact->reusableGraph ? "yes" : "no") << '\n';
+            output << "windows_ml.requires_static_shapes: "
+                   << (sessionArtifact->requiresStaticShapes ? "yes" : "no") << '\n';
+            output << "windows_ml.session_artifact: " << sessionArtifact->cacheKey << '\n';
+            output << "windows_ml.host_assist_required: "
+                   << (sessionArtifact->hostAssistRequired ? "yes" : "no") << '\n';
+            if (!sessionArtifact->fallbackReason.empty())
+            {
+                output << "windows_ml.fallback_reason: " << sessionArtifact->fallbackReason << '\n';
+            }
+        }
         output << "windows_ml.power_source: "
                << us4::runtime::backends::windows_ml::ToString(powerSnapshot.powerSource) << '\n';
         output << "windows_ml.battery_percent: " << powerSnapshot.batteryPercent << '\n';
@@ -391,7 +411,8 @@ namespace us4::cli
             });
             const auto mixedDispatchPlan =
                 us4::runtime::backends::windows_ml::MixedDispatchPlanner::Build(
-                    gpuPlan, executionPlan, sampleLayers, powerSnapshot);
+                    gpuPlan, executionPlan, sampleLayers, powerSnapshot,
+                    sessionArtifact ? &*sessionArtifact : nullptr);
             output << "windows_ml.mixed_dispatch_slice_count: " << mixedDispatchPlan.slices.size()
                    << '\n';
             output << "windows_ml.mixed_dispatch_gpu_primary: "

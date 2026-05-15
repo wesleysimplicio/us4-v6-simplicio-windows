@@ -43,7 +43,31 @@ namespace us4::runtime::backends::windows_ml
         bool recoverable = true;
     };
 
+    enum class WinMlCompileTarget
+    {
+        kNpu,
+        kCpuFallback,
+    };
+
+    struct WinMlSessionArtifact
+    {
+        std::string modelId;
+        WinMlCompileTarget compileTarget = WinMlCompileTarget::kCpuFallback;
+        std::uint32_t batchHint = 0;
+        std::uint32_t contextHint = 0;
+        std::uint32_t npuPartitionCount = 0;
+        std::uint32_t hostPartitionCount = 0;
+        std::uint32_t cpuFallbackPartitionCount = 0;
+        bool cpuFallbackArmed = false;
+        bool hostAssistRequired = false;
+        bool reusableGraph = false;
+        bool requiresStaticShapes = false;
+        std::string fallbackReason;
+        std::string cacheKey;
+    };
+
     [[nodiscard]] std::string ToString(WinMlAdapterState state);
+    [[nodiscard]] std::string ToString(WinMlCompileTarget target);
 
     class WinMlAdapter
     {
@@ -59,6 +83,7 @@ namespace us4::runtime::backends::windows_ml
         [[nodiscard]] const WinMlAdapterOptions& Options() const;
         [[nodiscard]] const WinMlCompileStats& Stats() const;
         [[nodiscard]] std::optional<WinMlAdapterIssue> LastIssue() const;
+        [[nodiscard]] std::optional<WinMlSessionArtifact> SessionArtifact() const;
         [[nodiscard]] std::string DescribeSession() const;
 
       private:
@@ -66,6 +91,7 @@ namespace us4::runtime::backends::windows_ml
         WinMlAdapterState state_ = WinMlAdapterState::kCold;
         WinMlCompileStats stats_{};
         std::optional<WinMlAdapterIssue> lastIssue_;
+        std::optional<WinMlSessionArtifact> sessionArtifact_;
         std::string acceleratorName_;
         std::string boundModelId_;
         bool npuAvailable_ = false;

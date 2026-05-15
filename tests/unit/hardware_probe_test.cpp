@@ -262,6 +262,14 @@ namespace us4::core
                            benchmark.scenario == "npu-dense-offload-thermal-throttle" &&
                            benchmark.touchesCli && benchmark.participatesInCorrectnessGate;
                 }));
+            EXPECT_TRUE(
+                std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
+                            [](const auto& benchmark)
+                            {
+                                return benchmark.name == "windows_ml_qwen_no_npu_fallback" &&
+                                       benchmark.scenario == "npu-opt-in-cpu-fallback-no-device" &&
+                                       benchmark.participatesInCorrectnessGate;
+                            }));
         }
 
         TEST(HardwareProbeTest, CpuOnlyProfileMatchesSprint02BaselineContract)
@@ -746,6 +754,8 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("windows_ml.adapter_state: compiled"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.npu_partitions:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.compile_target: npu"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.graph_reusable: yes"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.dispatch_table_size: 5"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.first_dispatch_target: npu"),
@@ -803,6 +813,10 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("windows_ml.issue_codes: windows_ml.opt_in_required"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.cpu_fallback_partitions: 1"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.compile_target: cpu-fallback"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.fallback_reason: opt-in-required"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.last_dispatch_target: host-assist"),
                       std::string::npos);
@@ -863,6 +877,57 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_policy_degraded: yes"),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_demotions: 3"),
+                      std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, FallsBackGracefullyWhenWindowsMlOptInHasNoNpuAvailable)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_NPU", "");
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_HOST_GIB", "32");
+            _putenv_s("US4_DEVICE_GIB", "8");
+            _putenv_s("US4_POWER_SOURCE", "ac");
+            _putenv_s("US4_BATTERY_PERCENT", "100");
+            _putenv_s("US4_BATTERY_SAVER", "0");
+            _putenv_s("US4_THERMAL_STATE", "nominal");
+            _putenv_s("US4_ETW_THROTTLED", "0");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("windows-ml"),
+                const_cast<char*>("--npu"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("windows_ml.adapter_state: compiled"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.compile_target: cpu-fallback"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.fallback_reason: npu-unavailable"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.cpu_fallback_armed: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.npu_partitions: 0"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_npu_dense: no"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_cpu_fallback: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.mixed_dispatch_policy_degraded: no"),
                       std::string::npos);
 
             ClearProbeEnv();

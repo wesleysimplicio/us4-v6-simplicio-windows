@@ -49,12 +49,15 @@ namespace us4::runtime::backends::windows_ml
     MixedDispatchPlan MixedDispatchPlanner::Build(const vulkan::VulkanExecutionPlan& gpuPlan,
                                                   const WindowsMlExecutionPlan& npuPlan,
                                                   const std::vector<LayerDescriptor>& layers,
-                                                  const PowerThermalSnapshot& snapshot)
+                                                  const PowerThermalSnapshot& snapshot,
+                                                  const WinMlSessionArtifact* artifact)
     {
         MixedDispatchPlan plan{};
         plan.gpuPrimaryActive = !gpuPlan.steps.empty();
         plan.policy = PowerThermalMonitor::SelectPolicy(snapshot);
         const auto offloadDecisions = LayerOffloader::BuildDispatchTable(npuPlan, layers);
+        const bool compileFallbackActive =
+            artifact != nullptr && artifact->compileTarget == WinMlCompileTarget::kCpuFallback;
 
         plan.slices.reserve(offloadDecisions.size());
         for (std::size_t index = 0; index < offloadDecisions.size(); ++index)
@@ -63,26 +66,37 @@ namespace us4::runtime::backends::windows_ml
             const auto& layer = layers[index];
             const MixedDispatchTarget originalTarget = ResolveTarget(decision);
             MixedDispatchTarget target = originalTarget;
+            bool changedByPolicy = false;
             std::string reason = decision.reason;
 
-            if (originalTarget == MixedDispatchTarget::kNpuDense)
+            if (originalTarget == MixedDispatchTarget::kNpuDense && compileFallbackActive)
+            {
+                target = ResolveDemotionTarget(gpuPlan);
+                reason +=
+                    " Compiled Windows ML session armed CPU fallback because NPU execution is "
+                    "unavailable for this run.";
+            }
+            else if (originalTarget == MixedDispatchTarget::kNpuDense)
             {
                 if (plan.policy == PowerDispatchPolicy::kPreferEfficiency &&
                     (layer.latencySensitive || layer.kind == LayerKind::kDenseDecode))
                 {
                     target = ResolveDemotionTarget(gpuPlan);
+                    changedByPolicy = true;
                     reason +=
                         " Power policy demoted latency-sensitive dense decode off the NPU path.";
                 }
                 else if (plan.policy == PowerDispatchPolicy::kThermalThrottle)
                 {
                     target = ResolveDemotionTarget(gpuPlan);
+                    changedByPolicy = true;
                     reason +=
                         " Thermal throttle policy demoted dense NPU work to the fallback path.";
                 }
                 else if (plan.policy == PowerDispatchPolicy::kCriticalFallback)
                 {
                     target = ResolveDemotionTarget(gpuPlan);
+                    changedByPolicy = true;
                     reason +=
                         " Critical thermal policy disabled dense NPU execution for this session.";
                 }
@@ -95,7 +109,7 @@ namespace us4::runtime::backends::windows_ml
                 .usesWindowsMl = decision.usesWindowsMl,
                 .reason = std::move(reason),
             };
-            if (slice.target != originalTarget)
+            if (slice.target != originalTarget && changedByPolicy)
             {
                 plan.degradedByPolicy = true;
                 ++plan.npuDemotionCount;

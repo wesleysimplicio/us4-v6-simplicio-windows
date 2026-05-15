@@ -320,6 +320,10 @@ namespace us4::runtime::tests
             ASSERT_TRUE(adapter.CompileGraph("qwen-0.5b", fallbackPlan));
             EXPECT_EQ(adapter.State(), backends::windows_ml::WinMlAdapterState::kCompiled);
             EXPECT_EQ(adapter.Stats().cpuFallbackPartitionCount, 1U);
+            ASSERT_TRUE(adapter.SessionArtifact().has_value());
+            EXPECT_EQ(adapter.SessionArtifact()->compileTarget,
+                      backends::windows_ml::WinMlCompileTarget::kCpuFallback);
+            EXPECT_EQ(adapter.SessionArtifact()->fallbackReason, "opt-in-required");
 
             const auto optInPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
                 .binding =
@@ -331,7 +335,66 @@ namespace us4::runtime::tests
             });
             ASSERT_TRUE(adapter.CompileGraph("qwen-0.5b", optInPlan));
             EXPECT_GT(adapter.Stats().npuPartitionCount, 0U);
+            ASSERT_TRUE(adapter.SessionArtifact().has_value());
+            EXPECT_EQ(adapter.SessionArtifact()->compileTarget,
+                      backends::windows_ml::WinMlCompileTarget::kNpu);
+            EXPECT_TRUE(adapter.SessionArtifact()->fallbackReason.empty());
             EXPECT_NE(adapter.DescribeSession().find("backend=windows-ml"), std::string::npos);
+        }
+
+        TEST(BackendPlannerTest, WinMlAdapterFallsBackWhenNpuIsMissingButCpuFallbackIsAllowed)
+        {
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasNpu = false;
+            capabilities.hasVulkan = true;
+            capabilities.primaryAdapterName = "Radeon RX Test";
+            capabilities.primaryAdapterVendor = backends::BackendVendor::kAmd;
+            capabilities.primaryAdapterClass = backends::DeviceClass::kDiscreteGpu;
+            capabilities.budget.deviceBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+            capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::BackendDescriptor backend{};
+            backend.kind = backends::BackendKind::kWindowsMl;
+            backend.name = "windows-ml";
+            backend.displayName = "Windows ML";
+            backend.deviceClass = backends::DeviceClass::kNpu;
+            backend.vendor = backends::BackendVendor::kMicrosoft;
+            backend.defaultPrecision = backends::PrecisionMode::kInt8;
+            backend.supportsNpuOffload = true;
+            backend.requiresOptIn = true;
+            backend.maxContextTokensHint = 4096U;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.preferredBackend = "windows-ml";
+            request.maxContextTokens = 4096U;
+            request.preferLowLatency = true;
+
+            backends::windows_ml::WinMlAdapter adapter({
+                .allowCpuFallback = true,
+                .preferStaticShapes = true,
+                .enableTelemetry = true,
+            });
+            ASSERT_TRUE(adapter.Initialize(capabilities));
+
+            const auto optInPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
+                .binding = MakeBinding(backend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsSpeculative = false,
+            });
+
+            ASSERT_TRUE(adapter.CompileGraph("qwen-0.5b", optInPlan));
+            ASSERT_TRUE(adapter.SessionArtifact().has_value());
+            EXPECT_EQ(adapter.State(), backends::windows_ml::WinMlAdapterState::kCompiled);
+            EXPECT_EQ(adapter.SessionArtifact()->compileTarget,
+                      backends::windows_ml::WinMlCompileTarget::kCpuFallback);
+            EXPECT_EQ(adapter.SessionArtifact()->fallbackReason, "npu-unavailable");
+            EXPECT_EQ(adapter.Stats().npuPartitionCount, 0U);
+            EXPECT_EQ(adapter.Stats().hostPartitionCount,
+                      static_cast<std::uint32_t>(optInPlan.partitions.size()));
+            EXPECT_GE(adapter.Stats().cpuFallbackPartitionCount, 1U);
         }
 
         TEST(BackendPlannerTest, LayerOffloaderBuildsMixedDispatchTable)
@@ -464,6 +527,93 @@ namespace us4::runtime::tests
                       backends::windows_ml::MixedDispatchTarget::kCpuFallback);
             EXPECT_EQ(mixedPlan.slices[3].target,
                       backends::windows_ml::MixedDispatchTarget::kHostAssist);
+        }
+
+        TEST(BackendPlannerTest, MixedDispatchPlannerSuppressesNpuDenseWhenCompiledFallbackIsArmed)
+        {
+            backends::BackendDescriptor gpuBackend{};
+            gpuBackend.kind = backends::BackendKind::kVulkan;
+            gpuBackend.name = "vulkan";
+            gpuBackend.displayName = "Vulkan Compute";
+            gpuBackend.deviceClass = backends::DeviceClass::kDiscreteGpu;
+            gpuBackend.vendor = backends::BackendVendor::kAmd;
+            gpuBackend.defaultPrecision = backends::PrecisionMode::kFp16;
+            gpuBackend.supportsPagedKv = true;
+            gpuBackend.supportsSpeculative = true;
+            gpuBackend.maxContextTokensHint = 8192U;
+
+            backends::BackendDescriptor npuBackend{};
+            npuBackend.kind = backends::BackendKind::kWindowsMl;
+            npuBackend.name = "windows-ml";
+            npuBackend.displayName = "Windows ML";
+            npuBackend.deviceClass = backends::DeviceClass::kNpu;
+            npuBackend.vendor = backends::BackendVendor::kMicrosoft;
+            npuBackend.defaultPrecision = backends::PrecisionMode::kInt8;
+            npuBackend.supportsNpuOffload = true;
+            npuBackend.requiresOptIn = true;
+            npuBackend.maxContextTokensHint = 4096U;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.preferredBackend = "windows-ml";
+            request.maxContextTokens = 4096U;
+            request.preferLowLatency = true;
+
+            const auto gpuPlan = backends::vulkan::BuildVulkanExecutionPlan({
+                .binding = MakeBinding(gpuBackend, "qwen-0.5b", backends::RuntimeMode::kBalanced),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsMoE = false,
+                .modelSupportsSpeculative = true,
+            });
+            const auto npuPlan = backends::windows_ml::BuildWindowsMlExecutionPlan({
+                .binding =
+                    MakeBinding(npuBackend, "qwen-0.5b", backends::RuntimeMode::kMicro, true),
+                .request = request,
+                .adapterId = "dense-qwen",
+                .targetBatchSize = 2U,
+                .modelSupportsSpeculative = false,
+            });
+
+            const std::vector<backends::windows_ml::LayerDescriptor> layers = {
+                {.name = "embed", .kind = backends::windows_ml::LayerKind::kEmbedding},
+                {.name = "prefill.ffn", .kind = backends::windows_ml::LayerKind::kDensePrefill},
+                {.name = "decode.ffn",
+                 .kind = backends::windows_ml::LayerKind::kDenseDecode,
+                 .latencySensitive = true},
+                {.name = "attention", .kind = backends::windows_ml::LayerKind::kAttention},
+            };
+
+            const backends::windows_ml::WinMlSessionArtifact artifact{
+                .modelId = "qwen-0.5b",
+                .compileTarget = backends::windows_ml::WinMlCompileTarget::kCpuFallback,
+                .batchHint = 2U,
+                .contextHint = 4096U,
+                .npuPartitionCount = 0U,
+                .hostPartitionCount = 4U,
+                .cpuFallbackPartitionCount = 1U,
+                .cpuFallbackArmed = true,
+                .hostAssistRequired = true,
+                .reusableGraph = true,
+                .requiresStaticShapes = true,
+                .fallbackReason = "npu-unavailable",
+                .cacheKey = "qwen-0.5b|cpu-fallback|b2|c4096",
+            };
+
+            const auto mixedPlan = backends::windows_ml::MixedDispatchPlanner::Build(
+                gpuPlan, npuPlan, layers, {}, &artifact);
+            EXPECT_TRUE(mixedPlan.gpuPrimaryActive);
+            EXPECT_FALSE(mixedPlan.npuDenseActive);
+            EXPECT_TRUE(mixedPlan.cpuFallbackPresent);
+            EXPECT_FALSE(mixedPlan.degradedByPolicy);
+            ASSERT_EQ(mixedPlan.slices.size(), layers.size());
+            EXPECT_EQ(mixedPlan.slices[0].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+            EXPECT_EQ(mixedPlan.slices[1].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
+            EXPECT_EQ(mixedPlan.slices[2].target,
+                      backends::windows_ml::MixedDispatchTarget::kGpuPrimary);
         }
 
         TEST(BackendPlannerTest, PowerThermalMonitorBuildsSyntheticBatterySnapshot)

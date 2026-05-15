@@ -272,6 +272,10 @@ namespace us4::runtime::backends
                                    const HardwareCapabilities& capabilities)
     {
         BackendCatalog catalog = BuildCatalog(capabilities);
+        if (!capabilities.hasNpu && IsExplicitWindowsMlRequest(request.preferredBackend))
+        {
+            catalog.push_back(MakeWindowsMlBackend(capabilities));
+        }
         SortCatalog(&catalog, &request);
 
         for (const BackendDescriptor& descriptor : catalog)
@@ -290,6 +294,10 @@ namespace us4::runtime::backends
                                                     const HardwareCapabilities& capabilities)
     {
         BackendCatalog catalog = BuildCatalog(capabilities);
+        if (!capabilities.hasNpu && IsExplicitWindowsMlRequest(request.preferredBackend))
+        {
+            catalog.push_back(MakeWindowsMlBackend(capabilities));
+        }
         SortCatalog(&catalog, &request);
         catalog.erase(std::remove_if(catalog.begin(), catalog.end(),
                                      [&request](const BackendDescriptor& descriptor)

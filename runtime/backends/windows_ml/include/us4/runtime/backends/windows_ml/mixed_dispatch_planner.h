@@ -3,6 +3,7 @@
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/layer_offloader.h"
 #include "us4/runtime/backends/windows_ml/power_thermal_monitor.h"
+#include "us4/runtime/backends/windows_ml/winml_adapter.h"
 
 #include <string>
 #include <vector>
@@ -44,10 +45,10 @@ namespace us4::runtime::backends::windows_ml
     class MixedDispatchPlanner
     {
       public:
-        [[nodiscard]] static MixedDispatchPlan Build(const vulkan::VulkanExecutionPlan& gpuPlan,
-                                                     const WindowsMlExecutionPlan& npuPlan,
-                                                     const std::vector<LayerDescriptor>& layers,
-                                                     const PowerThermalSnapshot& snapshot = {});
+        [[nodiscard]] static MixedDispatchPlan
+        Build(const vulkan::VulkanExecutionPlan& gpuPlan, const WindowsMlExecutionPlan& npuPlan,
+              const std::vector<LayerDescriptor>& layers, const PowerThermalSnapshot& snapshot = {},
+              const WinMlSessionArtifact* artifact = nullptr);
     };
 
 } // namespace us4::runtime::backends::windows_ml

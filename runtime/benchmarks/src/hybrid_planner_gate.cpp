@@ -427,7 +427,9 @@ namespace
         using namespace us4::runtime::backends::windows_ml;
 
         const auto profile = ResolveProfile(benchmark);
-        const auto capabilities = MakeHybridCapabilities();
+        const bool noNpuFallbackCase = benchmark.name == "windows_ml_qwen_no_npu_fallback";
+        const auto capabilities =
+            noNpuFallbackCase ? MakeDiscreteGpuCapabilities() : MakeHybridCapabilities();
         const auto backend = MakeWindowsMlBackend(capabilities);
         const auto request = MakeRequest(benchmark, profile, true);
         const auto binding = MakeBinding(backend, profile, benchmark.modelId, true);
@@ -458,6 +460,7 @@ namespace
         timing.initializeMs = Measure([&]() { initialized = adapter.Initialize(capabilities); });
         timing.phaseMs = Measure(
             [&]() { compiled = initialized && adapter.CompileGraph(benchmark.modelId, plan); });
+        const auto artifact = adapter.SessionArtifact();
 
         const auto layers = SampleLayers();
         const auto powerSnapshot = MakePowerSnapshot(benchmark.name);
@@ -474,7 +477,8 @@ namespace
             .modelSupportsMoE = false,
             .modelSupportsSpeculative = SupportsSpeculative(benchmark.modelId),
         });
-        const auto mixedPlan = MixedDispatchPlanner::Build(gpuPlan, plan, layers, powerSnapshot);
+        const auto mixedPlan = MixedDispatchPlanner::Build(gpuPlan, plan, layers, powerSnapshot,
+                                                           artifact ? &*artifact : nullptr);
         timing.totalMs = timing.planMs + timing.initializeMs + timing.phaseMs;
 
         std::vector<std::string> dispatchTargets;
@@ -530,11 +534,17 @@ namespace
         }
         if (adapter.Stats().npuPartitionCount != 3U)
         {
-            failures.push_back("npu_partition_count_mismatch");
+            if (!noNpuFallbackCase)
+            {
+                failures.push_back("npu_partition_count_mismatch");
+            }
         }
         if (adapter.Stats().hostPartitionCount != 2U)
         {
-            failures.push_back("host_partition_count_mismatch");
+            if (!noNpuFallbackCase)
+            {
+                failures.push_back("host_partition_count_mismatch");
+            }
         }
 
         if (benchmark.name == "windows_ml_qwen_opt_in")
@@ -581,10 +591,68 @@ namespace
             }
         }
 
+        if (benchmark.name == "windows_ml_qwen_no_npu_fallback")
+        {
+            if (!artifact.has_value())
+            {
+                failures.push_back("session_artifact_missing");
+            }
+            else
+            {
+                if (artifact->compileTarget != WinMlCompileTarget::kCpuFallback)
+                {
+                    failures.push_back("compile_target_not_cpu_fallback");
+                }
+                if (artifact->fallbackReason != "npu-unavailable")
+                {
+                    failures.push_back("fallback_reason_mismatch");
+                }
+                if (!artifact->cpuFallbackArmed)
+                {
+                    failures.push_back("cpu_fallback_not_armed");
+                }
+            }
+            if (adapter.Stats().npuPartitionCount != 0U)
+            {
+                failures.push_back("npu_partition_count_not_zero");
+            }
+            if (adapter.Stats().hostPartitionCount != 5U)
+            {
+                failures.push_back("host_partition_count_not_rewritten");
+            }
+            if (adapter.Stats().cpuFallbackPartitionCount == 0U)
+            {
+                failures.push_back("cpu_fallback_partition_missing");
+            }
+            if (mixedPlan.npuDenseActive)
+            {
+                failures.push_back("npu_dense_should_be_inactive");
+            }
+            if (!mixedPlan.cpuFallbackPresent)
+            {
+                failures.push_back("cpu_fallback_target_missing");
+            }
+            if (mixedPlan.degradedByPolicy)
+            {
+                failures.push_back("unexpected_policy_degradation");
+            }
+            if (powerPolicy != PowerDispatchPolicy::kNominal)
+            {
+                failures.push_back("unexpected_power_policy");
+            }
+        }
+
         std::ostringstream fingerprint;
         fingerprint << '{' << "\"adapter_state\":\"" << EscapeJson(ToString(adapter.State()))
                     << "\","
-                    << "\"partition_count\":" << plan.partitions.size() << ','
+                    << "\"compile_target\":\""
+                    << EscapeJson(artifact.has_value() ? ToString(artifact->compileTarget) : "")
+                    << "\","
+                    << "\"fallback_reason\":\""
+                    << EscapeJson(artifact.has_value() ? artifact->fallbackReason : "") << "\","
+                    << "\"cpu_fallback_armed\":"
+                    << (artifact.has_value() && artifact->cpuFallbackArmed ? "true" : "false")
+                    << ',' << "\"partition_count\":" << plan.partitions.size() << ','
                     << "\"npu_partition_count\":" << adapter.Stats().npuPartitionCount << ','
                     << "\"host_partition_count\":" << adapter.Stats().hostPartitionCount << ','
                     << "\"cpu_fallback_partition_count\":"
