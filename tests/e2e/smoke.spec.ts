@@ -244,6 +244,35 @@ test.describe('us4-cli smoke', () => {
         expect(stderr).toContain('not implemented yet');
     });
 
+    test('renders a Vulkan dry-run plan', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [ 'run', '--model', 'qwen-0.5b', '--prompt', 'hello vulkan', '--backend', 'vulkan' ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '1',
+                US4_HAS_NPU : '',
+                US4_GPU_NAME : 'Radeon RX Test',
+                US4_GPU_VENDOR : 'amd',
+                US4_GPU_CLASS : 'discrete',
+                US4_DEVICE_GIB : '12',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'vulkan-dry-run', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        expect(stdout).toContain('backend: vulkan');
+        expect(stdout).toContain('execution: vulkan-dry-run');
+        expect(stdout).toContain('vulkan.step_count:');
+        expect(stdout).toContain('vulkan.timeline_semaphores:');
+        expect(stderr).toContain('not implemented yet');
+    });
+
     test('renders a Windows ML dry-run plan with NPU opt-in', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
 

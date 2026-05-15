@@ -63,6 +63,28 @@ namespace us4::cli
         return std::max<std::uint32_t>(1U, static_cast<std::uint32_t>((prompt.size() + 3U) / 4U));
     }
 
+    inline void AppendIssueCodes(
+        std::ostringstream& output,
+        std::string_view prefix,
+        const std::vector<us4::runtime::backends::RuntimeIssue>& issues)
+    {
+        if (issues.empty())
+        {
+            return;
+        }
+
+        output << prefix << ".issue_codes: ";
+        for (std::size_t index = 0; index < issues.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                output << ',';
+            }
+            output << issues[index].code;
+        }
+        output << '\n';
+    }
+
     inline void AppendCudaDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
                                  const us4::runtime::backends::HardwareCapabilities& capabilities,
                                  std::string_view prompt)
@@ -92,6 +114,7 @@ namespace us4::cli
         output << "cuda.prefill_bytes_touched: " << prefill.deviceBytesTouched << '\n';
         output << "cuda.decode_bytes_touched: " << decode.deviceBytesTouched << '\n';
         output << "cuda.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendIssueCodes(output, "cuda", executionPlan.issues);
     }
 
     inline void
@@ -190,6 +213,7 @@ namespace us4::cli
         output << "vulkan.host_moe_route: " << (executionPlan.routeMoEOnHost ? "yes" : "no")
                << '\n';
         output << "vulkan.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendIssueCodes(output, "vulkan", executionPlan.issues);
         if (!executionPlan.steps.empty())
         {
             output << "vulkan.first_stage: "
@@ -227,6 +251,7 @@ namespace us4::cli
         output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
         output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
         output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendIssueCodes(output, "windows_ml", executionPlan.issues);
         if (!executionPlan.partitions.empty())
         {
             output << "windows_ml.last_partition: "

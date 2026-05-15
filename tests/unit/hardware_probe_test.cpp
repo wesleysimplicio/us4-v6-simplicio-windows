@@ -679,5 +679,72 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ReportsWindowsMlFallbackIssueWithoutNpuOptIn)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_NPU_NAME", "Ryzen AI");
+            _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_HOST_GIB", "32");
+            _putenv_s("US4_DEVICE_GIB", "8");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("windows-ml"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("windows_ml.opt_in_satisfied: no"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.issue_codes: windows_ml.opt_in_required"),
+                      std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsVulkanDryRunPlanForCrossVendorFallback)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_DEVICE_GIB", "12");
+#endif
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("vulkan"),
+                const_cast<char*>("--npu"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("execution: vulkan-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.step_count:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.timeline_semaphores:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.issue_codes: vulkan.npu.bypass"),
+                      std::string::npos);
+            EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
     } // namespace
 } // namespace us4::core

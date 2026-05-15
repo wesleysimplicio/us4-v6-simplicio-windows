@@ -7,7 +7,11 @@ Fluxo atual:
 - build do executavel `us4-cli`
 - execucao de `--help`
 - execucao de `--probe`
-- execucao do `run` scaffoldado
+- execucao real do `run --backend cpu`
+- dry-run de `DirectML`
+- dry-run de `CUDA`
+- dry-run de `Vulkan`
+- dry-run de `Windows ML / NPU`
 - anexos de stdout/stderr em `test-results/`
 - anexo `cli-diagnostics` com caminho resolvido do binario e overrides relevantes
 - relatorio HTML em `playwright-report/`
