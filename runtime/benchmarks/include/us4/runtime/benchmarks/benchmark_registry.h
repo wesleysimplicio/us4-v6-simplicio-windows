@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@ namespace us4::runtime::benchmarks
       public:
         [[nodiscard]] static std::vector<BenchmarkCase> DefaultCases();
         [[nodiscard]] static std::vector<BenchmarkCase> CasesForBackend(const std::string& backend);
+        [[nodiscard]] static std::optional<BenchmarkCase> FindByName(const std::string& name);
     };
 
 } // namespace us4::runtime::benchmarks

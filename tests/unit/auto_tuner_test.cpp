@@ -1,4 +1,5 @@
 #include "runtime/core/runtime_context.h"
+#include "us4/runtime/benchmarks/matrix_runner.h"
 #include "us4/runtime/tuning/auto_tuner.h"
 #include "us4/runtime/tuning/profile_store.h"
 
@@ -236,6 +237,70 @@ namespace us4::runtime::tests
                                     { return issue.code == "profile-store-hit"; }));
 
             ClearProfileStoreEnv();
+        }
+
+        TEST(AutoTunerTest, MatrixRunnerPersistsCpuOnlyWinnerForCpuHosts)
+        {
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-profile-store-matrix-cpu";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.cpuName = "Test CPU";
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = backends::RuntimeMode::kCpuOnly;
+            request.preferredBackend = "cpu";
+
+            runtime::benchmarks::MatrixRunner runner(storePath);
+            const auto report = runner.Tune(request, capabilities);
+
+            EXPECT_EQ(report.selectedProfileId, "cpu-only");
+            EXPECT_EQ(report.selectedBackend, "cpu");
+            EXPECT_TRUE(report.persisted);
+            ASSERT_FALSE(report.samples.empty());
+            EXPECT_EQ(report.samples.front().benchmarkName, "dense_baseline_qwen_cpu_only");
+
+            tuning::ProfileStore store(storePath);
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::optional<std::string>("cpu-only"));
+        }
+
+        TEST(AutoTunerTest, MatrixRunnerPrefersWinMlMicroWhenNpuIsAvailable)
+        {
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-profile-store-matrix-winml";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasVulkan = true;
+            capabilities.hasNpu = true;
+            capabilities.npuCount = 1;
+            capabilities.primaryAdapterVendor = backends::BackendVendor::kAmd;
+            capabilities.primaryAdapterClass = backends::DeviceClass::kDiscreteGpu;
+            capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
+            capabilities.budget.deviceBytes = 12ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = backends::RuntimeMode::kBalanced;
+            request.preferredBackend = "windows-ml";
+            request.allowNpu = true;
+
+            runtime::benchmarks::MatrixRunner runner(storePath);
+            const auto report = runner.Tune(request, capabilities);
+
+            EXPECT_EQ(report.selectedProfileId, "micro");
+            EXPECT_EQ(report.selectedBackend, "windows-ml");
+            EXPECT_TRUE(report.persisted);
+            EXPECT_TRUE(std::any_of(
+                report.samples.begin(), report.samples.end(),
+                [](const runtime::benchmarks::MatrixSample& sample)
+                { return sample.benchmarkName == "windows_ml_qwen_opt_in" && sample.supported; }));
         }
     } // namespace
 } // namespace us4::runtime::tests

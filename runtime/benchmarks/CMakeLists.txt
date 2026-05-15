@@ -16,6 +16,24 @@ target_link_libraries(us4_runtime_benchmark_registry
     us4_build_warnings
 )
 
+add_library(us4_runtime_matrix_runner
+  src/matrix_runner.cpp
+)
+
+target_include_directories(us4_runtime_matrix_runner
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(us4_runtime_matrix_runner
+  PUBLIC
+    us4_runtime_benchmark_registry
+    us4_runtime_tuning
+    us4_runtime_core
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(dense_baseline
   src/dense_baseline.cpp
 )

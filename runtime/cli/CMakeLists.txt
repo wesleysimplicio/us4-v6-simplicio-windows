@@ -10,6 +10,7 @@ target_include_directories(
 target_link_libraries(
     us4-cli
     PRIVATE
+        us4_runtime_matrix_runner
         us4_runtime_core
         us4_build_options
         us4_build_warnings)

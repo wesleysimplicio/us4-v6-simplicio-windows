@@ -16,6 +16,7 @@
 #include "us4/runtime/backends/windows_ml/power_thermal_monitor.h"
 #include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/winml_adapter.h"
+#include "us4/runtime/benchmarks/matrix_runner.h"
 
 #include <algorithm>
 #include <cctype>
@@ -40,6 +41,7 @@ namespace us4::cli
         kVersion,
         kProbe,
         kRun,
+        kTune,
         kInvalid,
     };
 
@@ -456,6 +458,9 @@ namespace us4::cli
                   "[--max-tokens <count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
+               << "  us4-cli tune --model <model-id> [--max-tokens <count>] [--backend "
+                  "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
+                  "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
                << "\n"
                << "Commands:\n"
                << "  help, --help, -h    Show this help\n"
@@ -463,11 +468,14 @@ namespace us4::cli
                << "  probe, --probe      Print detected hardware/backend summary\n"
                << "  run                 Execute CPU_ONLY baseline or print the scaffolded "
                   "execution plan\n"
+               << "  tune                Execute the mini-bench planner and persist the best "
+                  "profile for this host\n"
                << "\n"
                << "Examples:\n"
                << "  us4-cli probe\n"
                << "  us4-cli version\n"
-               << "  us4-cli run --model qwen-0.5b --prompt \"hi\" --backend cpu\n";
+               << "  us4-cli run --model qwen-0.5b --prompt \"hi\" --backend cpu\n"
+               << "  us4-cli tune --model qwen-0.5b --backend windows-ml --npu\n";
         return output.str();
     }
 
@@ -498,14 +506,14 @@ namespace us4::cli
             return command;
         }
 
-        if (verb != "run")
+        if (verb != "run" && verb != "tune")
         {
             command.kind = CommandKind::kInvalid;
             command.error = "Unknown command: " + std::string(verb);
             return command;
         }
 
-        command.kind = CommandKind::kRun;
+        command.kind = verb == "tune" ? CommandKind::kTune : CommandKind::kRun;
         for (int index = 2; index < argc; ++index)
         {
             const std::string_view option = argv[index];
@@ -604,7 +612,7 @@ namespace us4::cli
             command.error = "The run command requires --model <model-id>.";
             return command;
         }
-        if (command.prompt.empty())
+        if (command.kind == CommandKind::kRun && command.prompt.empty())
         {
             command.kind = CommandKind::kInvalid;
             command.error = "The run command requires --prompt <text>.";
@@ -710,6 +718,47 @@ namespace us4::cli
 
         const us4::runtime::backends::HardwareCapabilities capabilities =
             us4::runtime::backends::HardwareProbe::DetectHost();
+
+        if (command.kind == CommandKind::kTune)
+        {
+            const us4::runtime::benchmarks::MatrixRunner runner;
+            const auto tuneReport = runner.Tune(request, capabilities);
+            const us4::core::RuntimePlan tunedPlan =
+                us4::core::RuntimeContext::BuildPlan(request, capabilities);
+
+            std::ostringstream output;
+            output << us4::core::FormatRuntimePlan(tunedPlan);
+            output << "execution: tune\n";
+            output << "tune.requested_profile: " << tuneReport.requestedProfileId << '\n';
+            output << "tune.recommended_profile: " << tuneReport.recommendedProfileId << '\n';
+            output << "tune.selected_profile: " << tuneReport.selectedProfileId << '\n';
+            output << "tune.selected_backend: " << tuneReport.selectedBackend << '\n';
+            output << "tune.selected_score: " << tuneReport.selectedScore << '\n';
+            output << "tune.store_path: " << tuneReport.storePath.string() << '\n';
+            output << "tune.persisted: " << (tuneReport.persisted ? "yes" : "no") << '\n';
+            output << "tune.sample_count: " << tuneReport.samples.size() << '\n';
+            for (std::size_t index = 0; index < tuneReport.samples.size(); ++index)
+            {
+                const auto& sample = tuneReport.samples[index];
+                const std::size_t sampleNumber = index + 1U;
+                output << "tune.sample_" << sampleNumber << ".benchmark: " << sample.benchmarkName
+                       << '\n';
+                output << "tune.sample_" << sampleNumber << ".backend: " << sample.backend << '\n';
+                output << "tune.sample_" << sampleNumber << ".profile: " << sample.profileId
+                       << '\n';
+                output << "tune.sample_" << sampleNumber
+                       << ".supported: " << (sample.supported ? "yes" : "no") << '\n';
+                output << "tune.sample_" << sampleNumber << ".score: " << sample.score << '\n';
+            }
+            output << "tune_status: completed\n";
+
+            return CommandOutput{
+                kSuccessExitCode,
+                output.str(),
+                {},
+            };
+        }
+
         const us4::core::RuntimePlan plan =
             us4::core::RuntimeContext::BuildPlan(request, capabilities);
 

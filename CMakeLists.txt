@@ -46,11 +46,10 @@ add_subdirectory(runtime/speculative)
 add_subdirectory(runtime/tuning)
 add_subdirectory(runtime/telemetry)
 add_subdirectory(runtime/core)
-add_subdirectory(runtime/cli)
-
 if(US4_ENABLE_BENCHMARKS)
     add_subdirectory(runtime/benchmarks)
 endif()
+add_subdirectory(runtime/cli)
 
 if(BUILD_TESTING AND US4_ENABLE_TESTS)
     find_package(GTest CONFIG QUIET)
@@ -71,6 +70,7 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             us4_core_tests
             PRIVATE
                 us4_runtime_benchmark_registry
+                us4_runtime_matrix_runner
                 us4_runtime_core
                 GTest::gtest_main
                 us4_build_options

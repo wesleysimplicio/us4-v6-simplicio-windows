@@ -12,6 +12,7 @@
 #include "us4/runtime/backends/cpu_avx/scalar_attention.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/benchmarks/benchmark_registry.h"
+#include "us4/runtime/tuning/profile_store.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -49,6 +50,7 @@ namespace us4::core
             _putenv_s("US4_BATTERY_SAVER", "");
             _putenv_s("US4_THERMAL_STATE", "");
             _putenv_s("US4_ETW_THROTTLED", "");
+            _putenv_s("US4_PROFILE_STORE_PATH", "");
 #else
             unsetenv("US4_HAS_CUDA");
             unsetenv("US4_HAS_DIRECTML");
@@ -70,6 +72,7 @@ namespace us4::core
             unsetenv("US4_BATTERY_SAVER");
             unsetenv("US4_THERMAL_STATE");
             unsetenv("US4_ETW_THROTTLED");
+            unsetenv("US4_PROFILE_STORE_PATH");
 #endif
         }
 
@@ -679,6 +682,40 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("execution: directml-dry-run"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("directml.graph_state: ready"), std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsTuneSummaryAndPersistsProfile)
+        {
+            ClearProbeEnv();
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-cli-tune-profile-store";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+#if defined(_WIN32)
+            _putenv_s("US4_PROFILE_STORE_PATH", storePath.string().c_str());
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kTune;
+            command.modelId = "qwen-0.5b";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.maxTokens = 8;
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(output.stderrText.empty());
+            EXPECT_NE(output.stdoutText.find("execution: tune"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("tune.selected_profile: cpu-only"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("tune.persisted: yes"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("tune_status: completed"), std::string::npos);
+
+            us4::runtime::tuning::ProfileStore store(storePath);
+            const auto capabilities = us4::runtime::backends::HardwareProbe::DetectHost();
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::optional<std::string>("cpu-only"));
 
             ClearProbeEnv();
         }

@@ -464,4 +464,33 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('windows_ml.mixed_dispatch_policy_degraded: no');
         expect(stderr).toContain('not implemented yet');
     });
+
+    test('tunes and persists a cpu-only profile selection', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+        const storePath = testInfo.outputPath('profiles.json');
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [ 'tune', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only' ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+                US4_PROFILE_STORE_PATH : storePath,
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'tune', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('execution: tune');
+        expect(stdout).toContain('profile: cpu-only');
+        expect(stdout).toContain('tune.selected_profile: cpu-only');
+        expect(stdout).toContain('tune.persisted: yes');
+        expect(stdout).toContain(`tune.store_path: ${storePath}`);
+        expect(stdout).toContain('tune_status: completed');
+        expect(existsSync(storePath)).toBeTruthy();
+    });
 });

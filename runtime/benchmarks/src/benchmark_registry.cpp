@@ -232,4 +232,16 @@ namespace us4::runtime::benchmarks
         return cases;
     }
 
+    std::optional<BenchmarkCase> BenchmarkRegistry::FindByName(const std::string& name)
+    {
+        for (const BenchmarkCase& benchmark : DefaultCases())
+        {
+            if (benchmark.name == name)
+            {
+                return benchmark;
+            }
+        }
+        return std::nullopt;
+    }
+
 } // namespace us4::runtime::benchmarks
