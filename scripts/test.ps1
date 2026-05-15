@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "use-msvc-toolchain.ps1")
 
 Write-Host "Running current repository validation"
 
@@ -14,6 +15,7 @@ if ($errors.Count -gt 0) {
 }
 
 if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
+    [void](Enable-MsvcToolchain)
     if (Get-Command ctest -ErrorAction SilentlyContinue) {
         Write-Host "Detected runtime scaffold/build. Running CTest as additional validation."
         ctest --test-dir build --output-on-failure
@@ -22,8 +24,19 @@ if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
     }
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")) {
+    Write-Host "Detected correctness gate binary. Running CPU scalar correctness validation."
+    & (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
-    $cliPath = if ($env:US4_CLI_PATH) { $env:US4_CLI_PATH } else { Join-Path (Join-Path (Get-Location) "build") "us4-cli.exe" }
+    $cliPath = if ($env:US4_CLI_PATH) {
+        $env:US4_CLI_PATH
+    } else {
+        $rootCandidate = Join-Path (Join-Path (Get-Location) "build") "us4-cli.exe"
+        $nestedCandidate = Join-Path (Join-Path (Join-Path (Get-Location) "build") "runtime\cli") "us4-cli.exe"
+        if (Test-Path $rootCandidate) { $rootCandidate } else { $nestedCandidate }
+    }
     if (Test-Path $cliPath) {
         Write-Host "Detected us4-cli binary. Running CLI Playwright smoke validation."
         npx playwright test --project=cli --reporter=list

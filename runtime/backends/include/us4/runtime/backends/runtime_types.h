@@ -106,6 +106,7 @@ namespace us4::runtime::backends
     struct SessionRequest
     {
         std::string modelId;
+        std::string preferredBackend;
         RuntimeMode mode = RuntimeMode::kBalanced;
         PrecisionMode precision = PrecisionMode::kFp16;
         std::uint32_t maxContextTokens = 4096;

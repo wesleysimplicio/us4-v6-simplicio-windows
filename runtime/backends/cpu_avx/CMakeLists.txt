@@ -1,5 +1,10 @@
+add_subdirectory(../onednn ${CMAKE_CURRENT_BINARY_DIR}/onednn)
+
 add_library(
     us4_runtime_backends_cpu_avx
+    src/bitnet_reference.cpp
+    src/blocked_matmul.cpp
+    src/kernel_profile.cpp
     src/scalar_attention.cpp
     src/scalar_matmul.cpp)
 
@@ -14,4 +19,5 @@ target_link_libraries(
     us4_runtime_backends_cpu_avx
     PUBLIC
         us4_build_options
-        us4_build_warnings)
+        us4_build_warnings
+        us4_runtime_backends_onednn)

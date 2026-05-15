@@ -1,13 +1,23 @@
 #include "runtime/cli/command_line.h"
+#include "runtime/core/cpu_scalar_runtime.h"
 #include "runtime/core/hardware_probe.h"
 #include "runtime/core/model_registry.h"
 #include "runtime/core/runtime_context.h"
 #include "runtime/core/runtime_mode.h"
+#include "runtime/core/tensor.h"
 #include "us4/profiles/profile_catalog.h"
+#include "us4/runtime/adapters/dense_adapter_base.h"
+#include "us4/runtime/adapters/model_loader.h"
+#include "us4/runtime/adapters/scalar_family_adapters.h"
+#include "us4/runtime/backends/cpu_avx/scalar_attention.h"
+#include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/benchmarks/benchmark_registry.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -216,6 +226,183 @@ namespace us4::core
             EXPECT_EQ(us4::profiles::ProfileCatalog::RecommendId(capabilities), "cpu-only");
         }
 
+        TEST(HardwareProbeTest, TensorTracksExpandedSprint02DataTypes)
+        {
+            const Tensor bf16Tensor({2U, 2U}, TensorDataType::kBFloat16);
+            const Tensor int4Tensor({4U, 4U}, TensorDataType::kInt4);
+
+            EXPECT_EQ(bf16Tensor.DataType(), TensorDataType::kBFloat16);
+            EXPECT_EQ(int4Tensor.DataType(), TensorDataType::kInt4);
+            EXPECT_EQ(int4Tensor.ElementCount(), 16U);
+        }
+
+        TEST(HardwareProbeTest, ScalarMatMulMatchesReferenceOutput)
+        {
+            Tensor left({2U, 3U});
+            left.At({0U, 0U}) = 1.0F;
+            left.At({0U, 1U}) = 2.0F;
+            left.At({0U, 2U}) = 3.0F;
+            left.At({1U, 0U}) = 4.0F;
+            left.At({1U, 1U}) = 5.0F;
+            left.At({1U, 2U}) = 6.0F;
+
+            Tensor right({3U, 2U});
+            right.At({0U, 0U}) = 7.0F;
+            right.At({0U, 1U}) = 8.0F;
+            right.At({1U, 0U}) = 9.0F;
+            right.At({1U, 1U}) = 10.0F;
+            right.At({2U, 0U}) = 11.0F;
+            right.At({2U, 1U}) = 12.0F;
+
+            const Tensor output = us4::runtime::backends::cpu_avx::ScalarMatMul(left, right);
+
+            ASSERT_EQ(output.Shape(), std::vector<std::size_t>({2U, 2U}));
+            EXPECT_NEAR(output.At({0U, 0U}), 58.0F, 1e-4F);
+            EXPECT_NEAR(output.At({0U, 1U}), 64.0F, 1e-4F);
+            EXPECT_NEAR(output.At({1U, 0U}), 139.0F, 1e-4F);
+            EXPECT_NEAR(output.At({1U, 1U}), 154.0F, 1e-4F);
+        }
+
+        TEST(HardwareProbeTest, ScalarAttentionAppliesCausalMaskAndConcatsCachedKv)
+        {
+            Tensor query({2U, 2U});
+            query.At({0U, 0U}) = 1.0F;
+            query.At({0U, 1U}) = 0.0F;
+            query.At({1U, 0U}) = 0.0F;
+            query.At({1U, 1U}) = 1.0F;
+
+            Tensor key({2U, 2U});
+            key.At({0U, 0U}) = 1.0F;
+            key.At({0U, 1U}) = 0.0F;
+            key.At({1U, 0U}) = 0.0F;
+            key.At({1U, 1U}) = 1.0F;
+
+            Tensor value({2U, 2U});
+            value.At({0U, 0U}) = 10.0F;
+            value.At({0U, 1U}) = 1.0F;
+            value.At({1U, 0U}) = 1.0F;
+            value.At({1U, 1U}) = 10.0F;
+
+            Tensor cachedKey({1U, 2U});
+            cachedKey.At({0U, 0U}) = 1.0F;
+            cachedKey.At({0U, 1U}) = 1.0F;
+
+            Tensor cachedValue({1U, 2U});
+            cachedValue.At({0U, 0U}) = 5.0F;
+            cachedValue.At({0U, 1U}) = 5.0F;
+
+            const auto output = us4::runtime::backends::cpu_avx::ScalarAttention(
+                query, key, value,
+                us4::runtime::backends::cpu_avx::AttentionOptions{
+                    .scale = 1.0F,
+                    .causalMask = true,
+                    .cachedKey = &cachedKey,
+                    .cachedValue = &cachedValue,
+                });
+
+            ASSERT_EQ(output.Shape(), std::vector<std::size_t>({2U, 2U}));
+            EXPECT_GT(output.At({0U, 0U}), output.At({0U, 1U}));
+            EXPECT_GT(output.At({1U, 1U}), output.At({1U, 0U}));
+            EXPECT_GT(output.At({0U, 0U}), 5.0F);
+            EXPECT_LT(output.At({1U, 0U}), 5.0F);
+        }
+
+        TEST(HardwareProbeTest, LoadModelAssetAcceptsSyntheticAndMinimalFormats)
+        {
+            const auto synthetic =
+                us4::runtime::adapters::LoadModelAsset("builtin://qwen-0.5b", "qwen-0.5b");
+            ASSERT_TRUE(synthetic.ok);
+            EXPECT_EQ(synthetic.descriptor.format,
+                      us4::runtime::adapters::ModelAssetFormat::kSynthetic);
+
+            const auto root = std::filesystem::temp_directory_path();
+            const auto ggufPath = root / "us4-test-model.gguf";
+            const auto safetensorsPath = root / "us4-test-model.safetensors";
+
+            {
+                std::ofstream stream(ggufPath, std::ios::binary);
+                stream.write("GGUF", 4);
+                const char payload[] = {0x01, 0x02, 0x03, 0x04};
+                stream.write(payload, static_cast<std::streamsize>(sizeof(payload)));
+            }
+
+            {
+                std::ofstream stream(safetensorsPath, std::ios::binary);
+                const std::uint64_t headerSize = 2;
+                stream.write(reinterpret_cast<const char*>(&headerSize),
+                             static_cast<std::streamsize>(sizeof(headerSize)));
+                stream.write("{}", 2);
+                const char payload[] = {0x11, 0x12, 0x13, 0x14};
+                stream.write(payload, static_cast<std::streamsize>(sizeof(payload)));
+            }
+
+            const auto gguf =
+                us4::runtime::adapters::LoadModelAsset(ggufPath.string(), "qwen-0.5b");
+            const auto safetensors =
+                us4::runtime::adapters::LoadModelAsset(safetensorsPath.string(), "gemma-2b");
+
+            EXPECT_TRUE(gguf.ok);
+            EXPECT_EQ(gguf.descriptor.format, us4::runtime::adapters::ModelAssetFormat::kGguf);
+            EXPECT_TRUE(safetensors.ok);
+            EXPECT_EQ(safetensors.descriptor.format,
+                      us4::runtime::adapters::ModelAssetFormat::kSafetensors);
+
+            std::filesystem::remove(ggufPath);
+            std::filesystem::remove(safetensorsPath);
+        }
+
+        TEST(HardwareProbeTest, ScalarAdaptersRoundTripPromptTokenization)
+        {
+            const std::string prompt = "hello runtime";
+
+            auto qwenAdapter = us4::runtime::adapters::CreateQwenScalarAdapter();
+            auto gemmaAdapter = us4::runtime::adapters::CreateGemmaScalarAdapter();
+
+            auto* qwenDense =
+                dynamic_cast<us4::runtime::adapters::DenseAdapterBase*>(qwenAdapter.get());
+            auto* gemmaDense =
+                dynamic_cast<us4::runtime::adapters::DenseAdapterBase*>(gemmaAdapter.get());
+
+            ASSERT_NE(qwenDense, nullptr);
+            ASSERT_NE(gemmaDense, nullptr);
+
+            const auto qwenTokens = qwenDense->TokenizePrompt(prompt);
+            const auto gemmaTokens = gemmaDense->TokenizePrompt(prompt);
+
+            EXPECT_EQ(qwenDense->DetokenizePromptTokens(qwenTokens), prompt);
+            EXPECT_EQ(gemmaDense->DetokenizePromptTokens(gemmaTokens), prompt);
+            EXPECT_NE(qwenTokens, gemmaTokens);
+            EXPECT_EQ(qwenTokens.size(), prompt.size());
+            EXPECT_EQ(gemmaTokens.size(), prompt.size());
+        }
+
+        TEST(HardwareProbeTest, ExecuteCpuScalarRunReturnsCompletedReport)
+        {
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = us4::runtime::backends::RuntimeMode::kCpuOnly;
+            request.maxGenerationTokens = 5U;
+
+            const RuntimePlan plan = RuntimeContext::BuildPlan(request, capabilities);
+            const auto runResult = ExecuteCpuScalarRun(plan, "hello from unit");
+
+            ASSERT_TRUE(runResult.ok);
+            EXPECT_EQ(runResult.report.modelPath, "builtin://qwen-0.5b");
+            EXPECT_EQ(runResult.report.modelFormat,
+                      us4::runtime::adapters::ModelAssetFormat::kSynthetic);
+            EXPECT_EQ(runResult.report.generatedTokens.size(), 5U);
+            EXPECT_FALSE(runResult.report.generatedText.empty());
+            EXPECT_GT(runResult.report.scalarMatMulChecksum, 0.0);
+            EXPECT_GT(runResult.report.scalarAttentionChecksum, 0.0);
+            EXPECT_EQ(runResult.report.kvStats.segmentCount, 1U);
+            EXPECT_EQ(runResult.report.prefixCacheWarmEntries, 1U);
+            EXPECT_GE(runResult.report.telemetryEventCount, 3U);
+        }
+
         TEST(HardwareProbeTest, FormatsHumanReadableProbeSummary)
         {
             ProbeSummary summary{};
@@ -228,45 +415,37 @@ namespace us4::core
             summary.capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
             summary.capabilities.budget.deviceBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
             summary.capabilities.budget.storageBytes = 256ULL * 1024ULL * 1024ULL * 1024ULL;
+            auto makeDescriptor = [&](us4::runtime::backends::BackendKind kind, std::string name,
+                                      std::string displayName,
+                                      us4::runtime::backends::DeviceClass deviceClass,
+                                      us4::runtime::backends::BackendVendor vendor,
+                                      us4::runtime::backends::PrecisionMode precision,
+                                      std::uint32_t rank, std::uint32_t maxContextTokensHint)
+            {
+                us4::runtime::backends::BackendDescriptor descriptor{};
+                descriptor.kind = kind;
+                descriptor.name = std::move(name);
+                descriptor.displayName = std::move(displayName);
+                descriptor.deviceClass = deviceClass;
+                descriptor.vendor = vendor;
+                descriptor.availability = us4::runtime::backends::BackendAvailability::kAvailable;
+                descriptor.defaultPrecision = precision;
+                descriptor.selectionRank = rank;
+                descriptor.maxContextTokensHint = maxContextTokensHint;
+                descriptor.supportsPagedKv = true;
+                descriptor.supportsMoE = true;
+                descriptor.budget = summary.capabilities.budget;
+                return descriptor;
+            };
             summary.backends = {
-                us4::runtime::backends::BackendDescriptor{
-                    us4::runtime::backends::BackendKind::kDirectML,
-                    "directml",
-                    "DirectML",
-                    us4::runtime::backends::BackendVendor::kIntel,
-                    us4::runtime::backends::BackendAvailability::kAvailable,
-                    us4::runtime::backends::DeviceClass::kIntegratedGpu,
-                    us4::runtime::backends::PrecisionMode::kFp16,
-                    20U,
-                    4096U,
-                    false,
-                    true,
-                    true,
-                    false,
-                    false,
-                    false,
-                    false,
-                    summary.capabilities.budget,
-                },
-                us4::runtime::backends::BackendDescriptor{
-                    us4::runtime::backends::BackendKind::kCpu,
-                    "cpu-avx2",
-                    "CPU AVX2",
-                    us4::runtime::backends::BackendVendor::kMicrosoft,
-                    us4::runtime::backends::BackendAvailability::kAvailable,
-                    us4::runtime::backends::DeviceClass::kCpuOnly,
-                    us4::runtime::backends::PrecisionMode::kFp32,
-                    99U,
-                    2048U,
-                    false,
-                    true,
-                    true,
-                    false,
-                    false,
-                    false,
-                    false,
-                    summary.capabilities.budget,
-                },
+                makeDescriptor(us4::runtime::backends::BackendKind::kDirectML, "directml",
+                               "DirectML", us4::runtime::backends::DeviceClass::kIntegratedGpu,
+                               us4::runtime::backends::BackendVendor::kIntel,
+                               us4::runtime::backends::PrecisionMode::kFp16, 20U, 4096U),
+                makeDescriptor(us4::runtime::backends::BackendKind::kCpu, "cpu-avx2", "CPU AVX2",
+                               us4::runtime::backends::DeviceClass::kCpuOnly,
+                               us4::runtime::backends::BackendVendor::kMicrosoft,
+                               us4::runtime::backends::PrecisionMode::kFp32, 99U, 2048U),
             };
             summary.advisories = {
                 ProbeAdvisory{
@@ -301,6 +480,9 @@ namespace us4::core
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kHelp);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
             EXPECT_NE(result.stdoutText.find("us4-cli version"), std::string::npos);
+            EXPECT_NE(
+                result.stdoutText.find("--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>"),
+                std::string::npos);
             EXPECT_NE(result.stdoutText.find(
                           "--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>"),
                       std::string::npos);
@@ -356,6 +538,51 @@ namespace us4::core
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
             EXPECT_EQ(result.exitCode, us4::cli::kUsageExitCode);
             EXPECT_NE(result.stderrText.find("Unknown value for --mode"), std::string::npos);
+        }
+
+        TEST(HardwareProbeTest, CompletesCpuOnlyRunForScalarBaseline)
+        {
+            ClearProbeEnv();
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),      const_cast<char*>("run"),
+                const_cast<char*>("--model"),      const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),     const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"),    const_cast<char*>("cpu"),
+                const_cast<char*>("--max-tokens"), const_cast<char*>("5"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
+            EXPECT_NE(result.stdoutText.find("backend: cpu-avx2"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("execution: cpu-scalar"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("generated_tokens:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("kv.segment_count: 1"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("prefix_cache.entries: 1"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("run_status: completed"), std::string::npos);
+            EXPECT_TRUE(result.stderrText.empty());
+        }
+
+        TEST(HardwareProbeTest, RejectsRunWithInvalidBackendValue)
+        {
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("run"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--prompt"),  const_cast<char*>("hello runtime"),
+                const_cast<char*>("--backend"), const_cast<char*>("tensor-core"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kUsageExitCode);
+            EXPECT_NE(result.stderrText.find("Unknown value for --backend"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, ReturnsRunScaffoldSummaryForValidatedIntent)

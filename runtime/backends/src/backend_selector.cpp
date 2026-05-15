@@ -1,12 +1,54 @@
 #include "us4/runtime/backends/backend_selector.h"
 
+#include "us4/runtime/backends/cuda/cuda_backend.h"
+#include "us4/runtime/backends/directml/dml_device.h"
+
 #include <algorithm>
+#include <cctype>
 
 namespace us4::runtime::backends
 {
 
     namespace
     {
+        std::string NormalizeBackendName(std::string_view value)
+        {
+            std::string normalized;
+            normalized.reserve(value.size());
+            for (const char character : value)
+            {
+                if (character == '_' || character == ' ')
+                {
+                    normalized.push_back('-');
+                    continue;
+                }
+                normalized.push_back(
+                    static_cast<char>(std::tolower(static_cast<unsigned char>(character))));
+            }
+            return normalized;
+        }
+
+        bool MatchesRequestedBackend(const BackendDescriptor& descriptor,
+                                     std::string_view preferredBackend)
+        {
+            const std::string normalized = NormalizeBackendName(preferredBackend);
+            if (normalized.empty() || normalized == "auto")
+            {
+                return true;
+            }
+
+            if (normalized == "cpu")
+            {
+                return descriptor.kind == BackendKind::kCpu;
+            }
+
+            if (normalized == "npu")
+            {
+                return descriptor.kind == BackendKind::kWindowsMl;
+            }
+
+            return NormalizeBackendName(descriptor.name) == normalized;
+        }
 
         constexpr std::size_t kGiB = 1024ULL * 1024ULL * 1024ULL;
 
@@ -54,46 +96,12 @@ namespace us4::runtime::backends
 
         BackendDescriptor MakeCudaBackend(const HardwareCapabilities& capabilities)
         {
-            BackendDescriptor descriptor;
-            descriptor.kind = BackendKind::kCuda;
-            descriptor.name = "cuda";
-            descriptor.displayName = "CUDA";
-            descriptor.deviceClass = DeviceClass::kDiscreteGpu;
-            descriptor.vendor = BackendVendor::kNvidia;
-            descriptor.availability = BackendAvailability::kAvailable;
-            descriptor.defaultPrecision = PrecisionMode::kFp16;
-            descriptor.selectionRank = 100;
-            descriptor.maxContextTokensHint = ComputeContextHint(capabilities, descriptor.kind);
-            descriptor.supportsGraphCapture = true;
-            descriptor.supportsPagedKv = true;
-            descriptor.supportsMoE = true;
-            descriptor.supportsSpeculative = true;
-            descriptor.budget = capabilities.budget;
-            return descriptor;
+            return cuda::CudaBackend::BuildDescriptor(capabilities);
         }
 
         BackendDescriptor MakeDirectMlBackend(const HardwareCapabilities& capabilities)
         {
-            BackendDescriptor descriptor;
-            descriptor.kind = BackendKind::kDirectML;
-            descriptor.name = "directml";
-            descriptor.displayName = "DirectML";
-            descriptor.deviceClass = capabilities.primaryAdapterClass == DeviceClass::kDiscreteGpu
-                                         ? DeviceClass::kDiscreteGpu
-                                         : DeviceClass::kIntegratedGpu;
-            descriptor.vendor = capabilities.primaryAdapterVendor;
-            descriptor.availability = BackendAvailability::kAvailable;
-            descriptor.defaultPrecision = PrecisionMode::kFp16;
-            descriptor.selectionRank =
-                descriptor.deviceClass == DeviceClass::kIntegratedGpu ? 230 : 200;
-            descriptor.maxContextTokensHint = ComputeContextHint(capabilities, descriptor.kind);
-            descriptor.supportsPagedKv = true;
-            descriptor.supportsMoE = true;
-            descriptor.supportsUnifiedMemory =
-                capabilities.hasUnifiedMemory ||
-                descriptor.deviceClass == DeviceClass::kIntegratedGpu;
-            descriptor.budget = capabilities.budget;
-            return descriptor;
+            return directml::DmlDevice::BuildDescriptor(capabilities);
         }
 
         BackendDescriptor MakeVulkanBackend(const HardwareCapabilities& capabilities)
@@ -142,6 +150,11 @@ namespace us4::runtime::backends
 
         bool IsAllowedByRequest(const BackendDescriptor& descriptor, const SessionRequest& request)
         {
+            if (!MatchesRequestedBackend(descriptor, request.preferredBackend))
+            {
+                return false;
+            }
+
             if (request.mode == RuntimeMode::kCpuOnly)
             {
                 return descriptor.kind == BackendKind::kCpu;

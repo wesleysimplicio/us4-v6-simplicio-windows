@@ -39,3 +39,15 @@ target_link_libraries(moe_throughput
     us4_build_options
     us4_build_warnings
 )
+
+add_executable(correctness_diff
+  src/correctness_diff.cpp
+)
+
+target_link_libraries(correctness_diff
+  PRIVATE
+    us4_runtime_benchmark_registry
+    us4_runtime_core
+    us4_build_options
+    us4_build_warnings
+)

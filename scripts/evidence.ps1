@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "use-msvc-toolchain.ps1")
 
 function Test-CommandAvailable {
     param(
@@ -14,10 +15,16 @@ function Get-CliPath {
         return $env:US4_CLI_PATH
     }
 
-    return Join-Path (Join-Path (Get-Location) "build") "us4-cli.exe"
+    $rootCandidate = Join-Path (Join-Path (Get-Location) "build") "us4-cli.exe"
+    if (Test-Path $rootCandidate) {
+        return $rootCandidate
+    }
+
+    return Join-Path (Join-Path (Join-Path (Get-Location) "build") "runtime\cli") "us4-cli.exe"
 }
 
 function Show-BuildGuidance {
+    [void](Enable-MsvcToolchain)
     $cliPath = Get-CliPath
     Write-Host "CLI evidence is blocked because the executable was not found."
     Write-Host "Expected binary: $cliPath"
@@ -35,6 +42,7 @@ function Show-BuildGuidance {
     Write-Host 'cmake --build build --target us4-cli'
 }
 
+[void](Enable-MsvcToolchain)
 $cliPath = Get-CliPath
 
 if (-not (Test-Path $cliPath)) {
@@ -43,7 +51,8 @@ if (-not (Test-Path $cliPath)) {
 }
 
 Write-Host "Capturing Playwright evidence for us4-cli"
-npx playwright test --project=cli --reporter=list,html
+$env:PLAYWRIGHT_JSON_OUTPUT_NAME = "test-results/results.json"
+npx playwright test --project=cli --reporter=list,html,json
 
 if (-not (Test-Path "playwright-report/index.html")) {
     Write-Host "Playwright HTML report was not generated."
@@ -85,10 +94,17 @@ if (!totals.total || totals.total === totals.skipped) {
 }
 '@
 
-$summaryJson = node -e $summaryScript
-if ($LASTEXITCODE -eq 2) {
+$summaryScriptPath = Join-Path $env:TEMP "us4-playwright-summary.cjs"
+Set-Content -Path $summaryScriptPath -Value $summaryScript -Encoding ASCII
+$summaryJson = node $summaryScriptPath
+$nodeExitCode = $LASTEXITCODE
+Remove-Item $summaryScriptPath -ErrorAction SilentlyContinue
+if ($nodeExitCode -eq 2) {
     Write-Host "Playwright only produced skipped tests. Evidence is not complete."
     exit 1
+}
+if ($nodeExitCode -ne 0) {
+    exit $nodeExitCode
 }
 
 Write-Host "Playwright evidence summary: $summaryJson"

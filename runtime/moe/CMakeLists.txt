@@ -1,4 +1,5 @@
 add_library(us4_runtime_moe
+  src/expert_pager.cpp
   src/expert_router.cpp
 )
 

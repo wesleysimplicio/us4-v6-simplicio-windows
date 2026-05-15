@@ -11,7 +11,12 @@ resolve_cli_path() {
     return
   fi
 
-  printf '%s\n' "$(pwd)/build/us4-cli.exe"
+  if [[ -f "$(pwd)/build/us4-cli.exe" ]]; then
+    printf '%s\n' "$(pwd)/build/us4-cli.exe"
+    return
+  fi
+
+  printf '%s\n' "$(pwd)/build/runtime/cli/us4-cli.exe"
 }
 
 show_build_guidance() {
@@ -41,7 +46,8 @@ if [[ ! -f "$CLI_PATH" ]]; then
 fi
 
 echo "Capturing Playwright evidence for us4-cli"
-npx playwright test --project=cli --reporter=list,html
+PLAYWRIGHT_JSON_OUTPUT_NAME="test-results/results.json" \
+  npx playwright test --project=cli --reporter=list,html,json
 
 if [[ ! -f playwright-report/index.html ]]; then
   echo "Playwright HTML report was not generated."

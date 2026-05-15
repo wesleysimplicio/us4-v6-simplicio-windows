@@ -1,9 +1,19 @@
 #include "us4/runtime/cache/prefix_cache.h"
 
+#include <functional>
+#include <sstream>
 #include <utility>
 
 namespace us4::runtime::cache
 {
+
+    std::string PrefixCache::BuildKey(std::string_view prompt, const std::size_t promptTokens)
+    {
+        const std::size_t digest = std::hash<std::string_view>{}(prompt);
+        std::ostringstream key;
+        key << "prefix:" << digest << ':' << promptTokens;
+        return key.str();
+    }
 
     void PrefixCache::Upsert(PrefixCacheEntry entry)
     {
@@ -38,6 +48,20 @@ namespace us4::runtime::cache
         return totalBytes;
     }
 
+    std::size_t PrefixCache::WarmEntryCount() const
+    {
+        std::size_t warmEntries = 0;
+        for (const auto& [key, entry] : entries_)
+        {
+            static_cast<void>(key);
+            if (entry.warm)
+            {
+                ++warmEntries;
+            }
+        }
+        return warmEntries;
+    }
+
     bool PrefixCache::Erase(const std::string& key)
     {
         return entries_.erase(key) > 0;
@@ -46,6 +70,18 @@ namespace us4::runtime::cache
     std::size_t PrefixCache::Size() const
     {
         return entries_.size();
+    }
+
+    std::vector<PrefixCacheEntry> PrefixCache::Snapshot() const
+    {
+        std::vector<PrefixCacheEntry> entries;
+        entries.reserve(entries_.size());
+        for (const auto& [key, entry] : entries_)
+        {
+            static_cast<void>(key);
+            entries.push_back(entry);
+        }
+        return entries;
     }
 
 } // namespace us4::runtime::cache

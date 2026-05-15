@@ -1,7 +1,10 @@
 add_library(
     us4_runtime_core
+    cpu_scalar_runtime.cpp
+    gqa_attention.cpp
     hardware_probe.cpp
     model_registry.cpp
+    rope.cpp
     runtime_context.cpp
     runtime_mode.cpp)
 

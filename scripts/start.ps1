@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "use-msvc-toolchain.ps1")
 
 Write-Host "US4 V6 Windows Edition local start helper"
 
@@ -12,23 +13,14 @@ if (-not (Test-Path "CMakeLists.txt")) {
     exit 1
 }
 
+if (-not (Enable-MsvcToolchain)) {
+    Write-Host "Visual Studio C++ tooling could not be discovered automatically."
+    Write-Host "Install the 'Desktop development with C++' workload or expose MSVC/CMake/Ninja in the current shell."
+    exit 1
+}
+
 if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
-    Write-Host "CMake was not found in PATH."
-    Write-Host "Open a Visual Studio Developer PowerShell or add CMake/Ninja to PATH before running this helper."
-    exit 1
-}
-
-if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
-    Write-Host "Ninja was not found in PATH."
-    Write-Host "Install the Visual Studio C++ tooling or expose Ninja in the current shell."
-    exit 1
-}
-
-if (-not (Get-Command cl -ErrorAction SilentlyContinue) -and
-    -not (Get-Command clang-cl -ErrorAction SilentlyContinue) -and
-    -not (Get-Command clang++ -ErrorAction SilentlyContinue)) {
-    Write-Host "No C++ compiler was found in PATH."
-    Write-Host "Install the 'Desktop development with C++' workload or open a Developer PowerShell that exposes MSVC/Clang."
+    Write-Host "CMake was not found after toolchain discovery."
     exit 1
 }
 
@@ -40,5 +32,5 @@ cmake -S . -B $BuildDir -G Ninja -DCMAKE_BUILD_TYPE=Release `
 cmake --build $BuildDir --target us4-cli
 
 Write-Host "Build completed. Suggested next commands:"
-Write-Host ".\\$BuildDir\\us4-cli.exe --probe"
-Write-Host ".\\$BuildDir\\us4-cli.exe run --model qwen-0.5b --prompt `"hi`""
+Write-Host ".\\$BuildDir\\runtime\\cli\\us4-cli.exe --probe"
+Write-Host ".\\$BuildDir\\runtime\\cli\\us4-cli.exe run --model qwen-0.5b --prompt `"hi`""

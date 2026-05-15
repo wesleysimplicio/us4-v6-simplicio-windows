@@ -58,11 +58,18 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
     if(GTest_FOUND)
         add_executable(
             us4_core_tests
-            tests/unit/hardware_probe_test.cpp)
+            tests/unit/backend_planner_test.cpp
+            tests/unit/bitnet_ternary_test.cpp
+            tests/unit/cuda_backend_test.cpp
+            tests/unit/hardware_probe_test.cpp
+            tests/unit/kv_runtime_test.cpp
+            tests/unit/llama_runtime_test.cpp
+            tests/unit/moe_runtime_test.cpp)
 
         target_link_libraries(
             us4_core_tests
             PRIVATE
+                us4_runtime_benchmark_registry
                 us4_runtime_core
                 GTest::gtest_main
                 us4_build_options

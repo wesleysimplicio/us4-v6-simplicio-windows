@@ -1,8 +1,19 @@
 add_library(us4_runtime_adapters
+  src/adapter_factory.cpp
+  src/bitnet_model_loader.cpp
+  src/bitnet_reference_hooks.cpp
+  src/bitnet_scalar_adapter.cpp
   src/dense_adapter_base.cpp
-  src/qwen_scalar_adapter.cpp
   src/gemma_scalar_adapter.cpp
+  src/deepseek_moe_scalar_adapter.cpp
+  src/kimi_moe_scalar_adapter.cpp
+  src/llama_scalar_adapter.cpp
+  src/model_loader.cpp
   src/null_windows_adapter.cpp
+  src/qwen_scalar_adapter.cpp
+  src/ternary_model_loader.cpp
+  src/ternary_reference_hooks.cpp
+  src/ternary_scalar_adapter.cpp
 )
 
 target_include_directories(us4_runtime_adapters

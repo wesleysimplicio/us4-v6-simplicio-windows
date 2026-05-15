@@ -154,7 +154,11 @@ int main()
         }
 
         if (benchmark.name == "dense_baseline_qwen_cpu_only" ||
-            benchmark.name == "dense_baseline_gemma_cpu_only" || benchmark.name == "dense_baseline")
+            benchmark.name == "dense_baseline_gemma_cpu_only" ||
+            benchmark.name == "dense_baseline_llama_cpu_only" ||
+            benchmark.name == "dense_baseline_bitnet_cpu_only" ||
+            benchmark.name == "dense_baseline_ternary_cpu_only" ||
+            benchmark.name == "dense_baseline")
         {
             const ScalarBenchmarkResult matmul = RunScalarMatmul(96U, 96U, 128U);
             const ScalarBenchmarkResult attention = RunScalarAttention(48U, 64U);

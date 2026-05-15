@@ -45,6 +45,10 @@ namespace us4::core
             {
                 return ModelFamily::kBitNet;
             }
+            if (ContainsToken(modelId, "ternary"))
+            {
+                return ModelFamily::kTernary;
+            }
             return ModelFamily::kUnknown;
         }
 
@@ -61,7 +65,8 @@ namespace us4::core
             {"kimi-k2", ModelFamily::kKimi, "moe-kimi", "degraded", true, false, false},
             {"minimax-m1", ModelFamily::kMiniMax, "moe-minimax", "micro", true, false, false},
             {"glm-4.5", ModelFamily::kGlm, "moe-glm", "micro", true, false, true},
-            {"bitnet-b1.58", ModelFamily::kBitNet, "ternary-bitnet", "nano", false, false, false},
+            {"bitnet-b1.58", ModelFamily::kBitNet, "dense-bitnet", "nano", false, false, false},
+            {"ternary-int4", ModelFamily::kTernary, "dense-ternary", "nano", false, false, false},
         };
     }
 
@@ -115,6 +120,8 @@ namespace us4::core
             return "glm";
         case ModelFamily::kBitNet:
             return "bitnet";
+        case ModelFamily::kTernary:
+            return "ternary";
         case ModelFamily::kUnknown:
             break;
         }

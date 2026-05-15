@@ -1,5 +1,6 @@
 add_library(us4_runtime_kv
   src/kv_pager.cpp
+  src/summarizer.cpp
 )
 
 target_include_directories(us4_runtime_kv

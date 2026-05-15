@@ -36,6 +36,7 @@ namespace us4::runtime::adapters
                 .prefillScratchBytesPerToken = 320,
                 .decodeScratchBytesPerToken = 160,
                 .terminalTokenBase = 256000,
+                .promptTokenBase = 256256,
                 .promptTokenDivisor = 5,
                 .supportsGqa = true,
                 .supportsSlidingWindowAttention = false,

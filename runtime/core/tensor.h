@@ -15,6 +15,10 @@ namespace us4::core
     enum class TensorDataType
     {
         kFloat32,
+        kFloat16,
+        kBFloat16,
+        kInt8,
+        kInt4,
         kInt32,
     };
 

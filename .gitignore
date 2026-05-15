@@ -35,6 +35,7 @@ playwright-report/
 playwright/.cache/
 coverage/
 .nyc_output/
+runtime/benchmarks/correctness/reports/
 
 # Editor / OS
 .DS_Store

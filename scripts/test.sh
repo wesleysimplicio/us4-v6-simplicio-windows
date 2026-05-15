@@ -15,8 +15,19 @@ if [[ -f CMakeLists.txt && -d build ]]; then
   fi
 fi
 
+if [[ -f build/runtime/benchmarks/correctness_diff.exe ]]; then
+  echo "Detected correctness gate binary. Running CPU scalar correctness validation."
+  build/runtime/benchmarks/correctness_diff.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
-  CLI_PATH="${US4_CLI_PATH:-$(pwd)/build/us4-cli.exe}"
+  if [[ -n "${US4_CLI_PATH:-}" ]]; then
+    CLI_PATH="$US4_CLI_PATH"
+  elif [[ -f "$(pwd)/build/us4-cli.exe" ]]; then
+    CLI_PATH="$(pwd)/build/us4-cli.exe"
+  else
+    CLI_PATH="$(pwd)/build/runtime/cli/us4-cli.exe"
+  fi
   if [[ -f "$CLI_PATH" ]]; then
     echo "Detected us4-cli binary. Running CLI Playwright smoke validation."
     npx playwright test --project=cli --reporter=list

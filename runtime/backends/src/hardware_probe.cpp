@@ -12,15 +12,41 @@ namespace us4::runtime::backends
 
     namespace
     {
-
-        std::string ReadEnvOrDefault(const char* key, std::string_view fallback)
+        std::optional<std::string> ReadEnv(const char* key)
         {
+#if defined(_WIN32)
+            char* value = nullptr;
+            std::size_t size = 0;
+            if (_dupenv_s(&value, &size, key) != 0 || value == nullptr || value[0] == '\0')
+            {
+                if (value != nullptr)
+                {
+                    std::free(value);
+                }
+                return std::nullopt;
+            }
+
+            const std::string result(value);
+            std::free(value);
+            return result;
+#else
             const char* value = std::getenv(key);
             if (value == nullptr || value[0] == '\0')
             {
-                return std::string(fallback);
+                return std::nullopt;
             }
             return std::string(value);
+#endif
+        }
+
+        std::string ReadEnvOrDefault(const char* key, std::string_view fallback)
+        {
+            const auto value = ReadEnv(key);
+            if (!value.has_value())
+            {
+                return std::string(fallback);
+            }
+            return *value;
         }
 
         bool ReadBoolEnv(const char* key)
@@ -32,15 +58,15 @@ namespace us4::runtime::backends
 
         std::optional<std::uint32_t> ReadUintEnv(const char* key)
         {
-            const char* value = std::getenv(key);
-            if (value == nullptr || value[0] == '\0')
+            const auto value = ReadEnv(key);
+            if (!value.has_value())
             {
                 return std::nullopt;
             }
 
             char* end = nullptr;
-            const unsigned long parsed = std::strtoul(value, &end, 10);
-            if (end == value)
+            const unsigned long parsed = std::strtoul(value->c_str(), &end, 10);
+            if (end == value->c_str())
             {
                 return std::nullopt;
             }
@@ -50,15 +76,15 @@ namespace us4::runtime::backends
 
         std::size_t ReadSizeEnvGiB(const char* key, std::size_t fallbackGiB)
         {
-            const char* value = std::getenv(key);
-            if (value == nullptr || value[0] == '\0')
+            const auto value = ReadEnv(key);
+            if (!value.has_value())
             {
                 return fallbackGiB * 1024ULL * 1024ULL * 1024ULL;
             }
 
             char* end = nullptr;
-            const unsigned long long parsed = std::strtoull(value, &end, 10);
-            if (end == value)
+            const unsigned long long parsed = std::strtoull(value->c_str(), &end, 10);
+            if (end == value->c_str())
             {
                 return fallbackGiB * 1024ULL * 1024ULL * 1024ULL;
             }

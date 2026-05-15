@@ -19,6 +19,7 @@ namespace us4::core
         kMiniMax,
         kGlm,
         kBitNet,
+        kTernary,
     };
 
     struct ModelDescriptor

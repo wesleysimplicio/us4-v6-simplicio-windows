@@ -14,7 +14,13 @@ function resolveCliPath(): string {
   }
 
   const executableName = process.platform === 'win32' ? 'us4-cli.exe' : 'us4-cli';
-  return path.resolve(process.cwd(), 'build', executableName);
+  const candidates = [
+    path.resolve(process.cwd(), 'build', executableName),
+    path.resolve(process.cwd(), 'build', 'runtime', 'cli', executableName),
+  ];
+
+  const resolved = candidates.find((candidate) => existsSync(candidate));
+  return resolved ?? candidates[0];
 }
 
 async function attachTextArtifact(testInfo: TestInfo, name: string, body: string): Promise<void> {
@@ -113,16 +119,19 @@ test.describe('us4-cli smoke', () => {
     expect(stdout).toContain('Playwright Test GPU');
   });
 
-  test('keeps run scaffold observable for evidence capture', async ({}, testInfo) => {
+  test('runs the cpu-only scalar baseline for evidence capture', async ({}, testInfo) => {
     const cliPath = await requireCliBinary(testInfo);
 
     const { stdout, stderr } = await execFileAsync(
       cliPath,
-      ['run', '--model', 'qwen-0.5b', '--prompt', 'hello from playwright'],
+      ['run', '--model', 'qwen-0.5b', '--prompt', 'hello from playwright', '--backend', 'cpu', '--max-tokens', '5'],
       {
         env: {
           ...process.env,
-          US4_HAS_DIRECTML: process.env.US4_HAS_DIRECTML ?? '1',
+          US4_HAS_CUDA: '',
+          US4_HAS_DIRECTML: '',
+          US4_HAS_VULKAN: '',
+          US4_HAS_NPU: '',
         },
         windowsHide: true,
       },
@@ -130,7 +139,9 @@ test.describe('us4-cli smoke', () => {
 
     await attachProcessOutput(testInfo, 'run', stdout, stderr);
 
-    expect(stdout).toContain('run');
-    expect(stdout).toContain('qwen-0.5b');
+    expect(stdout).toContain('backend: cpu-avx2');
+    expect(stdout).toContain('mode: CPU_ONLY');
+    expect(stdout).toContain('run_status: completed');
+    expect(stdout).toContain('generated_tokens:');
   });
 });
