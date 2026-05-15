@@ -9,7 +9,7 @@ namespace us4::runtime::backends::vulkan
     namespace
     {
         VulkanQueueBinding ResolveQueueBinding(const HardwareCapabilities& capabilities,
-                                              const VulkanContextOptions& options)
+                                               const VulkanContextOptions& options)
         {
             VulkanQueueBinding queue{};
             if (capabilities.primaryAdapterClass == DeviceClass::kIntegratedGpu ||
@@ -85,6 +85,18 @@ namespace us4::runtime::backends::vulkan
         descriptorBufferEnabled_ = options_.allowDescriptorBuffer &&
                                    capabilities.primaryAdapterClass == DeviceClass::kDiscreteGpu;
         validationLayerEnabled_ = options_.enableValidationLayer;
+        kernelLibrary_ = VulkanKernelLibrary::LoadDefault();
+        stats_.loadedKernelCount = static_cast<std::uint32_t>(kernelLibrary_.LoadedCount());
+        if (!kernelLibrary_.Loaded())
+        {
+            state_ = VulkanContextState::kFaulted;
+            lastIssue_ = VulkanContextIssue{
+                .code = "vulkan-kernel-manifest-incomplete",
+                .message = "The Vulkan kernel manifest could not be fully loaded from disk.",
+                .recoverable = false,
+            };
+            return false;
+        }
         ++stats_.initializeCount;
         state_ = VulkanContextState::kReady;
         return true;
@@ -115,8 +127,23 @@ namespace us4::runtime::backends::vulkan
         }
 
         boundModelId_ = std::string(modelId);
-        descriptorArena_.setCount = std::max<std::uint32_t>(
-            1U, static_cast<std::uint32_t>(plan.steps.size() * 2U));
+        const auto requiredPrograms = kernelLibrary_.ResolveProgramsForPlan(plan);
+        stats_.requiredKernelCount = static_cast<std::uint32_t>(requiredPrograms.size());
+        for (const auto program : requiredPrograms)
+        {
+            if (!kernelLibrary_.HasProgram(program))
+            {
+                state_ = VulkanContextState::kFaulted;
+                lastIssue_ = VulkanContextIssue{
+                    .code = "vulkan-kernel-program-missing",
+                    .message = "The Vulkan execution plan requires a missing kernel program.",
+                    .recoverable = false,
+                };
+                return false;
+            }
+        }
+        descriptorArena_.setCount =
+            std::max<std::uint32_t>(1U, static_cast<std::uint32_t>(plan.steps.size() * 2U));
         descriptorArena_.persistentBytes = EstimatePersistentBytes(plan);
         descriptorArena_.transientBytes = EstimateTransientBytes(plan);
         stats_.persistentBytes = descriptorArena_.persistentBytes;
@@ -169,6 +196,11 @@ namespace us4::runtime::backends::vulkan
         return stats_;
     }
 
+    const VulkanKernelLibrary& VulkanContext::KernelLibrary() const
+    {
+        return kernelLibrary_;
+    }
+
     std::optional<VulkanContextIssue> VulkanContext::LastIssue() const
     {
         return lastIssue_;
@@ -179,9 +211,10 @@ namespace us4::runtime::backends::vulkan
         std::ostringstream builder;
         builder << "backend=vulkan"
                 << " adapter=\"" << adapterName_ << "\""
-                << " state=" << ToString(state_)
-                << " model=\"" << boundModelId_ << "\""
+                << " state=" << ToString(state_) << " model=\"" << boundModelId_ << "\""
                 << " queue_class=" << static_cast<int>(queue_.queueClass)
+                << " kernel_count=" << stats_.loadedKernelCount
+                << " required_kernels=" << stats_.requiredKernelCount
                 << " descriptor_sets=" << descriptorArena_.setCount
                 << " persistent_bytes=" << descriptorArena_.persistentBytes
                 << " transient_bytes=" << descriptorArena_.transientBytes

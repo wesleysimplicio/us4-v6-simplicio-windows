@@ -894,6 +894,10 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("vulkan.context_state: bound"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.step_count:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.descriptor_sets:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.kernel_manifest_loaded: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.kernel_count:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.required_kernel_count:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.timeline_semaphores:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.issue_codes: vulkan.npu.bypass"),
                       std::string::npos);

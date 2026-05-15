@@ -7,6 +7,7 @@
 #include "us4/runtime/backends/onednn/block_gemm_contract.h"
 #include "us4/runtime/backends/vulkan/vulkan_context.h"
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
+#include "us4/runtime/backends/vulkan/vulkan_kernel_library.h"
 #include "us4/runtime/backends/windows_ml/layer_offloader.h"
 #include "us4/runtime/backends/windows_ml/mixed_dispatch_planner.h"
 #include "us4/runtime/backends/windows_ml/power_thermal_monitor.h"
@@ -196,11 +197,38 @@ namespace us4::runtime::tests
             ASSERT_TRUE(context.Initialize(capabilities));
             ASSERT_TRUE(context.BindExecutionPlan("qwen-0.5b", plan));
             EXPECT_EQ(context.State(), backends::vulkan::VulkanContextState::kBound);
+            EXPECT_TRUE(context.KernelLibrary().Loaded());
+            EXPECT_EQ(context.Stats().loadedKernelCount, context.KernelLibrary().LoadedCount());
+            EXPECT_GE(context.Stats().loadedKernelCount, 3U);
+            EXPECT_EQ(context.Stats().requiredKernelCount, 3U);
             EXPECT_EQ(context.Queue().queueClass,
                       backends::vulkan::VulkanQueueClass::kDedicatedCompute);
             EXPECT_GE(context.DescriptorArena().setCount, 1U);
             EXPECT_GT(context.Stats().pipelineStageCount, 0U);
             EXPECT_NE(context.DescribeSession().find("backend=vulkan"), std::string::npos);
+        }
+
+        TEST(BackendPlannerTest, VulkanKernelLibraryLoadsManifestShaders)
+        {
+            const auto library = backends::vulkan::VulkanKernelLibrary::LoadDefault();
+            ASSERT_TRUE(library.Loaded());
+            EXPECT_GE(library.Size(), 3U);
+            EXPECT_GE(library.LoadedCount(), 3U);
+            EXPECT_TRUE(library.Issues().empty());
+
+            const auto* matmul =
+                library.FindProgram(backends::vulkan::VulkanKernelProgram::kMatMul);
+            const auto* softmax =
+                library.FindProgram(backends::vulkan::VulkanKernelProgram::kSoftmax);
+            const auto* rmsnorm =
+                library.FindProgram(backends::vulkan::VulkanKernelProgram::kRmsNorm);
+
+            ASSERT_NE(matmul, nullptr);
+            ASSERT_NE(softmax, nullptr);
+            ASSERT_NE(rmsnorm, nullptr);
+            EXPECT_NE(matmul->source.find("#version 460"), std::string::npos);
+            EXPECT_NE(softmax->source.find("layout(local_size_x = 64"), std::string::npos);
+            EXPECT_NE(rmsnorm->source.find("inversesqrt"), std::string::npos);
         }
 
         TEST(BackendPlannerTest, WindowsMlPlanRequiresExplicitOptIn)

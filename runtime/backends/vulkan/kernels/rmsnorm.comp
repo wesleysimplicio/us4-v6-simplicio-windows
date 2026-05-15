@@ -1,0 +1,56 @@
+#version 460
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) readonly buffer InputVector
+{
+    float values[];
+}
+inputVector;
+
+layout(std430, binding = 1) readonly buffer WeightVector
+{
+    float values[];
+}
+weightVector;
+
+layout(std430, binding = 2) writeonly buffer OutputVector
+{
+    float values[];
+}
+outputVector;
+
+layout(push_constant) uniform RmsNormParams
+{
+    uint elementCount;
+    float epsilon;
+}
+params;
+
+shared float squaredSum[64];
+
+void main()
+{
+    const uint index = gl_GlobalInvocationID.x;
+    const uint lane = gl_LocalInvocationID.x;
+    const bool active = index < params.elementCount;
+    const uint safeLane = min(lane, 63U);
+
+    const float value = active ? inputVector.values[index] : 0.0;
+    squaredSum[safeLane] = value * value;
+    barrier();
+
+    if (!active)
+    {
+        return;
+    }
+
+    float total = 0.0;
+    for (uint i = 0U; i < gl_WorkGroupSize.x; ++i)
+    {
+        total += squaredSum[i];
+    }
+
+    const float scale = inversesqrt(total / max(float(params.elementCount), 1.0) + params.epsilon);
+    outputVector.values[index] = value * scale * weightVector.values[index];
+}

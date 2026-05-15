@@ -272,6 +272,9 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('vulkan.context_state: bound');
         expect(stdout).toContain('vulkan.step_count:');
         expect(stdout).toContain('vulkan.descriptor_sets:');
+        expect(stdout).toContain('vulkan.kernel_manifest_loaded: yes');
+        expect(stdout).toContain('vulkan.kernel_count:');
+        expect(stdout).toContain('vulkan.required_kernel_count:');
         expect(stdout).toContain('vulkan.timeline_semaphores:');
         expect(stderr).toContain('not implemented yet');
     });

@@ -1,0 +1,54 @@
+#version 460
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) readonly buffer InputScores
+{
+    float values[];
+}
+inputScores;
+
+layout(std430, binding = 1) writeonly buffer OutputScores
+{
+    float values[];
+}
+outputScores;
+
+layout(push_constant) uniform SoftmaxParams
+{
+    uint rowCount;
+    uint rowStride;
+}
+params;
+
+shared float scratch[64];
+
+void main()
+{
+    const uint row = gl_WorkGroupID.x;
+    const uint lane = gl_LocalInvocationID.x;
+    const bool active = row < params.rowCount && lane < params.rowStride;
+    const uint safeLane = min(lane, 63U);
+
+    uint offset = 0U;
+    if (active)
+    {
+        offset = row * params.rowStride + lane;
+    }
+    scratch[safeLane] = active ? exp(inputScores.values[offset]) : 0.0;
+    barrier();
+
+    if (!active)
+    {
+        return;
+    }
+
+    float denom = 0.0;
+    const uint activeLanes = min(params.rowStride, gl_WorkGroupSize.x);
+    for (uint i = 0U; i < activeLanes; ++i)
+    {
+        denom += scratch[i];
+    }
+
+    outputScores.values[offset] = scratch[safeLane] / max(denom, 1e-6);
+}

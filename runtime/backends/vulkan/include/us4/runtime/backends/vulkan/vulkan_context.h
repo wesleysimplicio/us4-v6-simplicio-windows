@@ -2,6 +2,7 @@
 
 #include "us4/runtime/backends/hardware_probe.h"
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
+#include "us4/runtime/backends/vulkan/vulkan_kernel_library.h"
 
 #include <optional>
 #include <string>
@@ -47,6 +48,8 @@ namespace us4::runtime::backends::vulkan
         std::uint32_t bindCount = 0;
         std::uint32_t descriptorRebuildCount = 0;
         std::uint32_t pipelineStageCount = 0;
+        std::uint32_t loadedKernelCount = 0;
+        std::uint32_t requiredKernelCount = 0;
         std::size_t persistentBytes = 0;
         std::size_t transientBytes = 0;
     };
@@ -75,6 +78,7 @@ namespace us4::runtime::backends::vulkan
         [[nodiscard]] const VulkanQueueBinding& Queue() const;
         [[nodiscard]] const VulkanDescriptorArena& DescriptorArena() const;
         [[nodiscard]] const VulkanContextStats& Stats() const;
+        [[nodiscard]] const VulkanKernelLibrary& KernelLibrary() const;
         [[nodiscard]] std::optional<VulkanContextIssue> LastIssue() const;
         [[nodiscard]] std::string DescribeSession() const;
 
@@ -84,6 +88,7 @@ namespace us4::runtime::backends::vulkan
         VulkanQueueBinding queue_{};
         VulkanDescriptorArena descriptorArena_{};
         VulkanContextStats stats_{};
+        VulkanKernelLibrary kernelLibrary_{};
         std::optional<VulkanContextIssue> lastIssue_;
         std::string adapterName_;
         std::string boundModelId_;

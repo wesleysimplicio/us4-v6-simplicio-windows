@@ -226,6 +226,10 @@ namespace us4::cli
         output << "vulkan.descriptor_sets: " << context.DescriptorArena().setCount << '\n';
         output << "vulkan.persistent_bytes: " << context.DescriptorArena().persistentBytes << '\n';
         output << "vulkan.transient_bytes: " << context.DescriptorArena().transientBytes << '\n';
+        output << "vulkan.kernel_manifest_loaded: "
+               << (context.KernelLibrary().Loaded() ? "yes" : "no") << '\n';
+        output << "vulkan.kernel_count: " << context.Stats().loadedKernelCount << '\n';
+        output << "vulkan.required_kernel_count: " << context.Stats().requiredKernelCount << '\n';
         output << "vulkan.timeline_semaphores: "
                << (executionPlan.useTimelineSemaphores ? "yes" : "no") << '\n';
         output << "vulkan.cpu_attention_fallback: "
