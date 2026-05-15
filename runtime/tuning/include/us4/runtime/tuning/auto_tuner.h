@@ -3,6 +3,7 @@
 #include "us4/runtime/backends/runtime_types.h"
 
 #include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -36,9 +37,14 @@ namespace us4::runtime::tuning
     class AutoTuner
     {
       public:
+        explicit AutoTuner(std::filesystem::path storePath = {});
+
         [[nodiscard]] TuningPlan
         BuildPlan(const backends::SessionRequest& request,
                   const backends::HardwareCapabilities& capabilities) const;
+
+      private:
+        std::filesystem::path storePath_;
     };
 
 } // namespace us4::runtime::tuning

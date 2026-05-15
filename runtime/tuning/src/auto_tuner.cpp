@@ -1,6 +1,7 @@
 #include "us4/runtime/tuning/auto_tuner.h"
 
 #include "us4/profiles/profile_catalog.h"
+#include "us4/runtime/tuning/profile_store.h"
 
 #include <algorithm>
 
@@ -50,12 +51,18 @@ namespace us4::runtime::tuning
         }
     } // namespace
 
+    AutoTuner::AutoTuner(std::filesystem::path storePath) : storePath_(std::move(storePath)) {}
+
     TuningPlan AutoTuner::BuildPlan(const backends::SessionRequest& request,
                                     const backends::HardwareCapabilities& capabilities) const
     {
         TuningPlan plan{};
+        const ProfileStore profileStore(storePath_.empty() ? ProfileStore::DefaultPath()
+                                                           : storePath_);
+        const auto cachedProfileId = profileStore.LoadProfileId(capabilities);
         const std::string recommendedProfileId =
-            us4::profiles::ProfileCatalog::RecommendId(capabilities);
+            cachedProfileId.has_value() ? *cachedProfileId
+                                        : us4::profiles::ProfileCatalog::RecommendId(capabilities);
         const std::string requestedProfileId = ResolveRequestedProfileId(request);
         const bool explicitWindowsMlRequest = IsExplicitWindowsMlRequest(request);
         const bool noNpuFallbackRegression =
@@ -76,7 +83,20 @@ namespace us4::runtime::tuning
         plan.decisions.push_back(TuningDecision{
             .key = "recommended-profile",
             .value = recommendedProfileId,
-            .rationale = "Hardware-driven recommendation seeds the mini-bench plan.",
+            .rationale =
+                cachedProfileId.has_value()
+                    ? "Persisted profile cache overrides the catalog recommendation for this "
+                      "hardware fingerprint."
+                    : "Hardware-driven recommendation seeds the mini-bench plan.",
+        });
+        plan.decisions.push_back(TuningDecision{
+            .key = "profile-store",
+            .value = cachedProfileId.has_value() ? "hit" : "miss",
+            .rationale = cachedProfileId.has_value()
+                             ? "A persisted tuning profile already exists for this hardware "
+                               "fingerprint."
+                             : "No persisted tuning profile was found for this hardware "
+                               "fingerprint.",
         });
         plan.decisions.push_back(TuningDecision{
             .key = "speculative",

@@ -4,6 +4,7 @@
 #include "us4/profiles/profile_catalog.h"
 #include "us4/runtime/adapters/i_us4_windows_adapter.h"
 #include "us4/runtime/backends/backend_selector.h"
+#include "us4/runtime/tuning/profile_store.h"
 
 #include <algorithm>
 #include <sstream>
@@ -12,41 +13,62 @@ namespace us4::core
 {
     namespace
     {
-        std::string
-        ResolveProfileId(const ModelDescriptor& model, us4::runtime::backends::RuntimeMode mode,
-                         const us4::runtime::backends::HardwareCapabilities& capabilities)
+        struct ProfileSelection
+        {
+            std::string profileId;
+            bool fromStore = false;
+        };
+
+        ProfileSelection
+        ResolveProfileSelection(const ModelDescriptor& model,
+                                us4::runtime::backends::RuntimeMode requestedMode,
+                                us4::runtime::backends::RuntimeMode selectedMode,
+                                const us4::runtime::backends::HardwareCapabilities& capabilities)
         {
             using us4::runtime::backends::RuntimeMode;
 
-            if (mode == RuntimeMode::kCpuOnly)
+            if (requestedMode == RuntimeMode::kCpuOnly)
             {
-                return "cpu-only";
+                return {"cpu-only", false};
             }
-            if (mode == RuntimeMode::kFull)
+            if (requestedMode == RuntimeMode::kFull)
             {
-                return "full";
+                return {"full", false};
             }
-            if (mode == RuntimeMode::kDegraded)
+            if (requestedMode == RuntimeMode::kDegraded)
             {
-                return "degraded";
+                return {"degraded", false};
             }
-            if (mode == RuntimeMode::kUltraLow)
+            if (requestedMode == RuntimeMode::kUltraLow)
             {
-                return "ultra-low";
+                return {"ultra-low", false};
             }
-            if (mode == RuntimeMode::kMicro)
+            if (requestedMode == RuntimeMode::kMicro)
             {
-                return "micro";
+                return {"micro", false};
             }
-            if (mode == RuntimeMode::kNano)
+            if (requestedMode == RuntimeMode::kNano)
             {
-                return "nano";
+                return {"nano", false};
+            }
+
+            us4::runtime::tuning::ProfileStore profileStore;
+            if (const auto storedProfileId = profileStore.LoadProfileId(capabilities);
+                storedProfileId.has_value())
+            {
+                return {*storedProfileId, true};
             }
             if (!model.defaultProfileId.empty())
             {
-                return model.defaultProfileId;
+                const auto defaultProfile =
+                    us4::profiles::ProfileCatalog::FindById(model.defaultProfileId);
+                if (!defaultProfile.has_value() || requestedMode != RuntimeMode::kBalanced ||
+                    defaultProfile->mode == selectedMode)
+                {
+                    return {model.defaultProfileId, false};
+                }
             }
-            return us4::profiles::ProfileCatalog::RecommendId(capabilities);
+            return {us4::profiles::ProfileCatalog::RecommendId(capabilities), false};
         }
 
         bool MatchesPreferredBackend(const std::string& preferredBackend,
@@ -124,12 +146,18 @@ namespace us4::core
                         ? SelectRuntimeMode(plan.backend, capabilities, request)
                         : request.mode;
 
-        const std::string profileId = ResolveProfileId(plan.model, plan.mode, capabilities);
+        const auto profileSelection =
+            ResolveProfileSelection(plan.model, request.mode, plan.mode, capabilities);
+        const std::string profileId = profileSelection.profileId;
 
         const auto profile = us4::profiles::ProfileCatalog::FindById(profileId);
         if (profile.has_value())
         {
             plan.profile = *profile;
+            if (profileSelection.fromStore && request.mode == RuntimeMode::kBalanced)
+            {
+                plan.mode = plan.profile.mode;
+            }
         }
         else
         {
@@ -137,6 +165,14 @@ namespace us4::core
             plan.profile.displayName = "Unknown";
             plan.profile.mode = plan.mode;
             plan.issues.push_back({"unknown-profile", "Profile id is not registered yet.", true});
+        }
+
+        if (profileSelection.fromStore)
+        {
+            plan.issues.push_back({"profile-store-hit",
+                                   "Runtime profile was restored from the persisted hardware "
+                                   "fingerprint cache.",
+                                   true});
         }
 
         if (plan.profile.mode != plan.mode)
