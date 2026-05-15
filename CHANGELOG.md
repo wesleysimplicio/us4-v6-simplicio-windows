@@ -16,6 +16,29 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 - aligned CMake project version with the published CLI/runtime surface
 
+## [0.1.19] - 2026-05-15
+
+### Added
+
+- E2E regression coverage for portable zip packaging, MSIX prerequisite handling, and PowerShell completion installation
+- migration guide and stronger release smoke coverage in CI
+
+### Fixed
+
+- idempotent completion installation for empty PowerShell profile files
+
+## [0.1.20] - 2026-05-15
+
+### Added
+
+- release checksum generation via `scripts/generate-checksums.ps1`
+- local post-publish smoke for portable zip artifacts via `scripts/post-publish-smoke.ps1`
+- renderable winget manifest scaffold via `scripts/render-winget-manifests.ps1`
+
+### Changed
+
+- release workflow now generates checksums and validates the portable release artifact before upload
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

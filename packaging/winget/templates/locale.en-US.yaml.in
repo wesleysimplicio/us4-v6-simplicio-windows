@@ -1,0 +1,8 @@
+PackageIdentifier: @PACKAGE_IDENTIFIER@
+PackageVersion: @PACKAGE_VERSION@
+PackageLocale: en-US
+Publisher: @PUBLISHER@
+PackageName: @PACKAGE_NAME@
+ShortDescription: Universal State Runtime for local LLM inference on Windows x86-64.
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

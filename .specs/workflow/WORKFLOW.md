@@ -158,7 +158,7 @@ Hoje o repo ainda nao possui automacao completa para:
 - correctness diff em `runtime/benchmarks/correctness/`
 - validacao estrutural do JSON exportado no corpo da PR
 - pipeline separado `e2e`
-- build de MSIX, portable zip ou publicacao via winget
+- distribuicao assinada de MSIX e publicacao via winget
 
 Quando esses itens forem implementados, atualize este documento e o DoD.
 
@@ -179,8 +179,10 @@ Estado atual do repo:
 
 - existe [`.github/workflows/release.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/release.yml) como trilha inicial de artefatos
 - existe pasta `packaging/msix/` como scaffold
+- existe pasta `packaging/winget/` como scaffold renderizavel
 - existe `CHANGELOG.md`
-- ainda nao existe pipeline completa de assinatura, MSIX final pronto para distribuicao ou winget
+- existe smoke local de portable zip e checksums de release
+- ainda nao existe pipeline completa de assinatura ou submissao real para winget
 
 Portanto, hoje `main` valida build e testes e ja consegue preparar artefatos iniciais, mas ainda nao produz uma release instalada e assinada pronta para distribuicao.
 

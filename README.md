@@ -51,7 +51,7 @@ Current behavior:
 
 Not implemented yet:
 
-- signed MSIX publishing, winget packaging, and post-publish smoke are not finished.
+- signed MSIX publishing is not finished, but the repository now includes winget scaffolding and local post-publish smoke for the portable zip.
 
 ## Matrix Bench And Tune
 
@@ -125,6 +125,15 @@ PowerShell completion setup:
 .\scripts\install-completions.ps1
 ```
 
+Release artifact helpers:
+
+```powershell
+.\scripts\build-portable-zip.ps1 -BuildDir build -OutputDir dist
+.\scripts\generate-checksums.ps1 -OutputDir dist
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.20-portable.zip
+.\scripts\render-winget-manifests.ps1 -Version 0.1.20
+```
+
 ## Repo Layout
 
 ```text
@@ -163,7 +172,7 @@ The biggest remaining milestones are:
 
 - deepen device-side execution beyond dry-run behavior for Vulkan and Windows ML
 - finish the Sprint 12 CLI/release surface around JSON parity and packaging
-- finish signed MSIX publishing, winget packaging, and post-publish release smoke
+- finish signed MSIX publishing and install-host validation for published MSIX artifacts
 - align the runtime version source, changelog, and release metadata end to end
 
 ## Out of Scope

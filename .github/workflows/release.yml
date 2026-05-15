@@ -66,6 +66,14 @@ jobs:
         run: .\scripts\build-msix.ps1 -BuildDir $env:BUILD_DIR -OutputDir dist
         continue-on-error: true
 
+      - name: Generate release checksums
+        run: .\scripts\generate-checksums.ps1 -OutputDir dist
+
+      - name: Smoke portable release artifact
+        run: |
+          $zip = Get-ChildItem -Path dist -Filter *.zip | Select-Object -First 1 -ExpandProperty FullName
+          .\scripts\post-publish-smoke.ps1 -ArtifactPath $zip -WorkingDir dist\portable-smoke
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:

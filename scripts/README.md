@@ -21,6 +21,12 @@ Os scripts deste repositorio cobrem dois cenarios:
   - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`
 - `build-msix.ps1`
   - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis
+- `generate-checksums.ps1`
+  - gera `SHA256SUMS.txt` para os artefatos de release em `dist/`
+- `post-publish-smoke.ps1`
+  - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
+- `render-winget-manifests.ps1`
+  - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
 
 ## Regras
 

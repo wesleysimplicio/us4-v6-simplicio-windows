@@ -1,25 +1,25 @@
 ---
 sprint: sprint-12
-status: todo
+status: in_progress
 start: 2026-10-15
 end: 2026-10-28
 owner: us4-core
 ---
 
-# Sprint 12 — Auto-Tune + Benchmark + Release v1.0 (Windows)
+# Sprint 12 - Auto-Tune + Benchmark + Release v1.0 (Windows)
 
 ## Objetivo
 Auto-tuning hardware-aware (tile/batch por profile). Matriz benchmark (8 hardware profiles x 9 adapters). CLI PowerShell-friendly. Docs finais. MSIX installer. Release v1.0.
 
 ## Tasks
-- [ ] T12.1 — `runtime/tuning/AutoTuner` (mini-bench at startup)
-- [ ] T12.2 — `runtime/tuning/profiles.json` (cached profile por GPU+CPU+RAM+VRAM)
-- [ ] T12.3 — Matriz benchmark `runtime/benchmarks/matrix_runner.cpp` (8 profiles x 9 adapters)
-- [ ] T12.4 — CLI polish: `us4.exe serve|run|probe|bench|tune` + JSON output; PowerShell completions
-- [ ] T12.5 — Docs finais: `README.md` + `.specs/architecture/{DESIGN,PATTERNS}.md`
-- [ ] T12.6 — MSIX installer + signed binary x64
-- [ ] T12.7 — Release v1.0: tag, changelog, GitHub Releases
-- [ ] T12.8 — Migration guide + troubleshooting
+- [x] T12.1 - `runtime/tuning/AutoTuner` (mini-bench at startup)
+- [x] T12.2 - `runtime/tuning/profiles.json` (cached profile por GPU+CPU+RAM+VRAM)
+- [x] T12.3 - Matriz benchmark `runtime/benchmarks/matrix_runner.cpp` (8 hardware profiles x 9 adapters)
+- [x] T12.4 - CLI polish: `us4.exe serve|run|probe|bench|tune` + JSON output; PowerShell completions
+- [ ] T12.5 - Docs finais: `README.md` + `.specs/architecture/{DESIGN,PATTERNS}.md`
+- [ ] T12.6 - MSIX installer + signed binary x64
+- [ ] T12.7 - Release v1.0: tag, changelog, GitHub Releases
+- [x] T12.8 - Migration guide + troubleshooting
 
 ## Test plan
 - Unit: auto-tuner converges; profile cache load/save.

@@ -975,4 +975,118 @@ test.describe('us4-cli smoke', () => {
 
              expect(`${result.stdout}\n${result.stderr}`).toContain('MakeAppx.exe not found');
          });
+
+    test('generates SHA256 checksums for release artifacts', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('checksum-dist');
+        const buildScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const checksumScriptPath = path.resolve(process.cwd(), 'scripts', 'generate-checksums.ps1');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const checksumsPath = path.join(outputDir, 'SHA256SUMS.txt');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            buildScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'checksum-build-portable', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const checksum = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            checksumScriptPath,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'checksum-generate', checksum.stdout, checksum.stderr);
+
+        expect(checksum.exitCode).toBe(0);
+        expect(existsSync(checksumsPath)).toBeTruthy();
+        const contents = readFileSync(checksumsPath, 'utf8');
+        expect(contents).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
+    });
+
+    test('runs post-publish smoke against the portable zip artifact', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('post-publish-dist');
+        const buildScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const smokeScriptPath = path.resolve(process.cwd(), 'scripts', 'post-publish-smoke.ps1');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const zipPath = path.join(outputDir, `us4-v6-windows-${packageVersion}-portable.zip`);
+        const workingDir = path.join(outputDir, 'smoke-work');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            buildScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'post-publish-build-portable', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const smoke = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            smokeScriptPath,
+            '-ArtifactPath',
+            zipPath,
+            '-WorkingDir',
+            workingDir,
+        ]);
+        await attachProcessOutput(testInfo, 'post-publish-smoke', smoke.stdout, smoke.stderr);
+
+        expect(smoke.exitCode).toBe(0);
+        expect(smoke.stdout).toContain('Portable zip smoke passed');
+    });
+
+    test('renders winget manifests from repository templates', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('winget-manifests');
+        const renderScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderScriptPath,
+            '-Version',
+            packageVersion,
+            '-PortableUrl',
+            `https://example.invalid/us4-v6-windows-${packageVersion}-portable.zip`,
+            '-MsixUrl',
+            `https://example.invalid/us4-v6-windows-${packageVersion}.msix`,
+            '-OutputDir',
+            outputDir,
+        ]);
+
+        await attachProcessOutput(testInfo, 'winget-render', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        expect(existsSync(path.join(outputDir, 'default.yaml'))).toBeTruthy();
+        expect(existsSync(path.join(outputDir, 'installer.yaml'))).toBeTruthy();
+        expect(existsSync(path.join(outputDir, 'locale.en-US.yaml'))).toBeTruthy();
+        expect(readFileSync(path.join(outputDir, 'installer.yaml'), 'utf8')).toContain(
+            `https://example.invalid/us4-v6-windows-${packageVersion}-portable.zip`
+        );
+    });
 });

@@ -50,4 +50,5 @@ Current limitations still apply:
 
 - MSIX signing is not configured
 - `MakeAppx.exe` must be present to build MSIX locally
-- post-publish smoke and winget packaging are still pending
+- post-publish smoke is currently implemented for the portable zip only
+- winget publishing still needs real release URLs and signed artifacts

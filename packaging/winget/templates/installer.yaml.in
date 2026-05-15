@@ -1,0 +1,15 @@
+PackageIdentifier: @PACKAGE_IDENTIFIER@
+PackageVersion: @PACKAGE_VERSION@
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: us4-cli.exe
+        PortableCommandAlias: us4-cli
+    InstallerUrl: @PORTABLE_URL@
+  - Architecture: x64
+    InstallerType: msix
+    InstallerUrl: @MSIX_URL@
+ManifestType: installer
+ManifestVersion: 1.6.0

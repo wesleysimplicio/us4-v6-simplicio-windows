@@ -52,6 +52,13 @@
 - Fix: instale as ferramentas de App Packaging do Windows SDK e rode novamente `.\scripts\build-msix.ps1 -BuildDir build -OutputDir dist`.
 - Important: o empacotamento portable zip nao depende de `MakeAppx.exe`; use `scripts/build-portable-zip.ps1` enquanto esse prerequisito nao estiver disponivel.
 
+## winget manifests still contain placeholder URLs
+
+- Symptom: os manifests renderizados em `packaging/winget/manifests/` ainda apontam para `example.invalid`.
+- Diagnose: confira os argumentos usados em `scripts/render-winget-manifests.ps1`.
+- Fix: rerenderize com os URLs reais do zip e do MSIX publicados.
+- Important: o scaffold de `winget` e versionado no repo, mas a publicacao real ainda depende dos artefatos assinados e dos URLs finais.
+
 ## Build artifacts locked
 
 - Symptom: compilador nao consegue sobrescrever artefatos em `build/`.

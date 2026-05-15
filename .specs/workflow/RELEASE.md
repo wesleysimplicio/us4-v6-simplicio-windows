@@ -26,6 +26,9 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `CHANGELOG.md`
 - `scripts/build-portable-zip.ps1`
 - scaffold de `packaging/msix/` + `scripts/build-msix.ps1`
+- scaffold de `packaging/winget/` + `scripts/render-winget-manifests.ps1`
+- `scripts/generate-checksums.ps1`
+- smoke local de portable zip via `scripts/post-publish-smoke.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
 
@@ -122,14 +125,16 @@ O que ainda falta e ligar isso a:
 Hoje o repo ja inclui:
 
 - `packaging/msix/`
+- `packaging/winget/`
 - `scripts/build-portable-zip.ps1`
 - `scripts/build-msix.ps1`
+- `scripts/generate-checksums.ps1`
+- `scripts/post-publish-smoke.ps1`
 
 O que ainda falta para fechar distribuicao:
 
 - assinatura
-- `packaging/winget/`
-- smoke de pos-publicacao
+- smoke de pos-publicacao em host real para MSIX
 - politica de rollback operacional
 
 ---
@@ -162,23 +167,32 @@ Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 - [x] smoke de release cobrindo `probe`, `run`, `bench` e `tune`
 - [x] `release.yml` criado
 - [x] `packaging/msix/` criado
+- [x] `packaging/winget/` criado
 - [x] estrategia de `portable zip` definida
 - [ ] assinatura de binarios definida
-- [ ] smoke de pos-publicacao definido
-- [ ] rollback documentado
+- [x] smoke de pos-publicacao definido
+- [x] rollback documentado
 - [ ] branch protection atualizada se novos checks forem obrigatorios
 
 ---
 
 ## 7. Rollback
 
-Hoje rollback e um procedimento manual porque nao ha release pipeline nem publicacao automatica.
+Hoje o rollback ainda e semiautomatico, mas ja existe um procedimento concreto para os artefatos atuais:
 
-Se houver distribuicao manual de binarios antes da pipeline oficial:
+1. identifique a tag ou commit afetado
+2. preserve os checksums e artefatos do ultimo snapshot conhecido como bom
+3. remova do draft release os artefatos ruins ou descarte o draft
+4. gere novamente `portable zip`, `SHA256SUMS.txt` e, se aplicavel, o MSIX
+5. rode `scripts/post-publish-smoke.ps1` contra o zip reconstruido
+6. se o problema estiver em manifests, rerenderize `packaging/winget/manifests/` com URLs corretos
+7. registre o incidente em `.specs/incidents/` quando essa pasta existir
+8. adicione teste, smoke ou gate que teria evitado a regressao
 
-- identifique a versao afetada no PR/issue
-- preserve o artefato anterior
-- registre o incidente em `.specs/incidents/` quando essa pasta existir no processo do time
-- adicione teste ou gate que teria evitado o problema
+Se a falha estiver apenas no MSIX:
 
-Quando `release.yml` existir, este documento deve ganhar passos concretos de rollback de tag, release e pacote.
+- mantenha o portable zip como artefato valido
+- marque explicitamente a release como bloqueada para distribuicao instalada
+- nao publique manifests definitivos de winget apontando para o MSIX ruim
+
+Quando a pipeline de assinatura e publicacao estiver completa, este procedimento deve ganhar rollback de release publicada, tag final e submissao de winget.
