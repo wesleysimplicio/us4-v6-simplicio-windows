@@ -8,6 +8,7 @@
 - **HardwareProbe** — subsistema que detecta CPU features, RAM, GPU vendor, VRAM, suporte a CUDA, D3D12, Vulkan e NPU.
 - **BackendSelector** — política que escolhe backend primário, ordem de fallback e `RuntimeMode`.
 - **RuntimeMode** — perfil global de operação: `FULL`, `BALANCED`, `DEGRADED`, `ULTRA_LOW`, `MICRO`, `NANO`, `CPU_ONLY`.
+- **PowerThermalMonitor** — subsistema do core que consolida sinais de ETW e `GetSystemPowerStatus` para disparar downgrade térmico/energético observável.
 - **MemoryPlan** — plano de alocação e tiering entre VRAM hot, RAM warm e SSD cold.
 - **KV Cache** — armazenamento de keys/values de attention usado por prefill e decode.
 - **KV Pager** — mecanismo de promoção, demotion, compressão e flush do KV entre VRAM, RAM e SSD.
@@ -60,6 +61,7 @@ flowchart TB
 - Toda otimização relevante pode ser desligada para comparação com baseline.
 - KV promovido ou restaurado mantém equivalência de logits dentro da tolerância da task.
 - `RuntimeMode` só degrada automaticamente; promoção exige nova seleção/reinicialização controlada.
+- Downgrade automático pode ser disparado por pressão térmica/energética sustentada; promoção automática não acontece no mesmo ciclo.
 - O fallback de backend não pode corromper sessão nem trocar silenciosamente a semântica do modelo.
 - NPU offload é sempre opt-in e nunca requisito para funcionamento básico.
 
