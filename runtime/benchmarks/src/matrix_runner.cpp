@@ -355,11 +355,12 @@ namespace us4::runtime::benchmarks
         return report;
     }
 
-    std::string MatrixRunner::RenderJson(const MatrixTuneReport& report)
+    std::string MatrixRunner::RenderJson(const MatrixTuneReport& report,
+                                         const std::string_view executionLabel)
     {
         std::ostringstream json;
         json << "{\n";
-        json << "  \"execution\": \"bench\",\n";
+        json << "  \"execution\": \"" << EscapeJson(executionLabel) << "\",\n";
         json << "  \"requested_profile\": \"" << EscapeJson(report.requestedProfileId) << "\",\n";
         json << "  \"recommended_profile\": \"" << EscapeJson(report.recommendedProfileId)
              << "\",\n";

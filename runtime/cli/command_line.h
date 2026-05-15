@@ -41,6 +41,7 @@ namespace us4::cli
         kVersion,
         kProbe,
         kRun,
+        kServe,
         kBench,
         kTune,
         kInvalid,
@@ -70,6 +71,102 @@ namespace us4::cli
     inline std::uint32_t EstimatePromptTokens(std::string_view prompt)
     {
         return std::max<std::uint32_t>(1U, static_cast<std::uint32_t>((prompt.size() + 3U) / 4U));
+    }
+
+    inline std::string EscapeJson(std::string_view value)
+    {
+        std::string escaped;
+        escaped.reserve(value.size());
+        for (const char character : value)
+        {
+            switch (character)
+            {
+            case '\\':
+                escaped += "\\\\";
+                break;
+            case '"':
+                escaped += "\\\"";
+                break;
+            case '\n':
+                escaped += "\\n";
+                break;
+            case '\r':
+                escaped += "\\r";
+                break;
+            case '\t':
+                escaped += "\\t";
+                break;
+            default:
+                escaped += character;
+                break;
+            }
+        }
+        return escaped;
+    }
+
+    inline std::string RenderProbeJson(const us4::core::ProbeSummary& summary)
+    {
+        std::ostringstream json;
+        json << "{\n";
+        json << "  \"execution\": \"probe\",\n";
+        json << "  \"os\": \"" << EscapeJson(summary.osName) << "\",\n";
+        json << "  \"cpu\": \"" << EscapeJson(summary.cpuName) << "\",\n";
+        json << "  \"gpu\": \"" << EscapeJson(summary.gpuName) << "\",\n";
+        json << "  \"has_npu\": " << (summary.hasNpu ? "true" : "false") << ",\n";
+        json << "  \"selected_backend\": \"" << EscapeJson(summary.selectedBackend) << "\",\n";
+        json << "  \"mode\": \"" << EscapeJson(summary.mode) << "\",\n";
+        json << "  \"fallback_backends\": [";
+        for (std::size_t index = 0; index < summary.fallbackBackends.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << '"' << EscapeJson(summary.fallbackBackends[index]) << '"';
+        }
+        json << "],\n";
+        json << "  \"advisories\": [\n";
+        for (std::size_t index = 0; index < summary.advisories.size(); ++index)
+        {
+            const auto& advisory = summary.advisories[index];
+            json << "    {\"severity\":\"" << EscapeJson(advisory.severity) << "\",\"code\":\""
+                 << EscapeJson(advisory.code) << "\",\"message\":\"" << EscapeJson(advisory.message)
+                 << "\"}";
+            if (index + 1U < summary.advisories.size())
+            {
+                json << ',';
+            }
+            json << '\n';
+        }
+        json << "  ]\n";
+        json << "}\n";
+        return json.str();
+    }
+
+    inline std::string RenderServeJson(const us4::core::RuntimePlan& plan)
+    {
+        std::ostringstream json;
+        json << "{\n";
+        json << "  \"execution\": \"serve\",\n";
+        json << "  \"status\": \"scaffold-only\",\n";
+        json << "  \"model\": \"" << EscapeJson(plan.model.id) << "\",\n";
+        json << "  \"backend\": \"" << EscapeJson(plan.backend.name) << "\",\n";
+        json << "  \"mode\": \"" << EscapeJson(us4::core::ToString(plan.mode)) << "\",\n";
+        json << "  \"profile\": \"" << EscapeJson(plan.profile.id) << "\",\n";
+        json << "  \"allow_npu\": " << (plan.request.allowNpu ? "true" : "false") << ",\n";
+        json << "  \"fallback_count\": " << plan.fallbacks.size() << ",\n";
+        json << "  \"issue_codes\": [";
+        for (std::size_t index = 0; index < plan.issues.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << '"' << EscapeJson(plan.issues[index].code) << '"';
+        }
+        json << "]\n";
+        json << "}\n";
+        return json.str();
     }
 
     inline void AppendIssueCodes(std::ostringstream& output, std::string_view prefix,
@@ -455,16 +552,20 @@ namespace us4::cli
                << "Usage:\n"
                << "  us4-cli help\n"
                << "  us4-cli version\n"
-               << "  us4-cli probe\n"
+               << "  us4-cli probe [--format <text|json>]\n"
                << "  us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] "
                   "[--max-tokens <count>] [--backend "
+                  "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
+                  "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
+               << "  us4-cli serve --model <model-id> [--format <text|json>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
                << "  us4-cli bench --model <model-id> [--format <text|json>] [--max-tokens "
                   "<count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
-               << "  us4-cli tune --model <model-id> [--max-tokens <count>] [--backend "
+               << "  us4-cli tune --model <model-id> [--format <text|json>] [--max-tokens "
+                  "<count>] [--backend "
                   "<auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode "
                   "<auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]\n"
                << "\n"
@@ -472,6 +573,7 @@ namespace us4::cli
                << "  help, --help, -h    Show this help\n"
                << "  version, --version  Show CLI version\n"
                << "  probe, --probe      Print detected hardware/backend summary\n"
+               << "  serve               Render the serving plan scaffold for the current host\n"
                << "  run                 Execute CPU_ONLY baseline or print the scaffolded "
                   "execution plan\n"
                << "  bench               Execute the matrix planner and export the current "
@@ -482,6 +584,7 @@ namespace us4::cli
                << "Examples:\n"
                << "  us4-cli probe\n"
                << "  us4-cli version\n"
+               << "  us4-cli serve --model qwen-0.5b --backend windows-ml --format json\n"
                << "  us4-cli run --model qwen-0.5b --prompt \"hi\" --backend cpu\n"
                << "  us4-cli bench --model qwen-0.5b --format json\n"
                << "  us4-cli tune --model qwen-0.5b --backend windows-ml --npu\n";
@@ -509,22 +612,25 @@ namespace us4::cli
             return command;
         }
 
-        if (verb == "--probe" || verb == "probe")
-        {
-            command.kind = CommandKind::kProbe;
-            return command;
-        }
-
-        if (verb != "run" && verb != "bench" && verb != "tune")
+        if (verb != "--probe" && verb != "probe" && verb != "run" && verb != "serve" &&
+            verb != "bench" && verb != "tune")
         {
             command.kind = CommandKind::kInvalid;
             command.error = "Unknown command: " + std::string(verb);
             return command;
         }
 
-        if (verb == "run")
+        if (verb == "--probe" || verb == "probe")
+        {
+            command.kind = CommandKind::kProbe;
+        }
+        else if (verb == "run")
         {
             command.kind = CommandKind::kRun;
+        }
+        else if (verb == "serve")
+        {
+            command.kind = CommandKind::kServe;
         }
         else if (verb == "bench")
         {
@@ -633,14 +739,16 @@ namespace us4::cli
             }
 
             command.kind = CommandKind::kInvalid;
-            command.error = "Unknown run option: " + std::string(option);
+            command.error = "Unknown CLI option: " + std::string(option);
             return command;
         }
 
-        if (command.modelId.empty())
+        if ((command.kind == CommandKind::kRun || command.kind == CommandKind::kServe ||
+             command.kind == CommandKind::kBench || command.kind == CommandKind::kTune) &&
+            command.modelId.empty())
         {
             command.kind = CommandKind::kInvalid;
-            command.error = "The run command requires --model <model-id>.";
+            command.error = "The command requires --model <model-id>.";
             return command;
         }
         if (command.kind == CommandKind::kRun && command.prompt.empty())
@@ -674,6 +782,12 @@ namespace us4::cli
                            });
             return value;
         };
+        const auto normalizeFormat = [](std::string value)
+        {
+            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char character)
+                           { return static_cast<char>(std::tolower(character)); });
+            return value;
+        };
 
         if (command.kind == CommandKind::kInvalid)
         {
@@ -697,16 +811,28 @@ namespace us4::cli
         {
             return CommandOutput{
                 kSuccessExitCode,
-                "us4-cli 0.1.0-alpha\n",
+                "us4-cli 0.1.16\n",
                 {},
+            };
+        }
+
+        const std::string normalizedFormat = normalizeFormat(command.format);
+        if (normalizedFormat != "text" && normalizedFormat != "json")
+        {
+            return CommandOutput{
+                kUsageExitCode,
+                RenderHelp(),
+                "Unknown value for --format.\n",
             };
         }
 
         if (command.kind == CommandKind::kProbe)
         {
+            const auto summary = us4::core::ProbeHardware();
             return CommandOutput{
                 kSuccessExitCode,
-                us4::core::FormatProbeSummary(us4::core::ProbeHardware()),
+                normalizedFormat == "json" ? RenderProbeJson(summary)
+                                           : us4::core::FormatProbeSummary(summary),
                 {},
             };
         }
@@ -754,6 +880,15 @@ namespace us4::cli
         {
             const us4::runtime::benchmarks::MatrixRunner runner;
             const auto tuneReport = runner.Tune(request, capabilities);
+            if (normalizedFormat == "json")
+            {
+                return CommandOutput{
+                    kSuccessExitCode,
+                    us4::runtime::benchmarks::MatrixRunner::RenderJson(tuneReport, "tune"),
+                    {},
+                };
+            }
+
             const us4::core::RuntimePlan tunedPlan =
                 us4::core::RuntimeContext::BuildPlan(request, capabilities);
 
@@ -792,26 +927,13 @@ namespace us4::cli
 
         if (command.kind == CommandKind::kBench)
         {
-            std::string normalizedFormat = command.format;
-            std::transform(normalizedFormat.begin(), normalizedFormat.end(),
-                           normalizedFormat.begin(), [](unsigned char character)
-                           { return static_cast<char>(std::tolower(character)); });
-            if (normalizedFormat != "text" && normalizedFormat != "json")
-            {
-                return CommandOutput{
-                    kUsageExitCode,
-                    RenderHelp(),
-                    "Unknown value for --format.\n",
-                };
-            }
-
             const us4::runtime::benchmarks::MatrixRunner runner;
             const auto benchReport = runner.Benchmark(request, capabilities);
             if (normalizedFormat == "json")
             {
                 return CommandOutput{
                     kSuccessExitCode,
-                    us4::runtime::benchmarks::MatrixRunner::RenderJson(benchReport),
+                    us4::runtime::benchmarks::MatrixRunner::RenderJson(benchReport, "bench"),
                     {},
                 };
             }
@@ -850,6 +972,34 @@ namespace us4::cli
 
         const us4::core::RuntimePlan plan =
             us4::core::RuntimeContext::BuildPlan(request, capabilities);
+
+        if (command.kind == CommandKind::kServe)
+        {
+            if (normalizedFormat == "json")
+            {
+                return CommandOutput{
+                    kNotImplementedExitCode,
+                    RenderServeJson(plan),
+                    "Serve pipeline scaffolding is ready, but request handling is not "
+                    "implemented yet.\n",
+                };
+            }
+
+            std::ostringstream serveOutput;
+            serveOutput << us4::core::FormatRuntimePlan(plan);
+            serveOutput << "execution: serve\n";
+            serveOutput << "serve.status: scaffold-only\n";
+            serveOutput << "serve.allow_npu: " << (plan.request.allowNpu ? "yes" : "no") << '\n';
+            serveOutput << "serve.fallback_count: " << plan.fallbacks.size() << '\n';
+            AppendIssueCodes(serveOutput, "serve", plan.issues);
+
+            return CommandOutput{
+                kNotImplementedExitCode,
+                serveOutput.str(),
+                "Serve pipeline scaffolding is ready, but request handling is not implemented "
+                "yet.\n",
+            };
+        }
 
         std::ostringstream output;
         output << us4::core::FormatRuntimePlan(plan);

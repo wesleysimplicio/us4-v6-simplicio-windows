@@ -589,7 +589,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.0-alpha"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.16"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -720,6 +720,62 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ReturnsProbeJsonWhenRequested)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_DIRECTML", "1");
+            _putenv_s("US4_CPU_NAME", "Probe Json CPU");
+            _putenv_s("US4_GPU_NAME", "Probe Json GPU");
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kProbe;
+            command.format = "json";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(output.stderrText.empty());
+            EXPECT_NE(output.stdoutText.find("\"execution\": \"probe\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"cpu\": \"Probe Json CPU\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"gpu\": \"Probe Json GPU\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"selected_backend\": \"directml\""),
+                      std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsTuneJsonWhenRequested)
+        {
+            ClearProbeEnv();
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-cli-tune-json-store";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+#if defined(_WIN32)
+            _putenv_s("US4_PROFILE_STORE_PATH", storePath.string().c_str());
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kTune;
+            command.modelId = "qwen-0.5b";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.format = "json";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(output.stderrText.empty());
+            EXPECT_NE(output.stdoutText.find("\"execution\": \"tune\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"selected_profile\": \"cpu-only\""),
+                      std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"persisted\": true"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
         TEST(HardwareProbeTest, ReturnsBenchJsonWithoutPersistingProfile)
         {
             ClearProbeEnv();
@@ -752,6 +808,166 @@ namespace us4::core
             EXPECT_EQ(store.LoadProfileId(capabilities), std::nullopt);
 
             ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsBenchTextWithoutPersistingProfile)
+        {
+            ClearProbeEnv();
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-cli-bench-text-profile-store";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+#if defined(_WIN32)
+            _putenv_s("US4_PROFILE_STORE_PATH", storePath.string().c_str());
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kBench;
+            command.modelId = "qwen-0.5b";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(output.stderrText.empty());
+            EXPECT_NE(output.stdoutText.find("execution: bench"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("bench.selected_profile: cpu-only"),
+                      std::string::npos);
+            EXPECT_NE(output.stdoutText.find("bench.persisted: no"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("bench_status: completed"), std::string::npos);
+
+            us4::runtime::tuning::ProfileStore store(storePath);
+            const auto capabilities = us4::runtime::backends::HardwareProbe::DetectHost();
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::nullopt);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, RejectsBenchWithInvalidFormat)
+        {
+            ClearProbeEnv();
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kBench;
+            command.modelId = "qwen-0.5b";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.format = "yaml";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kUsageExitCode);
+            EXPECT_NE(output.stdoutText.find("us4-cli bench"), std::string::npos);
+            EXPECT_EQ(output.stderrText, "Unknown value for --format.\n");
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, TunePersistsProfileAndSubsequentRunUsesProfileStore)
+        {
+            ClearProbeEnv();
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-cli-run-profile-store-hit";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+#if defined(_WIN32)
+            _putenv_s("US4_PROFILE_STORE_PATH", storePath.string().c_str());
+            _putenv_s("US4_HAS_DIRECTML", "1");
+            _putenv_s("US4_GPU_NAME", "Intel Arc Test");
+            _putenv_s("US4_GPU_VENDOR", "intel");
+            _putenv_s("US4_GPU_CLASS", "integrated");
+            _putenv_s("US4_DEVICE_GIB", "8");
+#endif
+
+            cli::ParsedCommand tuneCommand{};
+            tuneCommand.kind = cli::CommandKind::kTune;
+            tuneCommand.modelId = "qwen-0.5b";
+            tuneCommand.backend = "cpu";
+            tuneCommand.mode = "cpu-only";
+            tuneCommand.maxTokens = 8;
+
+            const auto tuneOutput = cli::ExecuteCommand(tuneCommand);
+            ASSERT_EQ(tuneOutput.exitCode, cli::kSuccessExitCode);
+
+            cli::ParsedCommand runCommand{};
+            runCommand.kind = cli::CommandKind::kRun;
+            runCommand.modelId = "qwen-0.5b";
+            runCommand.prompt = "reuse tuned profile";
+            runCommand.backend = "auto";
+            runCommand.mode = "auto";
+            runCommand.maxTokens = 4;
+
+            const auto runOutput = cli::ExecuteCommand(runCommand);
+
+            EXPECT_EQ(runOutput.exitCode, cli::kSuccessExitCode);
+            EXPECT_NE(runOutput.stdoutText.find("profile: cpu-only"), std::string::npos);
+            EXPECT_NE(runOutput.stdoutText.find("profile-store-hit"), std::string::npos);
+            EXPECT_NE(runOutput.stdoutText.find("run_status: completed"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsServeJsonScaffoldWhenRequested)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_GPU_NAME", "Serve Json GPU");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_DEVICE_GIB", "8");
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kServe;
+            command.modelId = "qwen-0.5b";
+            command.backend = "vulkan";
+            command.format = "json";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kNotImplementedExitCode);
+            EXPECT_NE(output.stdoutText.find("\"execution\": \"serve\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"status\": \"scaffold-only\""), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"backend\": \"vulkan\""), std::string::npos);
+            EXPECT_NE(output.stderrText.find("Serve pipeline scaffolding is ready"),
+                      std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, RejectsInvalidFormatValues)
+        {
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kBench;
+            command.modelId = "qwen-0.5b";
+            command.format = "xml";
+
+            const auto output = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(output.exitCode, cli::kUsageExitCode);
+            EXPECT_NE(output.stderrText.find("Unknown value for --format."), std::string::npos);
+        }
+
+        TEST(HardwareProbeTest, ParsesServeArguments)
+        {
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),   const_cast<char*>("serve"),
+                const_cast<char*>("--model"),   const_cast<char*>("qwen-0.5b"),
+                const_cast<char*>("--backend"), const_cast<char*>("windows-ml"),
+                const_cast<char*>("--format"),  const_cast<char*>("json"),
+                const_cast<char*>("--npu"),
+            };
+
+            const auto command = us4::cli::ParseArguments(static_cast<int>(argv.size()),
+                                                          const_cast<char**>(argv.data()));
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kServe);
+            EXPECT_EQ(command.modelId, "qwen-0.5b");
+            EXPECT_EQ(command.backend, "windows-ml");
+            EXPECT_EQ(command.format, "json");
+            EXPECT_TRUE(command.allowNpu);
         }
 
         TEST(HardwareProbeTest, ReturnsCudaDryRunPlanForExplicitCudaBackend)

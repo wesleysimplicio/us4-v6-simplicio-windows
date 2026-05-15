@@ -9,7 +9,7 @@ Como o time `us4-core` move codigo de ideia ate merge em `main` neste repo. Este
 ### Padrao: trunk-based development
 
 - `main` e a unica branch longa.
-- Toda mudanca entra por PR pequeno, com escopo unico.
+- Toda mudanca entra por PR pequena, com escopo unico.
 - Feature branches devem ser curtas. Alvo pratico: menos de 2 dias.
 - Codigo incompleto precisa ficar atras de flag de build ou de runtime.
 - Rebase em cima de `main` antes do merge. Historico linear.
@@ -32,12 +32,6 @@ Para tasks de sprint, use:
 feat/sprint-XX-<task-id>-<slug>
 ```
 
-Exemplo:
-
-```text
-feat/sprint-02-t02.2-scalar-gemm
-```
-
 ---
 
 ## 2. Pull request rules
@@ -56,7 +50,7 @@ O titulo da PR precisa seguir Conventional Commits:
 feat(runtime): add cpu fallback probe summary
 fix(cli): reject run without prompt
 chore(ci): align windows build gate
-docs(workflow): remove release pipeline claims
+docs(workflow): update sprint 12 bench evidence contract
 ```
 
 ### Corpo
@@ -70,11 +64,30 @@ Use o template em [`.github/PULL_REQUEST_TEMPLATE.md`](C:/Users/wesley.simplicio
 
 Nao invente evidencia. Se um harness ainda nao existe, marque `N/A` e explique.
 
+### Evidencia obrigatoria por tipo de mudanca
+
+Se a PR tocar `bench`:
+
+- cite o comando executado
+- anexe ou referencie a saida textual ou JSON usada na validacao
+- quando o contrato JSON mudar, `bench --format json` vira evidencia obrigatoria
+
+Se a PR tocar `tune`:
+
+- cite o comando executado
+- anexe ou referencie o stdout
+- anexe ou referencie o store persistido usado na validacao
+- diga se usou `runtime/tuning/profiles.json` ou `US4_PROFILE_STORE_PATH`
+
+Se a PR tocar CLI/UX em geral:
+
+- inclua evidencias de Playwright em `playwright-report/` e `test-results/`
+
 ### Review
 
 - Minimo de 1 reviewer humano.
 - Mudancas em runtime, arquitetura, seguranca ou superficie publica pedem 2 reviewers quando possivel.
-- Nao faça self-merge sem aprovacao.
+- Nao faca self-merge sem aprovacao.
 - `req:` aberto bloqueia merge.
 
 ### Merge
@@ -143,6 +156,7 @@ Hoje o repo ainda nao possui automacao completa para:
 - coverage diff >= 80%
 - regression matrix por backend
 - correctness diff em `runtime/benchmarks/correctness/`
+- validacao estrutural do JSON exportado no corpo da PR
 - pipeline separado `e2e`
 - `release.yml`
 - build de MSIX, portable zip ou publicacao via winget

@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace us4::runtime::benchmarks
@@ -51,7 +52,8 @@ namespace us4::runtime::benchmarks
         ExecutePlan(const tuning::TuningPlan& plan, const backends::SessionRequest& request,
                     const backends::HardwareCapabilities& capabilities) const;
 
-        [[nodiscard]] static std::string RenderJson(const MatrixTuneReport& report);
+        [[nodiscard]] static std::string RenderJson(const MatrixTuneReport& report,
+                                                    std::string_view executionLabel = "bench");
 
       private:
         [[nodiscard]] MatrixTuneReport

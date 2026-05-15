@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <regex>
 
 namespace us4::runtime::tests
 {
@@ -19,6 +20,18 @@ namespace us4::runtime::tests
 #else
             unsetenv("US4_PROFILE_STORE_PATH");
 #endif
+        }
+
+        std::size_t CountSubstring(const std::string& haystack, const std::string& needle)
+        {
+            std::size_t count = 0U;
+            std::size_t offset = 0U;
+            while ((offset = haystack.find(needle, offset)) != std::string::npos)
+            {
+                ++count;
+                offset += needle.size();
+            }
+            return count;
         }
 
         TEST(AutoTunerTest, BuildsCpuOnlyProbePlanForCpuHosts)
@@ -333,6 +346,178 @@ namespace us4::runtime::tests
 
             tuning::ProfileStore store(storePath);
             EXPECT_EQ(store.LoadProfileId(capabilities), std::nullopt);
+        }
+
+        TEST(AutoTunerTest, MatrixRunnerFallsBackWhenPlanContainsUnregisteredAndUnsupportedProbes)
+        {
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-profile-store-matrix-fallback";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.cpuName = "Fallback CPU";
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = backends::RuntimeMode::kBalanced;
+            request.preferredBackend = "directml";
+            request.allowNpu = true;
+
+            tuning::TuningPlan plan{};
+            plan.decisions = {
+                {
+                    .key = "requested-profile",
+                    .value = "balanced",
+                    .rationale = "User asked for a balanced default.",
+                },
+                {
+                    .key = "recommended-profile",
+                    .value = "micro",
+                    .rationale = "Planner recommends micro for fallback coverage.",
+                },
+            };
+            plan.probes = {
+                {
+                    .benchmarkName = "not_registered_yet",
+                    .backend = "cpu",
+                    .profileId = "balanced",
+                    .promptTokens = 64U,
+                    .generationTokens = 16U,
+                    .regressionCritical = false,
+                    .rationale = "Intentional missing catalog entry.",
+                },
+                {
+                    .benchmarkName = "windows_ml_qwen_opt_in",
+                    .backend = "windows-ml",
+                    .profileId = "micro",
+                    .promptTokens = 256U,
+                    .generationTokens = 32U,
+                    .regressionCritical = true,
+                    .rationale = "Requires NPU support that this host does not expose.",
+                },
+            };
+
+            runtime::benchmarks::MatrixRunner runner(storePath);
+            const auto report = runner.ExecutePlan(plan, request, capabilities);
+
+            EXPECT_EQ(report.selectedProfileId, "micro");
+            EXPECT_EQ(report.selectedBackend, "directml");
+            EXPECT_TRUE(report.persisted);
+            ASSERT_EQ(report.samples.size(), 2U);
+            EXPECT_FALSE(report.samples[0].supported);
+            EXPECT_EQ(report.samples[0].rationale,
+                      "Probe is not registered in the benchmark catalog yet.");
+            EXPECT_FALSE(report.samples[1].supported);
+            EXPECT_EQ(report.samples[1].rationale,
+                      "Hardware capabilities do not satisfy the backend requirements for this "
+                      "probe.");
+
+            tuning::ProfileStore store(storePath);
+            EXPECT_EQ(store.LoadProfileId(capabilities), std::optional<std::string>("micro"));
+        }
+
+        TEST(AutoTunerTest, MatrixRunnerPrefersRecommendedProfileWhenScoresTie)
+        {
+            constexpr std::uint64_t kGiB = 1024ULL * 1024ULL * 1024ULL;
+            const auto tempRoot =
+                std::filesystem::temp_directory_path() / "us4-profile-store-matrix-tie";
+            std::filesystem::create_directories(tempRoot);
+            const auto storePath = tempRoot / "profiles.json";
+
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.cpuName = "Tie Break CPU";
+            capabilities.budget.hostBytes = (1000ULL * kGiB) / 3ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = backends::RuntimeMode::kBalanced;
+            request.preferredBackend = "windows-ml";
+            request.allowNpu = true;
+
+            tuning::TuningPlan plan{};
+            plan.decisions = {
+                {
+                    .key = "requested-profile",
+                    .value = "cpu-only",
+                    .rationale = "Existing cache asked for CPU-only.",
+                },
+                {
+                    .key = "recommended-profile",
+                    .value = "micro",
+                    .rationale = "Planner recommends the micro profile for fallback.",
+                },
+            };
+            plan.probes = {
+                {
+                    .benchmarkName = "dense_baseline_qwen_cpu_only",
+                    .backend = "cpu",
+                    .profileId = "cpu-only",
+                    .promptTokens = 128U,
+                    .generationTokens = 32U,
+                    .regressionCritical = false,
+                    .rationale = "CPU baseline candidate.",
+                },
+                {
+                    .benchmarkName = "windows_ml_qwen_no_npu_fallback",
+                    .backend = "windows-ml",
+                    .profileId = "micro",
+                    .promptTokens = 256U,
+                    .generationTokens = 32U,
+                    .regressionCritical = false,
+                    .rationale = "Windows ML fallback candidate.",
+                },
+            };
+
+            runtime::benchmarks::MatrixRunner runner(storePath);
+            const auto report = runner.ExecutePlan(plan, request, capabilities);
+
+            EXPECT_EQ(report.selectedProfileId, "micro");
+            EXPECT_EQ(report.selectedBackend, "windows-ml");
+            ASSERT_EQ(report.samples.size(), 2U);
+            EXPECT_NEAR(report.samples[0].score, report.samples[1].score, 0.001);
+        }
+
+        TEST(AutoTunerTest, MatrixRunnerRenderJsonPreservesStructureAndEscapesText)
+        {
+            runtime::benchmarks::MatrixTuneReport report{};
+            report.storePath = std::filesystem::temp_directory_path() / "us4-profile-store-json";
+            report.requestedProfileId = "balanced";
+            report.recommendedProfileId = "micro";
+            report.selectedProfileId = "micro";
+            report.selectedBackend = "windows-ml";
+            report.selectedScore = 188.25;
+            report.persisted = true;
+            report.plan.decisions.push_back({
+                .key = "recommended-profile",
+                .value = "micro",
+                .rationale = "Prefer \"micro\" for line\nwrapped output.",
+            });
+            report.samples.push_back({
+                .benchmarkName = "windows_ml_qwen_opt_in",
+                .backend = "windows-ml",
+                .profileId = "micro",
+                .score = 188.25,
+                .supported = true,
+                .regressionCritical = true,
+                .rationale = "Escapes backslash \\ and\ttab characters.",
+            });
+
+            const auto json = runtime::benchmarks::MatrixRunner::RenderJson(report, "tune");
+
+            EXPECT_NE(json.find("\"execution\": \"tune\""), std::string::npos);
+            EXPECT_NE(json.find("\"persisted\": true"), std::string::npos);
+            EXPECT_NE(json.find("\"recommended_profile\": \"micro\""), std::string::npos);
+            EXPECT_NE(json.find("Prefer \\\"micro\\\" for line\\nwrapped output."),
+                      std::string::npos);
+            EXPECT_NE(json.find("Escapes backslash \\\\ and\\ttab characters."), std::string::npos);
+            EXPECT_EQ(CountSubstring(json, "{\"key\":\""), 1U);
+            EXPECT_EQ(CountSubstring(json, "{\"benchmark\":\""), 1U);
+            EXPECT_TRUE(std::regex_search(json, std::regex(R"(\"samples\"\s*:\s*\[)")));
+            EXPECT_TRUE(std::regex_search(json, std::regex(R"(\"decisions\"\s*:\s*\[)")));
         }
     } // namespace
 } // namespace us4::runtime::tests

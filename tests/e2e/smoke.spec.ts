@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 import type {TestInfo} from '@playwright/test';
 import {execFile} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
 
@@ -154,6 +154,32 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('US4 Windows Edition Probe');
         expect(stdout).toContain('backend:');
         expect(stdout).toContain('Playwright Test GPU');
+    });
+
+    test('exports probe as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(cliPath, [ 'probe', '--format', 'json' ], {
+            ...process.env,
+            US4_HAS_DIRECTML : process.env.US4_HAS_DIRECTML ?? '1',
+            US4_CPU_NAME : 'Playwright Json CPU',
+            US4_GPU_NAME : 'Playwright Json GPU',
+        });
+
+        await attachProcessOutput(testInfo, 'probe-json', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as {
+            execution: string;
+            cpu: string;
+            gpu: string;
+            selected_backend: string;
+        };
+        expect(payload.execution).toBe('probe');
+        expect(payload.cpu).toBe('Playwright Json CPU');
+        expect(payload.gpu).toBe('Playwright Json GPU');
+        expect(payload.selected_backend).toBe('directml');
     });
 
     test('runs the cpu-only scalar baseline for evidence capture', async ({}, testInfo) => {
@@ -493,7 +519,44 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain(`tune.store_path: ${storePath}`);
         expect(stdout).toContain('tune_status: completed');
         expect(existsSync(storePath)).toBeTruthy();
+        expect(readFileSync(storePath, 'utf8')).toContain('"profile_id": "cpu-only"');
     });
+
+    test('exports tune as json and persists a cpu-only profile selection',
+         async ({}, testInfo) => {
+             const cliPath = await requireCliBinary(testInfo);
+             const storePath = testInfo.outputPath('tune-json-profiles.json');
+
+             const {stdout, stderr, exitCode} = await runCli(
+                 cliPath,
+                 [
+                     'tune', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only',
+                     '--format', 'json'
+                 ],
+                 {
+                     ...process.env,
+                     US4_HAS_CUDA : '',
+                     US4_HAS_DIRECTML : '',
+                     US4_HAS_VULKAN : '',
+                     US4_HAS_NPU : '',
+                     US4_PROFILE_STORE_PATH : storePath,
+                 },
+             );
+
+             await attachProcessOutput(testInfo, 'tune-json', stdout, stderr);
+
+             expect(exitCode).toBe(0);
+             expect(stderr).toBe('');
+             const payload = JSON.parse(stdout) as {
+                 execution: string;
+                 selected_profile: string;
+                 persisted: boolean;
+             };
+             expect(payload.execution).toBe('tune');
+             expect(payload.selected_profile).toBe('cpu-only');
+             expect(payload.persisted).toBeTruthy();
+             expect(existsSync(storePath)).toBeTruthy();
+         });
 
     test('exports the current bench matrix as json without persisting a profile',
          async ({}, testInfo) => {
@@ -520,10 +583,156 @@ test.describe('us4-cli smoke', () => {
 
              expect(exitCode).toBe(0);
              expect(stderr).toBe('');
-             expect(stdout).toContain('"execution": "bench"');
-             expect(stdout).toContain('"selected_profile": "cpu-only"');
-             expect(stdout).toContain('"persisted": false');
-             expect(stdout).toContain('"benchmark":"dense_baseline_qwen_cpu_only"');
+             const payload = JSON.parse(stdout) as {
+                 execution: string;
+                 selected_profile: string;
+                 selected_backend: string;
+                 persisted: boolean;
+                 decisions: Array<{key: string; value: string; rationale: string}>;
+                 samples: Array<{
+                     benchmark: string;
+                     backend: string;
+                     profile: string;
+                     supported: boolean;
+                     regression_critical: boolean;
+                     score: number;
+                     rationale: string;
+                 }>;
+             };
+             expect(payload.execution).toBe('bench');
+             expect(payload.selected_profile).toBe('cpu-only');
+             expect(payload.selected_backend).toBe('cpu');
+             expect(payload.persisted).toBeFalsy();
+             expect(Array.isArray(payload.decisions)).toBeTruthy();
+             expect(Array.isArray(payload.samples)).toBeTruthy();
+             expect(payload.decisions.length).toBeGreaterThan(0);
+             expect(payload.samples.length).toBeGreaterThan(0);
+             expect(payload.samples[0]?.benchmark).toBe('dense_baseline_qwen_cpu_only');
+             expect(payload.samples[0]?.backend).toBe('cpu');
+             expect(typeof payload.samples[0]?.score).toBe('number');
              expect(existsSync(storePath)).toBeFalsy();
+         });
+
+    test('renders the current bench matrix as text without persisting a profile',
+         async ({}, testInfo) => {
+             const cliPath = await requireCliBinary(testInfo);
+             const storePath = testInfo.outputPath('bench-text-profiles.json');
+
+             const {stdout, stderr, exitCode} = await runCli(
+                 cliPath,
+                 [ 'bench', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only' ],
+                 {
+                     ...process.env,
+                     US4_HAS_CUDA : '',
+                     US4_HAS_DIRECTML : '',
+                     US4_HAS_VULKAN : '',
+                     US4_HAS_NPU : '',
+                     US4_PROFILE_STORE_PATH : storePath,
+                 },
+             );
+
+             await attachProcessOutput(testInfo, 'bench-text', stdout, stderr);
+
+             expect(exitCode).toBe(0);
+             expect(stderr).toBe('');
+             expect(stdout).toContain('execution: bench');
+             expect(stdout).toContain('bench.selected_profile: cpu-only');
+             expect(stdout).toContain('bench.persisted: no');
+             expect(stdout).toContain('bench_status: completed');
+             expect(existsSync(storePath)).toBeFalsy();
+         });
+
+    test('renders the serve scaffold as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [ 'serve', '--model', 'qwen-0.5b', '--backend', 'windows-ml', '--format', 'json' ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '1',
+                US4_HAS_NPU : '',
+                US4_GPU_NAME : 'Serve Test GPU',
+                US4_GPU_VENDOR : 'amd',
+                US4_GPU_CLASS : 'discrete',
+                US4_DEVICE_GIB : '8',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'serve-json', stdout, stderr);
+
+        expect(exitCode).toBe(2);
+        const payload = JSON.parse(stdout) as {
+            execution: string;
+            status: string;
+            backend: string;
+        };
+        expect(payload.execution).toBe('serve');
+        expect(payload.status).toBe('scaffold-only');
+        expect(payload.backend).toBe('windows-ml');
+        expect(stderr).toContain('Serve pipeline scaffolding is ready');
+    });
+
+    test('rejects invalid bench output formats', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [ 'bench', '--model', 'qwen-0.5b', '--format', 'xml' ],
+            process.env,
+        );
+
+        await attachProcessOutput(testInfo, 'bench-invalid-format', stdout, stderr);
+
+        expect(exitCode).toBe(1);
+        expect(stdout).toContain('Usage:');
+        expect(stderr).toContain('Unknown value for --format.');
+    });
+
+    test('reuses a tuned cpu-only profile in a later bench matrix on the same host',
+         async ({}, testInfo) => {
+             const cliPath = await requireCliBinary(testInfo);
+             const storePath = testInfo.outputPath('shared-profiles.json');
+             const env = {
+                 ...process.env,
+                 US4_HAS_CUDA : '',
+                 US4_HAS_DIRECTML : '1',
+                 US4_HAS_VULKAN : '',
+                 US4_HAS_NPU : '',
+                 US4_GPU_NAME : 'Intel Arc Test',
+                 US4_GPU_VENDOR : 'intel',
+                 US4_GPU_CLASS : 'integrated',
+                 US4_DEVICE_GIB : '8',
+                 US4_PROFILE_STORE_PATH : storePath,
+             };
+
+             const tune = await runCli(
+                 cliPath,
+                 [ 'tune', '--model', 'qwen-0.5b', '--backend', 'cpu', '--mode', 'cpu-only' ],
+                 env,
+             );
+             await attachProcessOutput(testInfo, 'tune-reuse', tune.stdout, tune.stderr);
+
+             const bench = await runCli(
+                 cliPath,
+                 [ 'bench', '--model', 'qwen-0.5b', '--format', 'json' ],
+                 env,
+             );
+             await attachProcessOutput(testInfo, 'bench-reuse', bench.stdout, bench.stderr);
+
+             expect(tune.exitCode).toBe(0);
+             expect(bench.exitCode).toBe(0);
+             const payload = JSON.parse(bench.stdout) as {
+                 recommended_profile: string;
+                 selected_profile: string;
+                 selected_backend: string;
+                 persisted: boolean;
+             };
+             expect(payload.recommended_profile).toBe('cpu-only');
+             expect(payload.selected_profile).toBe('cpu-only');
+             expect(payload.selected_backend).toBe('auto');
+             expect(payload.persisted).toBeFalsy();
          });
 });

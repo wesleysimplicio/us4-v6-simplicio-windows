@@ -80,9 +80,24 @@ Anexe ou referencie:
 - `test-results/`
 - `trace.zip`, screenshots e video quando existirem
 
-#### Validacoes que ainda sao parciais ou dependem de harness futuro
+#### Validacoes complementares da Sprint 12
 
-Estes itens continuam sendo parte do contrato do projeto, mas ainda nao estao universalmente automatizados no repo:
+Se a task tocar `bench`:
+
+```powershell
+.\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only
+.\build\us4-cli.exe bench --model qwen-0.5b --backend cpu --mode cpu-only --format json
+```
+
+Se a task tocar `tune`:
+
+```powershell
+$env:US4_PROFILE_STORE_PATH="$PWD\\runtime\\tuning\\profiles.dev.json"
+.\build\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only
+Get-Content $env:US4_PROFILE_STORE_PATH
+```
+
+Itens que continuam sendo contrato do projeto, mas ainda nao estao universalmente automatizados:
 
 - coverage diff >= 80%
 - regression por backend
@@ -156,6 +171,8 @@ Hoje o repositorio usa:
 - [ ] `clang-format` e `clang-tidy` rodados, quando disponiveis
 - [ ] Playwright rodado se CLI/UX foi tocado
 - [ ] evidencia anexada para CLI/UX
+- [ ] `bench --format json` anexado ou referenciado se o contrato de matriz mudou
+- [ ] store persistido anexado ou referenciado se `tune` mudou
 - [ ] ADR citada se arquitetura mudou
 - [ ] sem dependencia nova nao aprovada
 - [ ] sem segredo no diff
@@ -169,4 +186,6 @@ Hoje o repositorio usa:
 - tratar roadmap de release como capability pronta
 - abrir PR sem task ou sem explicar a limitacao de ambiente
 - tocar CLI e esquecer evidencia Playwright
+- tocar `bench` e nao guardar o JSON validado
+- tocar `tune` e nao guardar o store persistido usado no teste
 - alterar arquitetura sem ADR
