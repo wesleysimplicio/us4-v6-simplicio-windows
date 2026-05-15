@@ -1,74 +1,74 @@
 # .specs — Mapa de Navegação
 
-Pasta concentra todo o contexto que o agente AI precisa pra trabalhar em **US4 V6 Windows Edition** (`us4-v6-simplicio-windows`). Quando algo não está aqui, o agente não vê. Specs como código de primeira classe.
+Pasta concentra o contexto operacional e arquitetural que guia a implementação de **US4 V6 Windows Edition** (`us4-v6-simplicio-windows`). Aqui vivem a visão do produto, o contrato de runtime, o fluxo de trabalho e o backlog por sprint.
 
 Stack alvo: C++17/20 + CMake/Ninja + CUDA + DirectML + Vulkan + oneDNN + AVX2/AVX-512/AMX + Windows ML (NPU) + GoogleTest + Playwright + Ralph Loop.
 
 ## Ordem de leitura recomendada
 
-Tanto humano novo no time quanto agente devem percorrer nessa ordem:
+Humano novo no time e agent AI devem percorrer nesta ordem:
 
-1. **`product/VISION.md`** — por que o produto existe. Problema, diferencial, métricas.
-2. **`product/PERSONAS.md`** — pra quem o produto existe. Objetivos e frustrações.
-3. **`product/DOMAIN.md`** — vocabulário e entidades de runtime/adapters.
-4. **`architecture/DESIGN.md`** — diagrama macro, boundaries, stack, backends.
-5. **`architecture/PATTERNS.md`** — como escrever código aqui. Naming, estrutura, error handling, kernels.
-6. **`architecture/ADR-*.md`** — decisões arquiteturais e suas razões (criadas durante os sprints).
-7. **`workflow/WORKFLOW.md`** — branch strategy, PR, deploy, hotfix.
-8. **`workflow/CONTRIBUTING.md`** — como adicionar uma feature passo a passo.
-9. **`workflow/RELEASE.md`** — versionamento e release.
-10. **`sprints/BACKLOG.md`** — matriz dos 12 sprints.
-11. **`sprints/sprint-XX/SPRINT.md`** — sprint corrente.
-12. **`sprints/sprint-XX/NN-*.task.md`** — tasks ativas (criadas conforme sprint avança).
+1. `product/VISION.md` — por que o runtime existe e qual problema ele resolve.
+2. `product/PERSONAS.md` — quem usa o sistema e quais máquinas reais precisam ser suportadas.
+3. `product/DOMAIN.md` — vocabulário de runtime, adapters, backends, KV/cache e modos.
+4. `architecture/DESIGN.md` — macroarquitetura, boundaries, topologia de memória e seleção de backend.
+5. `architecture/PATTERNS.md` — convenções de código C++/CUDA/DirectML/Vulkan/CPU, testes e fallback.
+6. `architecture/ADR-*.md` — decisões irreversíveis do sistema, quando existirem.
+7. `workflow/WORKFLOW.md` — branch strategy, review, hooks e fluxo de execução.
+8. `workflow/CONTRIBUTING.md` — como abrir task, implementar, validar e preparar PR.
+9. `workflow/RELEASE.md` — como gerar MSIX, portable zip e evidências de release.
+10. `sprints/BACKLOG.md` — mapa dos 12 sprints.
+11. `sprints/sprint-XX/SPRINT.md` — objetivo e capacidade da sprint atual.
+12. `sprints/sprint-XX/*.task.md` — contexto, AC, plano de teste e DoD da task em andamento.
 
 ## Estrutura
 
-```
+```text
 .specs/
-├── README.md
-├── product/
-│   ├── VISION.md
-│   ├── DOMAIN.md
-│   └── PERSONAS.md
-├── architecture/
-│   ├── DESIGN.md            # preenchido no sprint-01 (T01.9)
-│   ├── PATTERNS.md          # preenchido incrementalmente nos sprints
-│   ├── ADR-template.md
-│   └── ADR-XXX-*.md         # criados durante os sprints
-├── workflow/
-│   ├── WORKFLOW.md
-│   ├── CONTRIBUTING.md
-│   └── RELEASE.md
-└── sprints/
-    ├── BACKLOG.md
-    ├── task-template.md
-    ├── sprint-01/SPRINT.md
-    ├── sprint-02/SPRINT.md
-    ├── ...
-    └── sprint-12/SPRINT.md
+  README.md
+  product/
+    VISION.md
+    PERSONAS.md
+    DOMAIN.md
+  architecture/
+    DESIGN.md
+    PATTERNS.md
+    ADR-template.md
+    ADR-XXX-*.md
+  workflow/
+    WORKFLOW.md
+    CONTRIBUTING.md
+    RELEASE.md
+  sprints/
+    BACKLOG.md
+    task-template.md
+    sprint-01/
+    ...
+    sprint-12/
 ```
 
 ## Convenções
 
-- Markdown puro, cabeçalho `# Título` claro.
-- Diagramas em Mermaid embutido (`mermaid` code block).
-- Tabelas pra glossários e listas comparativas.
-- Bullets curtos, frases na voz ativa.
-- Idioma: pt-BR pro conteúdo, inglês pra nomes técnicos (variáveis, comandos, identifiers).
+- Conteúdo em pt-BR; nomes técnicos, flags, identifiers e comandos em inglês.
+- Diagramas em Mermaid quando ajudarem a explicar boundaries ou fluxo.
+- Tabelas para glossário, matrizes de backend e checklists comparativos.
+- Specs descrevem o contrato real do projeto, não textos genéricos de scaffold.
+- Mudança arquitetural importante deve manter coerência entre `DOMAIN.md`, `DESIGN.md` e `PATTERNS.md`.
 
 ## Como adicionar nova spec
 
-- Decisão arquitetural irreversível -> nova `ADR-NNN-titulo.md` em `architecture/` baseada em `ADR-template.md`.
-- Nova feature grande -> task em `sprints/task-template.md` dentro de `sprints/sprint-XX/`.
-- Novo conceito de domínio -> entrada em `product/DOMAIN.md`.
-- Nova rotina de processo -> seção em `workflow/WORKFLOW.md` ou doc novo em `workflow/`.
+- Decisão arquitetural irreversível: criar `architecture/ADR-NNN-<slug>.md` a partir de `ADR-template.md`.
+- Novo conceito de runtime, adapter ou backend: atualizar `product/DOMAIN.md`.
+- Mudança em boundary, memória ou fluxo de execução: atualizar `architecture/DESIGN.md`.
+- Nova convenção de código ou teste: atualizar `architecture/PATTERNS.md`.
+- Nova feature planejada: adicionar task na sprint correta a partir de `sprints/task-template.md`.
 
-## Pra o agente
+## Para o agente
 
 Antes de implementar qualquer task:
 
-- Confirmar que leu VISION + DESIGN + PATTERNS + a task atual.
-- Procurar ADR relacionada antes de inventar decisão.
-- Atualizar DOMAIN se introduzir novo conceito de runtime/adapter.
-- Atualizar BACKLOG/SPRINT.md ao fechar/abrir item.
-- Logit-diff vs referência é gate de correctness — nunca pula.
+- Ler a task atual e o contexto mínimo `VISION + DOMAIN + DESIGN + PATTERNS`.
+- Checar se a mudança toca backend, adapter, KV/cache, CLI ou release.
+- Procurar ADR existente antes de improvisar decisão estrutural.
+- Atualizar specs no mesmo PR quando o vocabulário ou o contrato técnico mudar.
+- Tratar correctness diff, regressão por backend e evidência Playwright como gates reais, não opcionais.

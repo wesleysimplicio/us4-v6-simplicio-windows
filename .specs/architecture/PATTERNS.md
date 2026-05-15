@@ -1,213 +1,248 @@
-# Patterns — `<PRODUCT_NAME>`
+# Patterns — US4 V6 Windows Edition
 
-> Como escrever código aqui. Curto, opinativo, executável.
-> Audiência: dev humano e agent AI. Se a regra não está aqui, vale o senso comum + revisão de PR.
+> Como escrever código aqui. Curto, opinativo, executável e alinhado ao contrato de runtime Windows.
+> Audiência: dev humano, reviewer e agent AI. Se a regra não estiver aqui, vale o restante do `AGENTS.md` e revisão técnica.
 
 ---
 
 ## 1. Naming
 
 | Item | Convenção | Exemplo bom | Exemplo ruim |
-|------|-----------|-------------|--------------|
-| Variáveis, funções, classes | inglês, descritivo | `userRepository`, `calculateInvoiceTotal` | `repoUsuario`, `calcTot` |
-| Arquivos | kebab-case | `user-repository.ts`, `invoice-service.ts` | `UserRepository.TS`, `invoice_service.ts` |
-| Pastas | kebab-case, plural quando coleção | `use-cases/`, `entities/` | `UseCase/`, `Entity/` |
-| Componentes UI | PascalCase no símbolo, kebab-case no arquivo | `InvoiceCard` em `invoice-card.tsx` | `invoiceCard.tsx` |
-| Branches | `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>` | `feat/login-with-email`, `fix/invoice-rounding` | `feature1`, `wesley-branch` |
-| Commits | conventional commits | `feat: add login with email` | `update stuff` |
-| Testes | mesmo nome do alvo + sufixo `.test` ou `.spec` | `user-service.test.ts` | `tests1.ts` |
+|---|---|---|---|
+| Classes / structs / enums | `PascalCase` | `HardwareProbe`, `RuntimeMode` | `hardware_probe`, `runtime_mode_t` |
+| Funções / métodos | `camelCase` | `selectBackend`, `buildMemoryPlan` | `Select_Backend`, `build_memory_plan` |
+| Constantes | `kSnakeCase` | `kMaxKvTiers` | `MAX_KV_TIERS`, `maxKvTiers` |
+| Arquivos | `snake_case` | `hardware_probe.cpp`, `kv_pager.h` | `HardwareProbe.cpp`, `kv-pager.hpp` |
+| Namespaces | curto e técnico | `us4::runtime`, `us4::cuda` | `myNamespace`, `helpers` |
+| Flags CLI | `kebab-case` | `--enable-kv-paging` | `--enable_kv_paging` |
+| Testes | alvo + `_test.cpp` | `backend_selector_test.cpp` | `test1.cpp` |
+| Benchmarks | alvo + `_benchmark.cpp` | `kv_pager_benchmark.cpp` | `bench.cpp` |
 
-Regra de ouro: nome conta o quê, não o como. `processData` é vago, `normalizeUserEmail` é claro.
+Regra de ouro: nome deve revelar papel técnico e boundary. `plan` é vago; `memoryPlan` ou `decodePlan` é claro.
 
 ---
 
 ## 2. Estrutura de pastas
 
-Estrutura de referência (adaptar à `<STACK>`, manter os boundaries):
+Estrutura alvo do código nativo:
 
-```
-src/
-  domain/
-    entities/
-    value-objects/
-    services/            # serviços de domínio puros
-  application/
-    use-cases/
-    dtos/
-    ports/               # interfaces que o domínio precisa (repos, gateways)
-  infrastructure/
-    repositories/        # implementam ports
-    adapters/            # clientes HTTP, SDK terceiros
-    persistence/         # ORM, migrations
-    logger/
-  interface/
-    http/
-      routes/
-      handlers/
-      middlewares/
-      validators/
-    cli/
-    workers/
-  shared/
-    errors/
-    types/
-    utils/
+```text
+runtime/
+  core/
+  adapters/
+    deepseek/
+    kimi/
+    minimax/
+    glm/
+    qwen/
+    llama/
+    gemma/
+    bitnet/
+    ternary/
+  memory/
+  kv/
+  cache/
+  moe/
+  backends/
+    cuda/
+    directml/
+    vulkan/
+    onednn/
+    cpu_avx/
+    windows_ml/
+  speculative/
+  tuning/
+  telemetry/
+  benchmarks/
 tests/
   unit/
   integration/
   e2e/
 ```
 
-Regra: import nunca aponta de dentro pra fora. `domain/` não importa de `infrastructure/`.
+Regra:
+- `core/` define contratos e orquestração.
+- `adapters/` contêm lógica específica de família de modelo.
+- `backends/` contêm execução dependente de dispositivo.
+- `telemetry/` mede; não decide fluxo.
+- Arquivo `.h` vive ao lado do `.cpp` ou `.cu`.
 
 ---
 
-## 3. Como criar endpoint novo
+## 3. Como adicionar um adapter novo
 
-Passo a passo curto:
+1. Ler `DOMAIN.md`, `DESIGN.md` e a task do sprint.
+2. Criar pasta em `runtime/adapters/<family>/`.
+3. Implementar interface de adapter comum do projeto.
+4. Declarar capacidades reais: `supports_moe`, `supports_mla`, `supports_gqa`, `supports_multimodal`, `supports_ternary`.
+5. Definir `KVLayout`, `QuantStrategy` e `MemoryPlan` sem hardcode de vendor.
+6. Registrar o adapter no `ModelRegistry`.
+7. Cobrir com testes unitários de seleção, planejamento de memória e fallback seguro.
+8. Se tocar CLI/UX, adicionar ou atualizar E2E Playwright com evidência.
 
-1. Adicionar rota em `src/interface/http/routes/<recurso>.ts`.
-2. Criar handler em `src/interface/http/handlers/<recurso>-handler.ts`.
-3. Criar (ou reusar) validator de input em `src/interface/http/validators/`.
-4. Criar use case em `src/application/use-cases/<acao>-<recurso>.ts`. Retorno tipado.
-5. Se precisa de IO novo: criar port em `src/application/ports/` e implementação em `src/infrastructure/`.
-6. Escrever teste de integração (handler completo, banco de teste) ANTES da implementação subir.
-7. Adicionar entrada na collection HTTP (Postman/Insomnia/REST Client) com exemplo request+response.
-8. Atualizar OpenAPI/spec se existir.
-
-Critério de feito: 200 happy path + 400 input inválido + 401/403 sem auth + 404 inexistente + 422 regra de negócio violada — todos cobertos por teste.
-
----
-
-## 4. Como criar componente novo (UI)
-
-1. Criar arquivo `src/components/<componente>/<componente>.tsx` (ou equivalente da `<STACK>`).
-2. Props tipadas. Sem `any`. Defaults explícitos.
-3. Sem fetch dentro do componente: dado vem por prop ou por hook custom (`useUserList()`).
-4. Estilo no padrão da `<STACK>` (CSS modules, Tailwind, styled-components — escolher um e ficar).
-5. Acessibilidade: roles, labels, foco visível, atalhos teclado.
-6. Estados cobertos: loading, empty, error, success.
-7. Storybook ou playground com cada estado.
-8. Teste de componente (render + interação principal).
-9. Teste e2e do fluxo onde o componente é usado.
-
-Componente puro de apresentação não conhece API. Container resolve dado, presentational renderiza.
+Critério de feito:
+- o adapter gera config coerente em CUDA, DirectML/Vulkan e CPU conforme escopo
+- o caminho otimizado é desligável
+- correctness diff fica dentro da tolerância
 
 ---
 
-## 5. Como criar teste
+## 4. Como adicionar ou alterar um backend
 
-Pirâmide: muitos unit, alguns integration, poucos e2e.
+1. Alterar apenas a pasta do backend e os contratos estritamente necessários em `core/`.
+2. Expor inicialização, alocação, execução e stats; não esconder estado em singleton global.
+3. Implementar fallback claro quando feature não existir no hardware.
+4. Adicionar benchmark dedicado e teste de correctness vs referência.
+5. Atualizar `BackendSelector` somente se a ordem de prioridade ou detecção realmente mudar.
 
-### Unit
-- Cobre domínio e use case.
-- Sem rede, sem disco, sem framework HTTP.
-- Mocks só para ports (interfaces) — nunca para coisas internas do domínio.
-- Tempo alvo: < 50ms por teste.
+Backend novo ou alterado sempre precisa responder:
+- como inicializa dispositivo
+- como aloca pools e buffers
+- como reporta uso de memória
+- como falha sem corromper sessão
 
-```typescript
-// tests/unit/calculate-invoice-total.test.ts
-test('aplica desconto quando cliente e VIP', () => {
-  const invoice = makeInvoice({ items: [{ price: 100 }], customer: { tier: 'vip' } });
-  expect(calculateInvoiceTotal(invoice)).toBe(90);
-});
+---
+
+## 5. Ownership e memória
+
+- `Tensor` é move-only por padrão.
+- `TensorView` representa empréstimo sem ownership.
+- `std::unique_ptr` é default; `std::shared_ptr` só quando ownership compartilhado for parte do design.
+- Nada de ponteiro cru como owner.
+- Alocação de VRAM precisa passar por planejadores/pools do backend, não por chamadas dispersas.
+- Estruturas de hot path evitam cópias implícitas.
+
+Exemplo:
+
+```cpp
+class KvPager {
+public:
+    std::expected<TensorView, Error> mapPage(PageId pageId);
+    std::expected<void, Error> promote(PageId pageId);
+};
 ```
 
-### Integration
-- Cobre adaptadores (repo + banco real de teste, adapter + mock do terceiro).
-- Banco em container, dados resetados entre testes.
-- Tempo alvo: < 500ms por teste.
-
-### E2E (Playwright)
-- Cobre fluxos críticos do usuário ponta-a-ponta.
-- Roda contra build de produção em ambiente isolado.
-- Trace + screenshot + video on-failure (ver `playwright.config.ts`).
-- Evidência (screenshot, trace.zip) anexada ao PR.
-
-Regra: não comitar com teste vermelho. Não pular teste pra entregar mais rápido. Skip só com link pra issue de retomada.
-
 ---
 
-## 6. Tratamento de erro
+## 6. Erros e boundaries
 
-Princípio: validar na boundary, falhar rápido, propagar erro tipado.
+Princípio: sem exceções atravessando ABI ou boundary de backend.
 
-- Edge: input inválido vira `400 Bad Request` antes de tocar domínio.
-- Auth: token ausente ou inválido vira `401`. Token válido sem permissão vira `403`.
-- Domínio: regra violada lança `DomainError` com código (`INVOICE_ALREADY_PAID`). Handler mapeia pra `422`.
-- Infra: falha de IO lança `InfraError`. Handler logga e retorna `503` ou `500` conforme severidade.
-- Inesperado: middleware global captura, gera `trace_id`, logga stack, retorna `500` genérico.
+- Interfaces públicas de runtime/adapters/backends retornam `std::expected<T, Error>` ou equivalente do projeto.
+- `Error` precisa carregar código, boundary e contexto mínimo para log.
+- Função que falha precisa dizer se o caller pode degradar, repetir ou abortar.
+- `catch (...)` só em bordas de processo/CLI para converter em erro estruturado.
 
-```typescript
-// errors tipados, nao strings soltas
-class DomainError extends Error {
-  constructor(public code: string, message: string) { super(message); }
-}
+Exemplo:
 
-if (invoice.isPaid()) {
-  throw new DomainError('INVOICE_ALREADY_PAID', 'Invoice already paid');
-}
+```cpp
+std::expected<BackendPlan, Error> BackendSelector::select(
+    const HardwareProfile& hardware,
+    const RuntimePreferences& preferences);
 ```
 
-Nunca `catch (e) { /* swallow */ }`. Se ignorar é decisão consciente, comentar por quê.
+Nunca use retorno booleano nu quando a causa da falha importa.
 
 ---
 
-## 7. Logging
+## 7. Regras específicas de CUDA
 
-- Formato: JSON estruturado.
-- Sempre incluir: `timestamp`, `level`, `trace_id`, `service`, `event`, `context`.
-- Nunca logar: senha, token, CPF/SSN, número de cartão, endereço completo, body de pagamento, prompt com PII de usuário.
-- Mascarar quando precisa contexto: `email: "u***@example.com"`.
+- Streams sempre passados explicitamente.
+- `cudaDeviceSynchronize()` é proibido em hot path.
+- Use Graphs apenas em padrões repetidos de decode/prefill.
+- H2D/D2H assíncrono com pinned memory quando aplicável.
+- Kernels vetorizados precisam de caminho de referência e teste de correctness.
+- Métricas de pool, alocação e transferências precisam ser expostas.
 
-| Nível | Quando usar |
-|-------|-------------|
-| `error` | Falha que afeta usuário ou requer ação humana |
-| `warn` | Comportamento anormal mas recuperado (retry com sucesso, fallback) |
-| `info` | Eventos de negócio relevantes (login, criação de pedido) |
-| `debug` | Detalhe pra investigação. Desligado em prod. |
-
-```typescript
-logger.info('invoice.created', { invoice_id: id, customer_id: cid, total_cents: total });
-```
-
-Não logar request body inteiro — só o que importa pra debug.
+Smells:
+- sincronização global para depurar e esquecida em produção
+- alocação `cudaMalloc` por token
+- kernel acoplado a um adapter quando o problema é genérico do backend
 
 ---
 
-## 8. Validação
+## 8. Regras específicas de DirectML, Vulkan e CPU
 
-- Validar uma vez na boundary. Domínio confia que input já é válido.
-- Schema declarativo (zod, yup, joi, ajv, FluentValidation, conforme `<STACK>`).
-- Mensagens de erro consistentes: `{ field, code, message }`.
-- Validação de regra de negócio (saldo suficiente, prazo expirado) é domínio, não schema.
+DirectML:
+- compilar grafo uma vez, executar N vezes
+- reusar descriptor heaps e buffers
+- fallback claro para operador não suportado
 
-```typescript
-// boundary
-const schema = z.object({ email: z.string().email(), password: z.string().min(8) });
-const input = schema.parse(req.body); // 400 se invalido
+Vulkan:
+- pipelines e descriptor sets reutilizáveis
+- nada de recriar shader module por request
+- rastrear uso de memória quando a API permitir
 
-// dominio
-if (account.balance < amount) throw new DomainError('INSUFFICIENT_FUNDS', '...');
-```
-
-Nunca validar a mesma coisa em 3 camadas. Duplicação de validação é dívida.
-
----
-
-## 9. Imports
-
-- Ordem: stdlib, libs externas, alias do projeto, relativo.
-- Sem ciclos. CI deve quebrar em ciclo de import.
-- Sem `import *`. Importar o que usa.
+CPU / oneDNN / AVX:
+- toda rota vetorizada tem referência scalar
+- detectar AVX2, AVX-512 e AMX em `HardwareProbe`, não em cada chamada dispersa
+- otimização de quant/dequant não pode mudar saída fora da tolerância definida
 
 ---
 
-## 10. Quando dividir vs manter junto
+## 9. Logging e telemetria
 
-- 3 ocorrências da mesma lógica = candidato a abstração. Antes disso, copiar é OK.
-- Função maior que 50 linhas = considerar split.
-- Arquivo maior que 300 linhas = quase certo split.
-- Classe com mais de 7 métodos públicos = revisar responsabilidade.
+- Logs estruturados, nunca `std::cout` de debug permanente.
+- Cada evento relevante inclui `backend`, `adapter`, `model`, `runtime_mode`, `trace_id`.
+- Benchmarks e correctness exportam artefatos comparáveis por hardware profile.
+- `debug` pode ser verboso; `info` precisa ser enxuto.
+- Não logar prompts completos ou caminhos sensíveis sem necessidade real.
 
-Regra `<TEAM>`: simplicidade ganha de elegância. Código óbvio é melhor que código esperto.
+Exemplo de campos úteis:
+- `tokens_per_second`
+- `time_to_first_token_ms`
+- `gpu_memory_used_mb`
+- `kv_page_faults`
+- `expert_cache_hit_rate`
+- `fallback_reason`
+
+---
+
+## 10. Testes
+
+Pirâmide do projeto:
+
+- Unit: `GoogleTest` para selector, planner, registry, adapters e utilitários puros.
+- Integration: execução real de componentes com backend ou fixture controlada.
+- E2E: `Playwright` para fluxos CLI com artefatos.
+- Regression/correctness: benchmark de paridade por backend tocado.
+
+Toda task que toca CLI/UX precisa:
+- `npx playwright test --reporter=list,html`
+- `playwright-report/`
+- `test-results/` com trace e evidência
+
+Toda task que toca backend/runtime precisa:
+- `ctest --test-dir build --output-on-failure`
+- rerun de correctness/benchmark no backend afetado
+
+---
+
+## 11. Formatação e escopo de diff
+
+- Rodar `clang-format` apenas nos arquivos tocados ou no recorte mínimo necessário.
+- Não reformatar um subsistema inteiro num PR pequeno.
+- Comentário de código só quando o bloco não for óbvio.
+- Refactor sem relação com a task vira PR separado.
+- Arquivo grande demais é sinal para dividir por boundary, não para empilhar helpers privados.
+
+Heurísticas:
+- função > 60 linhas merece revisão
+- classe com múltiplas responsabilidades merece split
+- arquivo > 400 linhas precisa justificativa
+
+---
+
+## 12. Checklist para mudança técnica
+
+Antes de fechar uma task:
+
+1. Confirmar que leu task + `DESIGN.md` + este arquivo.
+2. Verificar se introduziu conceito novo em `DOMAIN.md`.
+3. Rodar format/lint.
+4. Rodar unit.
+5. Rodar E2E se tocou CLI/UX.
+6. Rodar correctness/regression no backend afetado.
+7. Garantir que não sobraram logs de debug, TODO sem dono ou fallback quebrado.
+
+Regra do time us4-core: simplicidade operacional ganha de cleverness. O código precisa ser previsível sob pressão de memória e múltiplos backends.

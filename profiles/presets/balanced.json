@@ -1,0 +1,12 @@
+{
+  "id": "balanced",
+  "displayName": "Balanced",
+  "mode": "balanced",
+  "preferredBackend": "auto",
+  "targetContextTokens": 8192,
+  "targetBatchSize": 4,
+  "enableKvTiering": true,
+  "enableSpeculative": true,
+  "enableMoE": true,
+  "enableContinuousBatching": true
+}

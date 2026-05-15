@@ -1,0 +1,27 @@
+add_library(
+    us4_runtime_core
+    hardware_probe.cpp
+    model_registry.cpp
+    runtime_context.cpp
+    runtime_mode.cpp)
+
+target_include_directories(
+    us4_runtime_core
+    PUBLIC
+        ${CMAKE_SOURCE_DIR})
+
+target_link_libraries(
+    us4_runtime_core
+    PUBLIC
+        us4_profiles
+        us4_runtime_adapters
+        us4_runtime_backends
+        us4_runtime_cache
+        us4_runtime_kv
+        us4_runtime_memory
+        us4_runtime_moe
+        us4_runtime_speculative
+        us4_runtime_telemetry
+        us4_runtime_tuning
+        us4_build_options
+        us4_build_warnings)

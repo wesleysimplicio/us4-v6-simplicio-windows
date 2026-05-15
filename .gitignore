@@ -61,3 +61,7 @@ Thumbs.db
 *.tgz
 *.tar.gz
 .pnpm-store/
+
+# Agentic starter local state
+.starter-meta.json
+.claude/settings.local.json

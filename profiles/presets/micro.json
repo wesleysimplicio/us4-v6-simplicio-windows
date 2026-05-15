@@ -1,0 +1,12 @@
+{
+  "id": "micro",
+  "displayName": "Micro",
+  "mode": "micro",
+  "preferredBackend": "vulkan",
+  "targetContextTokens": 4096,
+  "targetBatchSize": 2,
+  "enableKvTiering": true,
+  "enableSpeculative": false,
+  "enableMoE": false,
+  "enableContinuousBatching": false
+}

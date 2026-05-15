@@ -1,0 +1,12 @@
+{
+  "id": "degraded",
+  "displayName": "Degraded",
+  "mode": "degraded",
+  "preferredBackend": "directml",
+  "targetContextTokens": 6144,
+  "targetBatchSize": 4,
+  "enableKvTiering": true,
+  "enableSpeculative": false,
+  "enableMoE": true,
+  "enableContinuousBatching": false
+}

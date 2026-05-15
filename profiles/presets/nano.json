@@ -1,0 +1,12 @@
+{
+  "id": "nano",
+  "displayName": "Nano",
+  "mode": "nano",
+  "preferredBackend": "vulkan",
+  "targetContextTokens": 2048,
+  "targetBatchSize": 1,
+  "enableKvTiering": false,
+  "enableSpeculative": false,
+  "enableMoE": false,
+  "enableContinuousBatching": false
+}

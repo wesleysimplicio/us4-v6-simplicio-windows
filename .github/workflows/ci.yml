@@ -1,6 +1,3 @@
-# CI pipeline — lint, unit tests com coverage, e E2E Playwright em matriz
-# Roda em push (main/develop) e em todo pull_request
-
 name: CI
 
 on:
@@ -13,115 +10,189 @@ on:
       - main
       - develop
 
-# Evita rodar pipelines duplicados quando push acontece num PR aberto
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: pwsh
+
 env:
-  NODE_ENV: test
-  CI: true
+  CMAKE_BUILD_TYPE: Release
+  BUILD_DIR: build
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
+  detect-scope:
+    name: Detect scope
+    runs-on: windows-2022
     if: github.repository != 'wesleysimplicio/agentic-starter'
-    timeout-minutes: 10
+    outputs:
+      cli_ux: ${{ steps.scope.outputs.cli_ux }}
+    steps:
+      - name: Detect CLI/UX scope
+        id: scope
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.pull_request?.body ?? "").toLowerCase();
+            const changed = context.payload.pull_request
+              ? await github.paginate(github.rest.pulls.listFiles, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  per_page: 100,
+                })
+              : [];
+
+            const cliUxPatterns = [
+              /^runtime\/cli\//,
+              /^tests\/e2e\//,
+              /^playwright\.config\.(js|ts|mjs|cjs)$/,
+              /^docs\/features\//,
+            ];
+
+            const touchedCliUx = changed.some((file) =>
+              cliUxPatterns.some((pattern) => pattern.test(file.filename)),
+            );
+
+            const bodyRequestsCliUx =
+              body.includes("- [x] cli/ux touched") ||
+              body.includes("- [x] cli/ux") ||
+              body.includes("cli/ux touched: yes");
+
+            core.setOutput("cli_ux", touchedCliUx || bodyRequestsCliUx ? "true" : "false");
+
+  build-and-test:
+    name: Build and unit test
+    runs-on: windows-2022
+    needs: detect-scope
+    if: github.repository != 'wesleysimplicio/agentic-starter'
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup MSVC developer shell
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Show toolchain
+        run: |
+          cmake --version
+          ninja --version
+          cl
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B $env:BUILD_DIR -G Ninja
+          -DCMAKE_BUILD_TYPE=$env:CMAKE_BUILD_TYPE
+          -DUS4_ENABLE_TESTS=ON
+          -DUS4_ENABLE_BENCHMARKS=OFF
+
+      - name: Build runtime and CLI
+        run: cmake --build $env:BUILD_DIR --config $env:CMAKE_BUILD_TYPE --parallel
+
+      - name: Probe smoke test
+        run: .\$env:BUILD_DIR\us4-cli.exe --probe
+
+      - name: Run CTest
+        run: ctest --test-dir $env:BUILD_DIR --build-config $env:CMAKE_BUILD_TYPE --output-on-failure
+
+      - name: Run clang-format when available
+        run: |
+          if (Get-Command clang-format -ErrorAction SilentlyContinue) {
+            $files = git ls-files '*.cpp' '*.h'
+            if ($files) {
+              clang-format --dry-run --Werror $files
+            } else {
+              Write-Host 'No C/C++ files tracked for clang-format.'
+            }
+          } else {
+            Write-Warning 'clang-format not found on runner; skipping placeholder lint step.'
+          }
+
+      - name: Run clang-tidy when available
+        run: |
+          if (Get-Command clang-tidy -ErrorAction SilentlyContinue) {
+            $files = git ls-files 'runtime/**/*.cpp'
+            if ($files) {
+              clang-tidy -p $env:BUILD_DIR $files
+            } else {
+              Write-Host 'No runtime sources tracked for clang-tidy.'
+            }
+          } else {
+            Write-Warning 'clang-tidy not found on runner; skipping placeholder lint step.'
+          }
+
+      - name: Upload CTest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs
+          path: |
+            build/Testing/**
+            build/**/LastTest.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  playwright-cli:
+    name: Playwright CLI evidence
+    runs-on: windows-2022
+    needs:
+      - detect-scope
+      - build-and-test
+    if: github.repository != 'wesleysimplicio/agentic-starter' && needs.detect-scope.outputs.cli_ux == 'true'
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC developer shell
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup Node.js for Playwright tooling
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run lint
-        run: npm run lint
-
-  unit:
-    name: Unit tests (node ${{ matrix.node-version }})
-    needs: lint
-    runs-on: ubuntu-latest
-    if: github.repository != 'wesleysimplicio/agentic-starter'
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20, 22]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests with coverage
-        run: npm test -- --coverage
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-node-${{ matrix.node-version }}
-          path: coverage/
-          if-no-files-found: warn
-          retention-days: 14
-
-  e2e:
-    name: E2E Playwright (node ${{ matrix.node-version }})
-    needs: unit
-    runs-on: ubuntu-latest
-    if: github.repository != 'wesleysimplicio/agentic-starter'
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20, 22]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - name: Install dependencies
+      - name: Install Playwright tooling dependencies
         run: npm ci
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Configure CMake
+        run: >
+          cmake -S . -B $env:BUILD_DIR -G Ninja
+          -DCMAKE_BUILD_TYPE=$env:CMAKE_BUILD_TYPE
+          -DUS4_ENABLE_TESTS=ON
+          -DUS4_ENABLE_BENCHMARKS=OFF
+
+      - name: Build CLI for E2E
+        run: cmake --build $env:BUILD_DIR --config $env:CMAKE_BUILD_TYPE --target us4-cli --parallel
+
       - name: Run Playwright tests
-        run: npx playwright test
+        run: npx playwright test --reporter=list,html
 
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-node-${{ matrix.node-version }}
+          name: playwright-report
           path: playwright-report/
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload Playwright test results (traces, screenshots, videos)
+      - name: Upload Playwright test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-node-${{ matrix.node-version }}
+          name: test-results
           path: test-results/
           if-no-files-found: warn
           retention-days: 14

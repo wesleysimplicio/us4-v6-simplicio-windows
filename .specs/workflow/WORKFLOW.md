@@ -1,192 +1,206 @@
-# WORKFLOW — `US4 V6 Windows Edition`
+# WORKFLOW - `US4 V6 Windows Edition`
 
-Como **us4-core** move código de ideia até produção em **local LLM inference runtime**. Fonte de verdade pra branch strategy, PR rules, code review, deploy pipeline e hotfix. Stack: C++17/20 + CMake/Ninja + CUDA + DirectML + Vulkan + oneDNN + AVX2/AVX-512/AMX + Windows ML (NPU) + GoogleTest + Playwright + Ralph Loop.
+Como o time `us4-core` move codigo de ideia ate merge em `main` neste repo. Este arquivo descreve o fluxo real do repositorio hoje, sem assumir packaging ou release automation que ainda nao existem.
 
 ---
 
-## 1. Branch Strategy
+## 1. Branch strategy
 
-### Padrão: Trunk-Based Development
+### Padrao: trunk-based development
 
-Branch única de longa vida: `main`. Tudo merge em `main` via PR pequeno e rápido. Releases saem de `main` via tag.
-
-- `main` é sempre deployável. Build verde, testes passando, sem feature half-done exposta.
-- Feature branches são **curtas** (vida média < 2 dias). Branch que dura semana = sinal de task mal quebrada.
-- Feature flags isolam código incompleto que já foi merged. Backends novos ficam atrás de `-DUS4_ENABLE_<BACKEND>=OFF` por default até GA.
-- Rebase em cima de `main` antes do merge. Histórico linear, sem merge commits ruidosos.
+- `main` e a unica branch longa.
+- Toda mudanca entra por PR pequeno, com escopo unico.
+- Feature branches devem ser curtas. Alvo pratico: menos de 2 dias.
+- Codigo incompleto precisa ficar atras de flag de build ou de runtime.
+- Rebase em cima de `main` antes do merge. Historico linear.
 
 ### Naming convention
 
+```text
+feat/<short-desc>
+fix/<short-desc>
+chore/<short-desc>
+refactor/<short-desc>
+docs/<short-desc>
+perf/<short-desc>
+hotfix/<short-desc>
 ```
-feat/<short-desc>          # nova feature      ex: feat/sprint-03-cuda-gemm
-fix/<short-desc>           # bug fix           ex: fix/attention-mask-overflow
-chore/<short-desc>         # manutencao        ex: chore/bump-mlx
-refactor/<short-desc>      # refactor sem mudar comportamento
-docs/<short-desc>          # so docs
-perf/<short-desc>          # otimizacao de performance
-hotfix/<short-desc>        # patch urgente em producao
-release/<vX.Y.Z>           # branch de release
+
+Para tasks de sprint, use:
+
+```text
+feat/sprint-XX-<task-id>-<slug>
 ```
 
-`<short-desc>` em kebab-case, máximo 4 palavras, sem ticket id no nome (ticket vai no commit/PR).
+Exemplo:
 
-### Sprint branches
-
-Tasks de sprint usam padrão `feat/sprint-XX-<task-id>-<slug>`. Exemplo: `feat/sprint-02-t02.2-scalar-gemm`.
+```text
+feat/sprint-02-t02.2-scalar-gemm
+```
 
 ---
 
-## 2. Pull Request Rules
+## 2. Pull request rules
 
-### Tamanho
+### Tamanho e foco
 
-- **Alvo:** PR com até 400 linhas modificadas (sem contar lock files e gerados).
-- PR > 600 linhas precisa justificativa explícita no corpo. Reviewer pode pedir split.
-- **1 PR = 1 propósito.** Nada de "feat: scalar matmul + refactor adapter base + bump deps" no mesmo PR.
+- Alvo: ate 400 linhas modificadas, sem contar gerados e lockfiles.
+- PR acima de 600 linhas precisa justificar o tamanho no corpo.
+- Uma PR deve ter um unico objetivo. Refactor oportunista vai em outra PR.
 
-### Title
+### Titulo
 
-Conventional Commits no título. Exemplos:
+O titulo da PR precisa seguir Conventional Commits:
 
+```text
+feat(runtime): add cpu fallback probe summary
+fix(cli): reject run without prompt
+chore(ci): align windows build gate
+docs(workflow): remove release pipeline claims
 ```
-feat(runtime): add scalar attention with causal mask
-fix(adapters/qwen): handle empty KV concat in first token
-chore(ci): cache vcpkg between runs
-perf(cuda): fuse epilogue into GEMM kernel
-docs(adr): add ADR-007 about expert pager eviction policy
-```
 
-### Body (template em `.github/PULL_REQUEST_TEMPLATE.md`)
+### Corpo
 
-Toda PR contém:
+Use o template em [`.github/PULL_REQUEST_TEMPLATE.md`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/PULL_REQUEST_TEMPLATE.md) e preencha:
 
-- Link pra task em `.specs/sprints/sprint-XX/<id>.task.md` (ou issue).
-- Resumo do que muda em 3-5 bullets.
-- Bench numbers (tokens/s cold/warm, RAM/VRAM peak) se aplicável.
-- Correctness diff vs referência (link pro relatório de `runtime/benchmarks/correctness/`).
-- Evidência E2E (link pro report Playwright + trace.zip).
-- Checklist DoD (build, format, lint, unit, e2e, regression, correctness, docs, changelog).
-- Riscos e plano de rollback.
+- task ou issue relacionada
+- resumo do que mudou e por que
+- evidencias de validacao executadas
+- observacoes de backend, arquitetura e release quando aplicavel
+
+Nao invente evidencia. Se um harness ainda nao existe, marque `N/A` e explique.
 
 ### Review
 
-- **Mínimo 1 reviewer humano.** Nunca self-merge em `main` sem aprovação.
-- PRs tocando kernel/runtime/segurança exigem 2 reviewers, sendo 1 com tag `runtime` ou `security`.
-- Bot review (CodeRabbit, Greptile, agents ECC) é complementar, não substitui humano.
-- Reviewer responde em até 4h úteis. SLA quebrado = feature freeze do reviewer.
-
----
-
-## 3. Code Review Protocol
-
-### Reviewer
-
-- Lê task antes do diff. Sem contexto, comentário fica raso.
-- Comenta no diff usando convenção:
-  - `nit:` opinião estética, autor pode ignorar.
-  - `q:` pergunta, espera resposta.
-  - `req:` mudança bloqueante antes do merge.
-  - `praise:` reforço positivo de padrão bom.
-- Aprova com `LGTM` apenas quando todos `req:` resolvidos.
-- Se ler ADR violado, abre `req:` linkando ADR.
-- Se correctness diff regredir > tolerância da task, abre `req:` bloqueando.
-
-### Autor
-
-- Não merga com `req:` aberto.
-- Push novo commit em vez de force-push enquanto review tá ativo.
-- Após aprovação, pode `git rebase -i` pra squash local antes do merge.
+- Minimo de 1 reviewer humano.
+- Mudancas em runtime, arquitetura, seguranca ou superficie publica pedem 2 reviewers quando possivel.
+- Nao faça self-merge sem aprovacao.
+- `req:` aberto bloqueia merge.
 
 ### Merge
 
-- **Squash and merge** é o padrão. Mensagem squash = title do PR + corpo enxuto.
-- Branch é deletada automaticamente pós-merge (config do repo).
-- Build pós-merge em `main` precisa ficar verde. Vermelho = revert imediato.
+- `Squash and merge` e o padrao.
+- Branch pode ser removida depois do merge.
+- Se `main` quebrar apos merge, a prioridade e corrigir ou reverter.
 
 ---
 
-## 4. Deploy Pipeline
+## 3. Code review protocol
 
-### Visão geral
+### Reviewer
 
-```
-push main -> GitHub Actions (windows-2022 (+ GPU self-hosted opcional))
-  - format check (clang-format --dry-run --Werror + clang-tidy -p build)
-  - build CMake + Ninja em Release
-  - unit tests via CTest (cobertura mínima 80%)
-  - regression suite (adapters/modes/backends anteriores)
-  - correctness diff vs referência
-  - e2e Playwright (CLI flow smoke)
-  - artifact upload (binário + Playwright report + trace)
-  - se tudo verde: publish artifact em GitHub Release (draft)
-``` Regression suite re-roda por **backend tocado** (CUDA / DirectML / Vulkan / AVX / NPU).
+- Leia a `task.md` antes do diff.
+- Use comentarios objetivos:
+  - `nit:` sugestao nao bloqueante
+  - `q:` pergunta
+  - `req:` mudanca bloqueante
+  - `praise:` reforco de padrao bom
+- Se houver violacao de ADR ou de `PATTERNS.md`, comente com link.
 
-### Ambientes / Canais de distribuição
+### Autor
 
-| Canal | Branch/Tag | Trigger | Saída |
-|----------|------------|---------|-----|
-| `dev` | qualquer PR | abrir/atualizar PR | preview-<pr>.us4-windows.dev (CI artifact zip) |
-| `staging` | `main` | merge em main | GitHub Release pre-release MSIX + portable zip |
-| `production` | tag `vX.Y.Z` | tag push manual | Signed MSIX installer + portable zip on GitHub Release |
-
-### Deploy de produção
-
-- Disparado por tag SemVer: `git tag v1.4.2 && git push origin v1.4.2`.
-- Workflow `release.yml` em `.github/workflows/` faz: build assinado, upload pra Release, smoke test pós-publish, notify channel.
-- Janela preferida: terça e quarta, manhã. Evitar sexta e véspera de feriado.
-- Rollback: marcar Release anterior como "latest" + emitir patch.
-
-### Feature flags / Toggles de build
-
-- Backends novos ficam atrás de flag CMake `-DUS4_ENABLE_<BACKEND>=OFF` até atingirem DoD de GA (cobertura, correctness, bench).
-- Adapters novos ficam atrás de runtime flag `--enable-adapter <name>` até GA.
-- Flag tem dono e data de remoção. Flag órfã > 60 dias é tech debt e vai pro BACKLOG.
+- Nao merge com `req:` aberto.
+- Durante review ativa, prefira push normal a force-push.
+- Se houver mudanca arquitetural, cite ADR no corpo da PR.
 
 ---
 
-## 5. Hotfix Process
+## 4. CI e gates reais do repo
 
-Use quando bug crítico em produção exige patch fora do ciclo normal.
+Os workflows ativos para este repo sao:
 
-### Critério
+- [`.github/workflows/ci.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/ci.yml)
+- [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
 
-Hotfix só pra: correctness regression em release publicado, crash em `us4-cli run`, security incident, data loss em KV cache persistido. Performance ruim não é hotfix, vai pelo fluxo normal.
+### O que `ci.yml` faz hoje
 
-### Passos
+Em `windows-2022`, o pipeline:
 
-```bash
-# 1. Branch a partir da tag de producao atual
-git checkout v1.4.2
-git checkout -b hotfix/cuda-attention-nan
+1. configura o ambiente MSVC
+2. roda `cmake -S . -B build -G Ninja`
+3. compila o projeto
+4. executa smoke `build\\us4-cli.exe --probe`
+5. roda `ctest`
+6. tenta `clang-format` e `clang-tidy` quando os binarios estiverem disponiveis no runner
+7. roda Playwright apenas quando a PR tocar CLI/UX
+8. publica artefatos de `ctest`, `playwright-report/` e `test-results/`
 
-# 2. Fix minimo. Sem refactor. Sem feature extra.
-# 3. Teste regressivo cobrindo o bug + correctness diff anexado
-# 4. PR rotulado "hotfix" com aprovacao acelerada (1 reviewer, SLA 30min)
+### O que `dod.yml` faz hoje
 
-# 5. Merge squash em main
-# 6. Tag patch SemVer
-git tag v1.4.3
-git push origin v1.4.3
+O gate de DoD valida:
 
-# 7. Release automatico via workflow release.yml
-# 8. Pos-incidente: postmortem em 48h em .specs/incidents/
-```
+- configure + build do projeto
+- `ctest`
+- titulo da PR em Conventional Commits
+- referencia de task ou issue no corpo
+- referencia de ADR quando arquivos de arquitetura mudam
+- evidencia Playwright no corpo quando a PR tocar CLI/UX
 
-### Pós-hotfix
+### O que ainda nao existe como gate automatizado
 
-- Postmortem blameless: o que falhou, como detectou, o que melhorar.
-- Adicionar teste que teria pego o bug (unit ou regression + correctness).
-- Se falha veio de gap arquitetural, abrir ADR.
-- Atualizar `CHANGELOG.md` com entrada `Fixed` na nova versão.
+Hoje o repo ainda nao possui automacao completa para:
+
+- coverage diff >= 80%
+- regression matrix por backend
+- correctness diff em `runtime/benchmarks/correctness/`
+- pipeline separado `e2e`
+- `release.yml`
+- build de MSIX, portable zip ou publicacao via winget
+
+Quando esses itens forem implementados, atualize este documento e o DoD.
+
+### Workflows herdados do starter
+
+Os arquivos abaixo ainda existem, mas estao protegidos para rodar apenas no repo do starter original:
+
+- [`.github/workflows/publish-npm.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/publish-npm.yml)
+- [`.github/workflows/scaffold-self-check.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/scaffold-self-check.yml)
+
+Eles nao fazem parte do fluxo do runtime Windows neste repo.
 
 ---
 
-## 6. Branch protection settings
+## 5. Distribuicao e release status
 
-Configuração em GitHub do repo `us4-v6-simplicio-windows`:
+Estado atual do repo:
 
-- `main`: require PR, require 1 approval, require status checks (ci, dod, e2e), require linear history, dismiss stale reviews on push, no force-push, no delete.
-- Tags `v*`: protected, only us4-core maintainers podem criar.
-- CODEOWNERS em `.github/CODEOWNERS` aponta áreas (runtime/, adapters/, kernel/) pros maintainers responsáveis.
+- nao existe [`.github/workflows/release.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/release.yml)
+- nao existe pasta `packaging/`
+- nao existe `CHANGELOG.md`
+- nao existe pipeline de assinatura, MSIX ou winget
 
-Esta configuração é versionada via `gh api` script em `.github/repo-settings/` (ou Terraform quando o projeto crescer).
+Portanto, hoje `main` valida build e testes, mas ainda nao produz release instalavel do runtime.
+
+Detalhes e lacunas de release ficam em [`.specs/workflow/RELEASE.md`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.specs/workflow/RELEASE.md).
+
+---
+
+## 6. Hotfix process
+
+Enquanto nao houver pipeline de release, hotfix segue o mesmo fluxo de PR normal:
+
+1. branch curta a partir de `main`
+2. fix minimo
+3. teste que reproduz o bug
+4. CI verde
+5. squash merge
+
+Se o repositorio estiver com artefatos distribuidos manualmente, documente rollback no corpo da PR e no incidente correspondente.
+
+---
+
+## 7. Branch protection
+
+Configuracao recomendada para `main`:
+
+- require pull request
+- require pelo menos 1 approval
+- require status checks do workflow `CI`
+- require status checks do workflow `DoD Gate`
+- require linear history
+- bloquear force-push
+- bloquear delete
+
+O job de Playwright em `CI` e condicional. Ele so deve ser exigido quando a PR tocar CLI/UX.
+
+Se houver divergencia entre a configuracao do GitHub e este arquivo, corrija a configuracao ou atualize o documento no mesmo PR.

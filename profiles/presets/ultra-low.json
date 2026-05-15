@@ -1,0 +1,12 @@
+{
+  "id": "ultra-low",
+  "displayName": "Ultra Low",
+  "mode": "ultra-low",
+  "preferredBackend": "directml",
+  "targetContextTokens": 4096,
+  "targetBatchSize": 2,
+  "enableKvTiering": true,
+  "enableSpeculative": false,
+  "enableMoE": false,
+  "enableContinuousBatching": false
+}

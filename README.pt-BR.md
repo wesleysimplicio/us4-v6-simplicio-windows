@@ -1,84 +1,121 @@
-# US4 V6 — Windows Edition
+# US4 V6 - Windows Edition
 
-> Universal State Runtime pra inferência LLM local em Windows x86-64 (NVIDIA / AMD / Intel + NPU opcional).
+> Universal State Runtime para inferencia local de LLMs em Windows x86-64 (NVIDIA / AMD / Intel + NPU opcional).
 > pt-BR. EN version: [README.md](README.md).
 
 ![us4-v6-simplicio-windows](us4-v6-simplicio-windows.PNG)
 
-## O que é
+## O que e
 
-US4 V6 é um runtime C++ que roda famílias modernas de LLM (DeepSeek MoE, Kimi MoE, MiniMax, GLM, Qwen, Llama, Gemma, BitNet, PT-BitNet Ternary) **localmente** em Windows x86-64, com dispatch adaptativo de backend entre **CPU scalar / AVX2 / AVX-512 / AMX / oneDNN / CUDA / DirectML / Vulkan / Windows ML (NPU)**, paginação hot-cold de KV entre VRAM/RAM/SSD, paginação de experts MoE, decodificação especulativa, batching contínuo, reuso de CUDA Graphs e auto-tuning ciente de hardware em 8 perfis.
+US4 V6 e um runtime C++ para inferencia local de LLMs em Windows x86-64 com dispatch adaptativo entre CPU, CUDA, DirectML, Vulkan e caminhos opcionais via Windows ML / NPU. O projeto ja possui scaffold inicial de runtime, selecao de backend orientada a hardware, uma CLI executavel, testes unitarios iniciais e documentacao de arquitetura/produto preenchida para sustentar os proximos sprints.
 
-Modos de runtime: `FULL`, `BALANCED`, `DEGRADED`, `ULTRA_LOW`, `MICRO`, `NANO`, `CPU_ONLY` — auto-selecionados pelo probe de hardware no boot, sobrescrevíveis via flag de CLI.
+Spec master de referencia: [`US4-V6-Windows-Edition.md`](./US4-V6-Windows-Edition.md).
 
-Estratégia do seletor de backend: NVIDIA → CUDA, GPU dedicada AMD/Intel → DirectML, fallback Vulkan, CPU AVX sempre ligado, NPU (Snapdragon X / Intel Core Ultra / AMD Ryzen AI) opt-in pra offload de camada densa.
+## Status Atual
 
-Spec master de referência: [`US4-V6-Windows-Edition.md`](../US4-V6-Windows-Edition.md).
+O repositorio ja saiu do estado de planejamento puro. A base atual inclui:
+
+- scaffold do runtime Windows em CMake dentro de [`runtime/`](./runtime/)
+- modelo de capacidades e fluxo de selecao para CUDA, DirectML, Vulkan e fallback CPU
+- pipeline de probe de hardware com selecao de modo e relatorio de budgets
+- executavel CLI inicial: `us4-cli`
+- testes unitarios iniciais para probe e formatacao
+- documentacao de arquitetura, patterns, dominio, workflow e sprints preenchida em [`.specs/`](./.specs/)
+
+Na pratica, o repo esta em fase inicial de implementacao: as fundacoes existem, enquanto execucao real de modelos, profundidade dos adapters, harnesses de correctness e especializacao por backend seguem evoluindo sprint a sprint.
+
+## Baseline Implementado
+
+O scaffold atual do runtime cobre estas areas:
+
+- `runtime/core/`: resumo de probe do host e wiring voltado para a CLI
+- `runtime/backends/`: descritores de backend, deteccao de capacidades e logica de selecao
+- `runtime/adapters/`: contratos de adapter e baseline de null adapter para Windows
+- `runtime/memory/`, `runtime/kv/`, `runtime/cache/`, `runtime/moe/`, `runtime/speculative/`, `runtime/tuning/`, `runtime/telemetry/`: esqueletos iniciais para expansao nos proximos sprints
+- `runtime/benchmarks/`: scaffold do entrypoint de benchmarks
+- `profiles/`: presets de perfil de hardware/runtime
+
+A CLI atual ja suporta probe e estabelece o contrato para os futuros fluxos de `run`.
 
 ## Stack
 
-- C++17/20 + CMake/Ninja
-- CUDA (streams NVIDIA, memory pool, CUDA Graphs)
-- DirectML (compile de grafo cross-vendor)
-- Vulkan compute (fallback AMD/Intel/cross-vendor)
-- oneDNN (block GEMM, ciente de AVX/AMX)
-- AVX2 / AVX-512 / AMX (caminhos quentes SIMD de CPU, quant BF16/INT8)
-- Windows ML (offload pra NPU — Snapdragon X / Intel Core Ultra / AMD Ryzen AI)
-- GoogleTest (unit), Playwright (CLI/UX E2E), Ralph Loop (fix/verify autônomo)
-- GitHub Actions (CI + gates de DoD), instalador MSIX
+- C++17/20 + CMake + Ninja
+- CUDA
+- DirectML
+- Vulkan compute
+- oneDNN / AVX2 / AVX-512 / AMX
+- Windows ML para caminhos opcionais de NPU
+- GoogleTest para cobertura unitaria
+- Playwright para evidencia E2E de CLI/UX
+- GitHub Actions para gates de CI / DoD
 
-## Status
+## Setup Local
 
-**Planejamento completo.** Os 12 sprints estão scaffolded em [`.specs/sprints/`](.specs/sprints/). A implementação ainda não começou — `DESIGN.md`/`PATTERNS.md`/ADRs de arquitetura são preenchidos **durante** a primeira task de cada sprint, não antes.
+Setup recomendado em Windows:
 
-| Sprint | Tema |
-|---|---|
-| 01 | Foundations & Skeleton |
-| 02 | CPU Scalar Baseline |
-| 03 | CUDA + DirectML Skeleton |
-| 04 | AVX Hot Paths + oneDNN |
-| 05 | BitNet + Ternary |
-| 06 | KV Memory Architecture (VRAM/RAM/SSD) |
-| 07 | Llama Adapter |
-| 08 | MoE Foundation (DeepSeek + Kimi) |
-| 09 | MoE Advanced (MiniMax + GLM + SP-MoE) |
-| 10 | Batching + Speculative Decoding |
-| 11 | Vulkan + Windows ML/NPU |
-| 12 | Auto-Tune + MSIX Release v1.0 |
+1. Instale o Visual Studio 2022 com MSVC e ferramentas de build C++.
+2. Garanta CMake e Ninja disponiveis, normalmente via ambiente de desenvolvimento do Visual Studio.
+3. Abra um Developer PowerShell / VS Dev shell.
+4. Configure e compile:
 
-Matriz completa: [`.specs/sprints/BACKLOG.md`](.specs/sprints/BACKLOG.md).
-
-## Como o agente trabalha aqui
-
-Este repo segue a convenção **Agentic Starter**. Arquivo master de instruções: [`AGENTS.md`](AGENTS.md) (espelhado em [`CLAUDE.md`](CLAUDE.md) e [`.github/copilot-instructions.md`](.github/copilot-instructions.md)).
-
-Toda task técnica passa pelo loop obrigatório: ler task → planejar → carregar contexto → editar → lint → unit → Playwright E2E (trace+screenshot+video) → corrigir → commit convencional (em inglês) → PR com checklist DoD.
-
-Gate de DoD (forçado por [`.github/workflows/dod.yml`](.github/workflows/dod.yml)): lint verde, unit verde com ≥80% de cobertura nos arquivos tocados, Playwright E2E verde com evidência, todos os AC marcados, ADR adicionado se decisão arquitetural, changelog atualizado se release-relevant.
-
-## Layout do repo
-
-```
-.specs/
-  product/       VISION.md, DOMAIN.md, PERSONAS.md
-  architecture/  DESIGN.md, PATTERNS.md, ADR-*.md (preenchidos durante os sprints)
-  workflow/      WORKFLOW.md, CONTRIBUTING.md, RELEASE.md
-  sprints/       BACKLOG.md, sprint-01..12/SPRINT.md
-.skills/         capacidades reutilizáveis dos agentes
-.agents/         sub-agentes customizados (ralph-loop, tdd, reviewer, architect)
-.claude/         settings + hooks (post-edit lint, pre-commit gate)
-.github/         workflows (ci.yml, dod.yml), templates de PR/Issue
-runtime/         código C++ (criado no sprint-01: core, adapters, memory, kv, cache, moe, cuda, directml, vulkan, avx, onednn, windowsml, speculative, tuning, telemetry, benchmarks)
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
-## Fora de escopo
+5. Rode o probe:
 
-- Inferência em nuvem/distribuída (foco em máquina única).
-- Treino/fine-tuning (somente inferência).
-- Apple Silicon → ver [US4 V6 Apple Edition](https://github.com/wesleysimplicio/us4-v6-simplicio-apple).
-- Suporte Linux/macOS (Windows-only).
-- App desktop GUI (somente CLI + biblioteca).
+```powershell
+.\build\us4-cli.exe --probe
+```
 
-## Licença
+6. Rode os testes unitarios:
 
-TBD (declarada antes do release v1.0 no Sprint 12).
+```powershell
+ctest --test-dir build --output-on-failure
+```
+
+Se o foco for apenas a camada do starter/documentacao, [`scripts/test.ps1`](./scripts/test.ps1) continua validando separadamente a parte de bootstrap/packaging.
+
+## Layout do Repo
+
+```text
+.specs/                 Documentacao de produto, arquitetura, workflow e sprints
+runtime/
+  core/                 Probe do host e runtime core voltado para CLI
+  backends/             Deteccao de capacidades e selecao de backend
+  adapters/             Contratos de runtime adapters e baseline de null adapter
+  memory/ kv/ cache/    Esqueletos de memoria e paginacao
+  moe/ speculative/     Scaffolds de MoE e decoding
+  tuning/ telemetry/    Scaffolds de tuning e observabilidade
+  benchmarks/           Scaffold de benchmarks
+profiles/               Presets de perfil de hardware/runtime
+tests/unit/             Cobertura inicial com GoogleTest
+```
+
+## Como Trabalhar Aqui
+
+Este repo segue o contrato de [`AGENTS.md`](./AGENTS.md). As instrucoes canonicas para agentes ficam em [`AGENTS.md`](./AGENTS.md) e sao espelhadas em [`CLAUDE.md`](./CLAUDE.md) e [`.github/copilot-instructions.md`](./.github/copilot-instructions.md).
+
+Para trabalho tecnico, o loop esperado continua sendo: ler a task, carregar o contexto arquitetural, editar de forma cirurgica, rodar format/lint/unit, executar Playwright em mudancas de CLI/UX e anexar evidencia no PR.
+
+## Proximos Marcos
+
+Os proximos marcos principais sao:
+
+- aprofundar o baseline de CPU alem do scaffold inicial
+- conectar implementacoes reais de adapters ao caminho de execucao da CLI
+- expandir harnesses de correctness e benchmark por backend
+- levar CUDA, DirectML e Vulkan de suporte em nivel de seletor para adapters prontos para execucao
+- alinhar CI/DoD com o workflow completo do runtime C++
+
+## Fora de Escopo
+
+- Inferencia em nuvem ou distribuida
+- Treino ou fine-tuning
+- Suporte Linux/macOS nesta edicao
+- Aplicacao desktop GUI no lugar do foco em CLI/runtime
+
+## Licenca
+
+A politica de licenciamento ainda nao foi publicada. Trate o repositorio como interno/controlado pelo projeto ate a definicao da primeira politica de release publica.

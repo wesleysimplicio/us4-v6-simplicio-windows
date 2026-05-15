@@ -1,0 +1,12 @@
+{
+  "id": "full",
+  "displayName": "Full",
+  "mode": "full",
+  "preferredBackend": "cuda",
+  "targetContextTokens": 16384,
+  "targetBatchSize": 8,
+  "enableKvTiering": true,
+  "enableSpeculative": true,
+  "enableMoE": true,
+  "enableContinuousBatching": true
+}

@@ -6,15 +6,21 @@
  *   npx @wesleysimplicio/agentic-starter
  *
  * Behavior (mirror of bootstrap.sh / bootstrap.ps1):
- *   1. Auto-detects PRODUCT_NAME (cwd basename), DOMAIN ("generico"),
- *      TEAM ("Plataforma"), STACK (Node/.NET/Python/Go/Rust/Flutter/PHP/...).
- *      INIT.md refines TEAM/DOMAIN with the human afterwards.
+ *   1. Auto-detects PRODUCT_NAME and STACK (Node/.NET/Python/Go/Rust/Flutter/PHP/...).
+ *      Auto-detects PROJECT_MODE from workspace signals at cwd:
+ *        - monorepo signal (pnpm-workspace.yaml, lerna.json, nx.json,
+ *          turbo.json, rush.json, package.json with "workspaces", or >=2
+ *          apps/ packages/ services/ subfolders with manifests) -> "monorepo"
+ *        - otherwise -> "root" (single project at cwd)
+ *      INIT.md infers team/domain/personas/vision from the codebase (no human
+ *      prompts).
  *   2. Asks only TWO questions:
  *        - Append recommended ignore entries to .gitignore? (y/N)
  *        - Which CLI/LLM should run INIT.md?
- *   3. Substitutes <PRODUCT_NAME>/<TEAM>/<DOMAIN>/<STACK> ONLY inside
- *      starter-managed paths AND only when the file actually contains
- *      a placeholder (protects user .razor/.cs/.ts/.py/package.json).
+ *   3. Substitutes <PRODUCT_NAME>/<STACK> ONLY inside starter-managed paths
+ *      AND only when the file actually contains a placeholder (protects user
+ *      .razor/.cs/.ts/.py/package.json). <TEAM>/<DOMAIN> are intentionally
+ *      left as-is so INIT.md (run by the agent) can infer and fill them.
  *   4. NEVER overwrites pre-existing user files. Existing instruction
  *      files (AGENTS.md/CLAUDE.md/INIT.md/copilot-instructions.md) are
  *      preserved AND flagged in .starter-meta.json so INIT.md can read
@@ -41,12 +47,17 @@ const TEMPLATE_PATHS = [
   'CLAUDE.md',
   'INIT.md',
   '_BOOTSTRAP.md',
+  'README.md',
+  'README.pt-BR.md',
+  'INSTALL.md',
   '.agents',
   '.claude',
   '.codex',
   '.github',
   '.skills',
   '.specs',
+  'docs',
+  'scripts',
   'bootstrap.sh',
   'bootstrap.ps1',
   'playwright.config.ts',
@@ -58,6 +69,12 @@ const PROTECTED_INSTRUCTION_FILES = [
   'CLAUDE.md',
   'INIT.md',
   '.github/copilot-instructions.md',
+];
+
+const COLLISION_PRONE_TEMPLATE_FILES = [
+  'README.md',
+  'README.pt-BR.md',
+  'INSTALL.md',
 ];
 
 const STARTER_DIRS = ['.specs', '.agents', '.skills', '.claude', '.codex'];
@@ -81,6 +98,9 @@ const WALK_SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'out',
   '.next', '.nuxt', 'coverage', 'playwright-report', 'test-results',
 ]);
+
+const GITIGNORE_MARKER = '# === Agentic Starter (auto-managed)';
+const GITIGNORE_END_MARKER = '# === End Agentic Starter (auto-managed) ===';
 
 const RECOMMENDED_IGNORES = `# === Agentic Starter (auto-managed) — do not remove this header ===
 # Local agent state and ephemeral artifacts created by the starter.
@@ -128,6 +148,36 @@ pnpm-debug.log*
 # Tarballs
 *.tgz
 *.tar.gz
+
+# Agentic starter tracked files
+.starter-meta.json
+.claude/settings.local.json
+AGENTS.md
+CLAUDE.md
+INIT.md
+_BOOTSTRAP.md
+.agents/
+.agents/**
+.claude/
+.claude/**
+.codex/
+.codex/**
+.github/
+.github/**
+.skills/
+.skills/**
+.specs/
+.specs/**
+docs/**
+scripts/**
+playwright-report/**
+tests/**
+test-results/**
+coverage/**
+bootstrap.ps1
+bootstrap.sh
+playwright.config.ts
+# === End Agentic Starter (auto-managed) ===
 `;
 
 const GITATTRIBUTES_CONTENT = `# Cross-platform line endings.
@@ -219,7 +269,7 @@ const CLI_OPTS = [
   { key: 'skip',     label: 'Skip — I will run INIT.md later',                                   cmd: '' },
 ];
 
-const INIT_PROMPT = 'Read INIT.md and execute it. Do NOT modify any user source files (.razor, .cs, .ts, .py, .go, .rs, package.json, etc). Only write inside .specs/, .agents/, .skills/, .claude/, .codex/, .github/copilot*, .github/workflows/dod.yml plus root AGENTS.md/CLAUDE.md/INIT.md/README*.md. If AGENTS.md/CLAUDE.md/copilot-instructions.md already existed before bootstrap (see .starter-meta.json), READ them and IMPROVE in place — preserve their essence. Ask the human only the questions listed in .starter-meta.json -> init_must_ask (team, domain, vision oneliner, personas). Use parallel multi-agents.';
+const INIT_PROMPT = 'Read INIT.md and execute it. Do NOT modify any user source files (.razor, .cs, .ts, .py, .go, .rs, package.json, etc). Only write inside .specs/, .agents/, .skills/, .claude/, .codex/, .github/copilot*, .github/workflows/dod.yml plus root AGENTS.md/CLAUDE.md/INIT.md/README*.md. If AGENTS.md/CLAUDE.md/copilot-instructions.md already existed before bootstrap (see .starter-meta.json), READ them and IMPROVE in place — preserve their essence. DO NOT ask the human about team, domain, vision, personas, or product purpose: infer ALL of them by reading the codebase (README, package.json/angular.json/*.csproj/pyproject.toml/etc, entry points, routes, tests, env.example). Default persona is "developer"; additional personas must be derived from code (auth roles, route guards, UI flows, customer-facing copy). Honor workspace mode: if .starter-meta.json.project_mode == "monorepo", iterate over .starter-meta.json.projects[] and produce per-project .specs/. Use parallel multi-agents.';
 
 const argv = process.argv.slice(2);
 const opts = {
@@ -228,6 +278,7 @@ const opts = {
   dryRun: false,
   silent: false,
   skipMeta: false,
+  update: false,
   cli: '',
   appendGitignore: '',
 };
@@ -240,6 +291,7 @@ for (let i = 0; i < argv.length; i++) {
     case '-f':
     case '--force':            opts.force = true; break;
     case '--dry-run':          opts.dryRun = true; break;
+    case '--update':           opts.update = true; break;
     case '--silent':           opts.silent = true; break;
     case '--skip-meta':        opts.skipMeta = true; break;
     case '--cli':              opts.cli = argv[++i]; break;
@@ -259,6 +311,13 @@ for (let i = 0; i < argv.length; i++) {
   }
 }
 
+if (opts.update) {
+  opts.yes = true;
+  opts.force = true;
+  opts.appendGitignore = opts.appendGitignore || 'yes';
+  opts.cli = opts.cli || 'skip';
+}
+
 function printHelp() {
   console.log(`agentic-starter v${PKG.version}
 
@@ -272,6 +331,7 @@ OPTIONS
   -f, --force                 Overwrite starter template files (NEVER touches user
                               instruction files: AGENTS.md, CLAUDE.md, INIT.md,
                               .github/copilot-instructions.md, .gitignore)
+  --update                    Safe update mode: --yes --force --append-gitignore yes --cli skip
   --dry-run                   Print actions without writing files
   --skip-meta                 Do not write .starter-meta.json
   --cli <key>                 Pick CLI for INIT.md handoff (claude|codex|copilot|cursor|
@@ -285,6 +345,7 @@ EXAMPLES
   npx @wesleysimplicio/agentic-starter
   npx @wesleysimplicio/agentic-starter --yes
   npx @wesleysimplicio/agentic-starter --yes --cli claude --append-gitignore yes
+  npx @wesleysimplicio/agentic-starter@latest --update
 
 DOCS
   https://github.com/wesleysimplicio/agentic-starter
@@ -337,6 +398,114 @@ function detectStack() {
   return 'unknown';
 }
 
+const MONOREPO_PARENTS = ['apps', 'packages', 'services', 'projects'];
+const SUBPROJECT_MANIFESTS = [
+  'package.json', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'pubspec.yaml',
+  'composer.json', 'Gemfile', 'pom.xml', 'build.gradle', 'build.gradle.kts',
+];
+
+function hasWorkspaceSignal() {
+  if (existsHere('pnpm-workspace.yaml')) return true;
+  if (existsHere('lerna.json'))          return true;
+  if (existsHere('nx.json'))             return true;
+  if (existsHere('turbo.json'))          return true;
+  if (existsHere('rush.json'))           return true;
+  if (existsHere('package.json')) {
+    if (/"workspaces"\s*:/.test(readSafe(path.join(CWD, 'package.json')))) return true;
+  }
+  return false;
+}
+
+function detectStackIn(absDir) {
+  const exists = (rel) => fs.existsSync(path.join(absDir, rel));
+  const read = (rel) => readSafe(path.join(absDir, rel));
+  if (exists('package.json')) {
+    const pj = read('package.json');
+    if (/"next"\s*:/.test(pj))                    return 'next-ts';
+    if (/"@angular\/core"\s*:/.test(pj))          return 'angular';
+    if (/"react"\s*:/.test(pj))                   return 'react-ts';
+    if (/"vue"\s*:/.test(pj))                     return 'vue-ts';
+    if (/"@nestjs\/core"|"nestjs"\s*:/.test(pj))  return 'nestjs';
+    if (/"express"\s*:/.test(pj))                 return 'node-express';
+    return 'node-ts';
+  }
+  let entries = [];
+  try { entries = fs.readdirSync(absDir); } catch { /* ignore */ }
+  if (entries.some(f => f.endsWith('.csproj') || f.endsWith('.sln'))) return 'dotnet';
+  if (exists('pyproject.toml'))    return 'python';
+  if (exists('go.mod'))            return 'go';
+  if (exists('Cargo.toml'))        return 'rust';
+  if (exists('pubspec.yaml'))      return 'flutter';
+  if (exists('composer.json'))     return 'php';
+  if (exists('Gemfile'))           return 'ruby';
+  if (exists('mix.exs'))           return 'elixir';
+  if (exists('build.gradle.kts'))  return 'kotlin-gradle';
+  if (exists('build.gradle'))      return 'java-gradle';
+  if (exists('pom.xml'))           return 'java-maven';
+  return 'unknown';
+}
+
+function detectProductNameIn(absDir, fallback) {
+  const exists = (rel) => fs.existsSync(path.join(absDir, rel));
+  const read = (rel) => readSafe(path.join(absDir, rel));
+  if (exists('package.json')) {
+    const m = read('package.json').match(/"name"\s*:\s*"([^"]+)"/);
+    if (m) return m[1];
+  }
+  let entries = [];
+  try { entries = fs.readdirSync(absDir); } catch { /* ignore */ }
+  const csproj = entries.find(f => f.endsWith('.csproj'));
+  if (csproj) return csproj.replace(/\.csproj$/, '');
+  if (exists('pyproject.toml')) {
+    const m = read('pyproject.toml').match(/name\s*=\s*"([^"]+)"/);
+    if (m) return m[1];
+  }
+  if (exists('Cargo.toml')) {
+    const m = read('Cargo.toml').match(/name\s*=\s*"([^"]+)"/);
+    if (m) return m[1];
+  }
+  return fallback;
+}
+
+function listMonorepoDirs() {
+  const dirs = [];
+  for (const parent of MONOREPO_PARENTS) {
+    const absParent = path.join(CWD, parent);
+    if (!fs.existsSync(absParent)) continue;
+    let subs = [];
+    try { subs = fs.readdirSync(absParent, { withFileTypes: true }); } catch { continue; }
+    for (const sub of subs) {
+      if (!sub.isDirectory() || sub.name.startsWith('.')) continue;
+      const absSub = path.join(absParent, sub.name);
+      let hasManifest = SUBPROJECT_MANIFESTS.some(m => fs.existsSync(path.join(absSub, m)));
+      if (!hasManifest) {
+        let inner = [];
+        try { inner = fs.readdirSync(absSub); } catch { /* ignore */ }
+        hasManifest = inner.some(f => f.endsWith('.csproj'));
+      }
+      if (hasManifest) dirs.push(path.join(parent, sub.name).replace(/\\/g, '/'));
+    }
+  }
+  return dirs.sort();
+}
+
+function detectProjectMode() {
+  if (hasWorkspaceSignal()) return 'monorepo';
+  if (listMonorepoDirs().length >= 2) return 'monorepo';
+  return 'root';
+}
+
+function buildProjectsList() {
+  return listMonorepoDirs().map(rel => {
+    const abs = path.join(CWD, rel);
+    return {
+      name: detectProductNameIn(abs, path.basename(rel)),
+      path: rel,
+      stack: detectStackIn(abs),
+    };
+  });
+}
+
 function detectExistingInstructionFiles() {
   const found = [];
   for (const rel of PROTECTED_INSTRUCTION_FILES) {
@@ -349,8 +518,44 @@ function detectExistingInstructionFiles() {
   return found;
 }
 
-function copyTemplate(existingProtected) {
-  const protectedSet = new Set(existingProtected);
+function looksStarterManagedContent(content) {
+  return /Agentic Starter Pack|@wesleysimplicio\/agentic-starter|<PRODUCT_NAME>|<STACK>/.test(content);
+}
+
+function readExistingMeta() {
+  try {
+    return JSON.parse(readSafe(path.join(CWD, '.starter-meta.json')) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function detectPreservedUserFiles() {
+  const metaPath = path.join(CWD, '.starter-meta.json');
+  const hasMeta = fs.existsSync(metaPath);
+  const meta = readExistingMeta();
+  if (Array.isArray(meta.preserved_user_files)) {
+    return Array.from(new Set(meta.preserved_user_files)).sort();
+  }
+
+  const preserved = new Set();
+  const heuristicFiles = hasMeta ? ['README.md'] : COLLISION_PRONE_TEMPLATE_FILES;
+
+  for (const rel of heuristicFiles) {
+    const abs = path.join(CWD, rel);
+    if (!fs.existsSync(abs)) continue;
+
+    const content = readSafe(abs);
+    if (!looksStarterManagedContent(content)) {
+      preserved.add(rel);
+    }
+  }
+
+  return Array.from(preserved).sort();
+}
+
+function copyTemplate(existingProtected, preservedUserFiles) {
+  const protectedSet = new Set([...existingProtected, ...preservedUserFiles]);
   let copied = 0, skipped = 0, missing = 0;
 
   for (const rel of TEMPLATE_PATHS) {
@@ -413,13 +618,16 @@ async function handleGitignore(rl) {
   const gi = path.join(CWD, '.gitignore');
   if (fs.existsSync(gi)) {
     const existing = readSafe(gi);
-    if (existing.includes('Agentic Starter (auto-managed)')) {
-      log('→ Recommended entries already present in .gitignore. Nothing to do.\n');
-    } else if (opts.dryRun) {
+    if (opts.dryRun) {
       log('  append (dry):   .gitignore\n');
     } else {
-      fs.appendFileSync(gi, '\n' + RECOMMENDED_IGNORES);
-      log('→ Recommended entries APPENDED to .gitignore (original content preserved).\n');
+      const next = upsertGitignore(existing);
+      fs.writeFileSync(gi, next);
+      if (existing.includes(GITIGNORE_MARKER) || existing.includes('# Agentic starter tracked files')) {
+        log('→ Recommended entries UPDATED in .gitignore.\n');
+      } else {
+        log('→ Recommended entries APPENDED to .gitignore (original content preserved).\n');
+      }
     }
   } else if (opts.dryRun) {
     log('  create (dry):   .gitignore\n');
@@ -442,12 +650,32 @@ async function handleGitignore(rl) {
   log('');
 }
 
+function upsertGitignore(existing) {
+  const starts = [
+    existing.indexOf(GITIGNORE_MARKER),
+    existing.indexOf('# Agentic starter tracked files'),
+  ].filter(index => index >= 0);
+
+  if (starts.length === 0) {
+    return existing.replace(/\s*$/, '') + '\n\n' + RECOMMENDED_IGNORES + '\n';
+  }
+
+  const start = Math.min(...starts);
+  const end = existing.indexOf(GITIGNORE_END_MARKER, start);
+  const before = existing.slice(0, start).replace(/\s*$/, '');
+  const after = end >= 0
+    ? existing.slice(end + GITIGNORE_END_MARKER.length).replace(/^\s*/, '')
+    : '';
+
+  return before + '\n\n' + RECOMMENDED_IGNORES + (after ? '\n' + after : '\n');
+}
+
 function looksBinary(buf) {
   const head = buf.length > 8192 ? buf.subarray(0, 8192) : buf;
   return head.includes(0);
 }
 
-function substituteInFile(file, productName, team, domain, stack) {
+function substituteInFile(file, productName, stack) {
   let content;
   try {
     const buf = fs.readFileSync(file);
@@ -456,12 +684,10 @@ function substituteInFile(file, productName, team, domain, stack) {
     content = buf.toString('utf8');
   } catch { return false; }
 
-  if (!/<PRODUCT_NAME>|<TEAM>|<DOMAIN>|<STACK>/.test(content)) return false;
+  if (!/<PRODUCT_NAME>|<STACK>/.test(content)) return false;
 
   const next = content
     .replace(/<PRODUCT_NAME>/g, productName)
-    .replace(/<TEAM>/g, team)
-    .replace(/<DOMAIN>/g, domain)
     .replace(/<STACK>/g, stack);
 
   if (next === content) return false;
@@ -481,10 +707,10 @@ function walk(dir, cb) {
   }
 }
 
-function substitute(productName, team, domain, stack) {
+function substitute(productName, stack) {
   let touched = 0;
   const stamp = (file) => {
-    if (substituteInFile(file, productName, team, domain, stack)) touched++;
+    if (substituteInFile(file, productName, stack)) touched++;
   };
 
   for (const dir of STARTER_DIRS) {
@@ -511,18 +737,21 @@ function substitute(productName, team, domain, stack) {
   log(`→ ${touched} files updated (only starter-managed paths)${opts.dryRun ? ' (dry-run)' : ''}.\n`);
 }
 
-function writeMeta(productName, team, domain, stack, existingInstructionFiles) {
+function writeMeta(productName, stack, projectMode, projectsList, existingInstructionFiles, preservedUserFiles) {
   if (opts.skipMeta) return;
   const meta = {
     product_name: productName,
-    team: team,
-    domain: domain,
     stack: stack,
+    project_mode: projectMode,
+    projects: projectsList,
     bootstrapped_at: new Date().toISOString(),
     starter_version: PKG.version,
     cli: '@wesleysimplicio/agentic-starter',
     existing_instruction_files: existingInstructionFiles,
-    init_must_ask: ['team', 'domain', 'vision_oneliner', 'primary_personas'],
+    preserved_user_files: preservedUserFiles,
+    init_must_ask: [],
+    init_must_infer: ['team', 'domain', 'vision_oneliner', 'personas_beyond_dev'],
+    default_persona: 'developer',
     init_must_merge: existingInstructionFiles,
     read_only_globs: [
       '**/*.razor', '**/*.cs', '**/*.csproj', '**/*.sln',
@@ -674,36 +903,46 @@ async function main() {
     process.exit(2);
   }
 
-  const productName = path.basename(CWD);
-  const team        = 'Plataforma';
-  const domain      = 'generico';
-  const stack       = detectStack();
+  const projectMode  = detectProjectMode();
+  const projectsList = projectMode === 'monorepo' ? buildProjectsList() : [];
+  const productName  = projectMode === 'monorepo'
+    ? path.basename(CWD)
+    : detectProductNameIn(CWD, path.basename(CWD));
+  const stack        = projectMode === 'monorepo' ? 'monorepo' : detectStack();
 
   log('==========================================');
   log('  Agentic Starter - Bootstrap (npx)');
   log(`  v${PKG.version}`);
   log('==========================================\n');
-  log('Auto-detected (INIT.md will refine TEAM/DOMAIN with you):');
+  log('Auto-detected (agent will infer team/domain/personas/vision from code):');
+  log(`  PROJECT_MODE: ${projectMode}`);
   log(`  PRODUCT_NAME: ${productName}`);
-  log(`  TEAM:         ${team}`);
-  log(`  DOMAIN:       ${domain}`);
   log(`  STACK:        ${stack}`);
+  if (projectMode === 'monorepo' && projectsList.length > 0) {
+    log(`  PROJECTS:     ${projectsList.length} subproject(s) detected`);
+  }
   log(`  MODE:         ${opts.dryRun ? 'dry-run' : 'write'}${opts.force ? ' (force)' : ''}\n`);
 
   const existingInstructionFiles = detectExistingInstructionFiles();
+  const preservedUserFiles = detectPreservedUserFiles();
   if (existingInstructionFiles.length > 0) {
     log('Detected pre-existing instruction files (will be preserved):');
     for (const f of existingInstructionFiles) log(`  - ${f}`);
     log('  -> INIT.md will READ them and IMPROVE in place (essence preserved).\n');
   }
+  if (preservedUserFiles.length > 0) {
+    log('Detected pre-existing user-owned template collisions (will be preserved):');
+    for (const f of preservedUserFiles) log(`  - ${f}`);
+    log('');
+  }
 
-  copyTemplate(existingInstructionFiles);
+  copyTemplate(existingInstructionFiles, preservedUserFiles);
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     await handleGitignore(rl);
-    substitute(productName, team, domain, stack);
-    writeMeta(productName, team, domain, stack, existingInstructionFiles);
+    substitute(productName, stack);
+    writeMeta(productName, stack, projectMode, projectsList, existingInstructionFiles, preservedUserFiles);
     log('');
 
     const cliChoice = await chooseCli(rl);

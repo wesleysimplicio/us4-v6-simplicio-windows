@@ -1,64 +1,82 @@
 # Domain — US4 V6 Windows Edition
 
-## Glossario
-- **Adapter** — modulo que adapta um family LLM (Qwen, Llama, DeepSeek MoE, etc.) a interface `IUS4WindowsAdapter`.
-- **Backend** — pilha computacional: CPU scalar / AVX2 / AVX-512 / AMX / oneDNN / CUDA / DirectML / Vulkan / Windows ML (NPU).
-- **Runtime Mode** — perfil global: FULL / BALANCED / DEGRADED / ULTRA_LOW / MICRO / NANO / CPU_ONLY.
-- **Hardware Profile** — combinacao especifica de GPU/CPU/RAM/VRAM (8 perfis canonicos).
-- **KV Cache** — store de key/value de attention.
-- **Hot-Cold KV Tiering** — VRAM hot, RAM warm, SSD cold (mmap), summary (compressed).
-- **MoE / Expert Pager / SP-MoE** — vide Apple Edition (mesma semantica).
-- **Speculative Decoding / P-EAGLE / EAGLE-3** — vide Apple Edition.
-- **NPU** — Neural Processing Unit em laptops modernos (Snapdragon X, Intel Core Ultra, AMD Ryzen AI), acessivel via Windows ML.
-- **AMX** — Intel Advanced Matrix eXtensions (BF16/INT8) em Sapphire Rapids+.
-- **CUDA Graphs** — grafos pre-capturados que reduzem overhead de launch.
-- **DirectML** — API de inferencia ML cross-vendor sobre D3D12.
-- **Vulkan compute** — backend portavel cross-vendor para shaders compute.
-- **Correctness Diff** — vide Apple Edition.
+## Glossário
 
-## Entidades
-- `IUS4WindowsAdapter`, `RuntimeMode`, `HardwareProbe`, `BackendSelector`.
-- `KvPager` / `PrefixCache` / `Summarizer` (tier VRAM/RAM/SSD).
-- `Router` / `ExpertPager` / `SpeculativePrefetch`.
-- `ContinuousBatcher` / `SessionPool`.
-- `AutoTuner` / `Profile`.
-- `Telemetry`.
+- **Universal Runtime** — núcleo comum que orquestra CLI/SDK, seleção de backend, scheduler, adapters e telemetria.
+- **Adapter** — módulo que adapta uma família de modelos ao contrato do runtime, definindo capacidades, `KVLayout`, `QuantStrategy` e `MemoryPlan`.
+- **Backend** — implementação de execução concreta: CUDA, DirectML, Vulkan, oneDNN/CPU AVX ou Windows ML/NPU.
+- **HardwareProbe** — subsistema que detecta CPU features, RAM, GPU vendor, VRAM, suporte a CUDA, D3D12, Vulkan e NPU.
+- **BackendSelector** — política que escolhe backend primário, ordem de fallback e `RuntimeMode`.
+- **RuntimeMode** — perfil global de operação: `FULL`, `BALANCED`, `DEGRADED`, `ULTRA_LOW`, `MICRO`, `NANO`, `CPU_ONLY`.
+- **MemoryPlan** — plano de alocação e tiering entre VRAM hot, RAM warm e SSD cold.
+- **KV Cache** — armazenamento de keys/values de attention usado por prefill e decode.
+- **KV Pager** — mecanismo de promoção, demotion, compressão e flush do KV entre VRAM, RAM e SSD.
+- **Prefix Cache** — cache de prefill reutilizável entre prompts compatíveis.
+- **Expert Pager** — mecanismo de paginação para experts de modelos MoE, com hot/warm/cold tiers.
+- **Continuous Batching** — scheduler multi-sessão que compartilha janelas compatíveis sem corromper KV.
+- **Speculative Decoding** — caminho opcional de draft + verify para reduzir latência sem mudar a saída final.
+- **Correctness Diff** — comparação de logits/saída contra referência estável para provar que otimização não degradou correctness.
+- **Profile Store** — persistência de perfis de hardware e autotune por máquina.
+
+## Entidades principais
+
+- `RuntimeContext`
+- `UniversalRuntime`
+- `HardwareProfile`
+- `RuntimePreferences`
+- `BackendPlan`
+- `IUS4WindowsAdapter`
+- `Tensor` / `TensorView`
+- `KvPager`
+- `PrefixCache`
+- `ExpertPager`
+- `ContinuousBatcher`
+- `AutoTuner`
+- `TelemetrySnapshot`
 
 ## Diagrama
+
 ```mermaid
 flowchart TB
-  CLI[us4.exe] --> Runtime
+  CLI[us4-cli.exe] --> Runtime[Universal Runtime]
   SDK[us4-v6.dll] --> Runtime
   Runtime --> Probe[HardwareProbe]
-  Runtime --> Mode[RuntimeMode Selector]
-  Runtime --> Sel[BackendSelector]
-  Runtime --> Adapter[IUS4WindowsAdapter impl]
-  Adapter --> KV[KvPager VRAM/RAM/SSD]
-  Adapter --> MoE[Router + ExpertPager]
-  Adapter --> Backend[Backend dispatch]
-  Backend --> CUDA[CUDA + cuBLAS + CUDA Graphs]
-  Backend --> DML[DirectML]
-  Backend --> VK[Vulkan compute]
-  Backend --> AVX[CPU AVX2/AVX-512/AMX + oneDNN]
-  Backend --> NPU[Windows ML / NPU]
-  Runtime --> Sched[ContinuousBatcher]
-  Runtime --> Spec[Speculative P-EAGLE/EAGLE-3]
-  Runtime --> Tune[AutoTuner]
-  Runtime --> Telem[Telemetry]
+  Probe --> Selector[BackendSelector]
+  Runtime --> Registry[ModelRegistry]
+  Registry --> Adapter[IUS4WindowsAdapter]
+  Runtime --> Planner[MemoryPlan]
+  Runtime --> KV[KvPager + PrefixCache]
+  Runtime --> Experts[ExpertPager]
+  Runtime --> Scheduler[ContinuousBatcher]
+  Runtime --> Spec[Speculative Decoding]
+  Adapter --> Backend[CUDA / DirectML / Vulkan / CPU / NPU]
+  Runtime --> Tune[AutoTuner + ProfileStore]
+  Runtime --> Telemetry[Metrics + Correctness]
 ```
 
 ## Invariantes
-- `IUS4WindowsAdapter::generate()` deterministico para `(seed, temperature=0)`.
-- KV evictado pro SSD restaura identico.
-- Speculative produz tokens identicos a non-speculative.
-- Mode transitions monotonicas (so degrada, nunca volta sem reset).
-- Backend selecionado nunca quebra correctness diff alem da tolerancia.
-- NPU offload sempre opt-in; fallback transparente quando ausente.
+
+- O adapter não escolhe hardware; ele responde ao hardware escolhido.
+- Toda otimização relevante pode ser desligada para comparação com baseline.
+- KV promovido ou restaurado mantém equivalência de logits dentro da tolerância da task.
+- `RuntimeMode` só degrada automaticamente; promoção exige nova seleção/reinicialização controlada.
+- O fallback de backend não pode corromper sessão nem trocar silenciosamente a semântica do modelo.
+- NPU offload é sempre opt-in e nunca requisito para funcionamento básico.
 
 ## Estados de runtime
-- `idle` / `loading` / `ready` / `generating` / `degraded` / `error` (mesma semantica Apple).
+
+- `idle`
+- `probing`
+- `loading`
+- `ready`
+- `prefill`
+- `generating`
+- `degraded`
+- `error`
 
 ## Termos vetados
-- "GPU" sem qualificar vendor (use "CUDA path" / "DirectML path" / "Vulkan path").
-- "Auto" sem qualificar (mode? backend? tile size?).
-- "Fast" sem numero.
+
+- `GPU` sem qualificar caminho concreto quando isso importar para a análise.
+- `auto` sem dizer se é `backend auto`, `mode auto` ou `autotune`.
+- `fast` sem benchmark.
+- `supported` sem dizer em qual backend e em qual modo.

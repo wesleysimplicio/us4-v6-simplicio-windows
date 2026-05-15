@@ -1,0 +1,12 @@
+{
+  "id": "cpu-only",
+  "displayName": "CPU Only",
+  "mode": "cpu-only",
+  "preferredBackend": "cpu-avx2",
+  "targetContextTokens": 2048,
+  "targetBatchSize": 1,
+  "enableKvTiering": false,
+  "enableSpeculative": false,
+  "enableMoE": false,
+  "enableContinuousBatching": false
+}

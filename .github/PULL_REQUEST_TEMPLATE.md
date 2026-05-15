@@ -1,69 +1,92 @@
 # Pull Request
 
-## Resumo
+## Summary
 
-<!-- Descreva em 1-3 frases o que muda e por quê. Foco no "porquê", não no "como". -->
+<!-- Descreva em 1-3 frases o que mudou e por que. -->
 
-## Task relacionada
+## Related task
 
-<!-- Link obrigatório para a task: #NNN, .specs/sprints/sprint-XX/NN-titulo.task.md, ou issue. -->
+<!-- Referencia obrigatoria: issue, task.md ou ambos. -->
 
-- Task: <!-- ex: #42 ou .specs/sprints/sprint-01/01-example.task.md -->
-- Closes: <!-- Closes #42 -->
+- Task:
+- Closes:
 
-## Tipo de mudança
+## Change type
 
-- [ ] feat — nova feature
-- [ ] fix — bug fix
-- [ ] refactor — refactor sem mudança comportamental
-- [ ] perf — melhoria de performance
-- [ ] docs — documentação
-- [ ] test — só testes
-- [ ] chore — build/CI/tooling
-- [ ] breaking — quebra contrato (descrever em "Breaking changes")
+- [ ] feat - nova feature
+- [ ] fix - bug fix
+- [ ] refactor - refactor sem mudanca comportamental
+- [ ] perf - melhoria de performance
+- [ ] docs - documentacao
+- [ ] test - apenas testes
+- [ ] chore - build, CI ou tooling
+- [ ] breaking - quebra contrato
+
+## Scope flags
+
+- [ ] CLI/UX touched
+- [ ] Architecture touched
+- [ ] Release-relevant
+
+## Validation
+
+- [ ] Build local verde (`cmake -S . -B build -G Ninja` e `cmake --build build`)
+- [ ] `us4-cli` validado no fluxo alterado
+- [ ] Unit tests passam (`ctest --test-dir build --output-on-failure`)
+- [ ] `clang-format --dry-run --Werror` executado, quando disponivel
+- [ ] `clang-tidy -p build` executado, quando disponivel
+- [ ] Playwright executado quando CLI/UX foi tocado
+- [ ] Regression/correctness rodados para os backends tocados, quando o harness existir
 
 ## Definition of Done
 
 - [ ] Acceptance criteria da task atendidos
-- [ ] Lint passa local (`npm run lint`)
-- [ ] Unit tests passam (`npm test`)
-- [ ] Coverage >= 80%
-- [ ] E2E Playwright passa (`npx playwright test`)
-- [ ] Evidência E2E anexada (screenshots/trace) abaixo
-- [ ] Sem TODO/FIXME novos sem issue tracked
-- [ ] Sem secrets/credenciais hardcoded
-- [ ] Conventional commits seguidos no histórico
-- [ ] Documentação atualizada (`README.md`, `.specs/`, JSDoc) quando aplicável
-- [ ] Changelog atualizado se mudança user-facing
-- [ ] Versão bumped conforme SemVer (`package.json`)
-- [ ] ADR linkado se mudou `architecture/` (ADR-NNN)
+- [ ] Sem TODO/FIXME novos sem dono e prazo
+- [ ] Sem segredo hardcoded
+- [ ] Commits seguem Conventional Commits
+- [ ] Documentacao atualizada quando aplicavel
 
-## Evidências / Screenshots
+## Playwright evidence
 
-<!-- Anexe screenshots, gifs, traces do Playwright. Para cada cenário coberto, mostre estado final. -->
-<!-- Exemplo: -->
-<!-- ![happy-path](url) -->
-<!-- ![error-state](url) -->
+<!-- Preencha se CLI/UX foi tocado. Caso contrario, escreva N/A. -->
 
-## Cenários E2E cobertos
+- CLI/UX touched:
+- HTML report:
+- Trace:
+- Screenshots:
+- Video:
 
-- [ ] Caminho feliz
-- [ ] Casos de erro (input inválido, falha de rede)
-- [ ] Estados de auth (anônimo, logado, sem permissão)
-- [ ] Variantes de viewport (mobile, desktop)
-- [ ] Edge cases relevantes
+## Backend validation
 
-## Breaking changes
+<!-- Marque o que foi tocado e descreva abaixo o que foi realmente validado. -->
 
-<!-- Se aplicável, descreva impacto e migração. Caso contrário, "N/A". -->
+- [ ] CUDA
+- [ ] DirectML
+- [ ] Vulkan
+- [ ] CPU AVX
+- [ ] NPU
 
-## Notas de deploy
+Validation notes:
 
-<!-- Variáveis de ambiente novas, migrations, side effects de deploy. "N/A" se nenhum. -->
+## Bench / correctness notes
 
-## Checklist do reviewer
+<!-- Numeros reais, caminho para relatorio, ou N/A com justificativa. -->
 
-- [ ] Código segue `.specs/architecture/PATTERNS.md`
-- [ ] Testes cobrem o comportamento, não apenas linhas
-- [ ] Sem refatoração extra fora do escopo
-- [ ] Mensagens de commit seguem Conventional Commits
+## ADR / architecture notes
+
+<!-- Cite ADR-NNN quando aplicavel, ou N/A. -->
+
+## Release notes
+
+<!-- Se houver impacto em release futura, packaging ou distribuicao manual, descreva. Caso contrario, N/A. -->
+
+## Environment limits
+
+<!-- Registre limitacoes reais de ambiente, por exemplo ausencia de compilador, GPU ou harness. Caso nao haja, escreva N/A. -->
+
+## Reviewer checklist
+
+- [ ] Mudanca segue `.specs/architecture/PATTERNS.md`
+- [ ] Escopo esta contido na task
+- [ ] Evidencia bate com o que a PR afirma
+- [ ] ADR foi citada quando arquitetura mudou
