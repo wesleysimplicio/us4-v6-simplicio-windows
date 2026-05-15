@@ -17,6 +17,7 @@
 #include "us4/runtime/backends/windows_ml/windows_ml_execution_plan.h"
 #include "us4/runtime/backends/windows_ml/winml_adapter.h"
 #include "us4/runtime/benchmarks/matrix_runner.h"
+#include "us4/runtime/version.h"
 
 #include <algorithm>
 #include <cctype>
@@ -932,7 +933,7 @@ namespace us4::cli
         {
             return CommandOutput{
                 kSuccessExitCode,
-                "us4-cli 0.1.17\n",
+                "us4-cli " + std::string(us4::runtime::version::kVersion) + "\n",
                 {},
             };
         }

@@ -35,7 +35,7 @@ us4-cli help
 us4-cli version
 us4-cli probe [--format <text|json>]
 us4-cli serve --model <model-id> [--format <text|json>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
-us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
+us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 us4-cli bench --model <model-id> [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 us4-cli tune --model <model-id> [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 ```
@@ -47,11 +47,10 @@ Comportamento atual:
 - `run` executa o baseline CPU scalar quando o plano resolve para CPU-only, imprime planos dry-run para os backends nao CPU e agora tambem aceita `--format json`.
 - `bench` avalia a matriz atual de benchmarks sem persistir perfil. Ele aceita `--format text` e `--format json`.
 - `tune` executa o mini-bench planner, escolhe o melhor profile para o fingerprint atual do host, persiste essa selecao no profile store e agora tambem aceita `--format json`.
-- `version` existe, mas a string de versao do runtime ainda e hardcoded e ainda nao representa uma fonte canonica gerada pelo build.
+- `version` agora vem da versao do projeto no CMake gerada no build, embora os metadados de release ainda nao estejam fechados ponta a ponta.
 
 Ainda nao implementado:
 
-- `run` ainda emite apenas texto; a paridade JSON completa desse caminho ainda esta em aberto.
 - packaging MSIX, portable zip e publicacao de release ainda nao estao fechados.
 
 ## Bench E Tune Por Matriz

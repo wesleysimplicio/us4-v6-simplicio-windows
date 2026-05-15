@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  IgnorableNamespaces="uap">
+  <Identity
+    Name="WesleySimplicio.US4V6WindowsEdition"
+    Publisher="CN=US4 Dev"
+    Version="@US4_MSIX_VERSION@" />
+  <Properties>
+    <DisplayName>US4 V6 Windows Edition</DisplayName>
+    <PublisherDisplayName>us4-core</PublisherDisplayName>
+    <Description>Universal State Runtime CLI for local LLM inference on Windows.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Applications>
+    <Application Id="us4-cli" Executable="us4-cli.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="US4 V6 Windows Edition"
+        Description="US4 local LLM runtime CLI"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+</Package>

@@ -1,0 +1,10 @@
+#pragma once
+
+#include <string_view>
+
+namespace us4::runtime::version
+{
+
+    inline constexpr std::string_view kVersion = "@PROJECT_VERSION@";
+
+} // namespace us4::runtime::version

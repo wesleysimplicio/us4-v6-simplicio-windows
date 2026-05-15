@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.0
+    VERSION 0.1.18
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
@@ -19,8 +19,15 @@ option(US4_ENABLE_WINDOWS_ML "Enable Windows ML / NPU backend integration" ON)
 
 include(CTest)
 
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/us4/runtime")
+configure_file(
+    "${CMAKE_SOURCE_DIR}/runtime/version.h.in"
+    "${CMAKE_BINARY_DIR}/generated/us4/runtime/version.h"
+    @ONLY)
+
 add_library(us4_build_options INTERFACE)
 target_compile_features(us4_build_options INTERFACE cxx_std_20)
+target_include_directories(us4_build_options INTERFACE "${CMAKE_BINARY_DIR}/generated")
 
 add_library(us4_build_warnings INTERFACE)
 if(MSVC)

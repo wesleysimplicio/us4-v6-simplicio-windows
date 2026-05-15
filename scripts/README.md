@@ -15,6 +15,12 @@ Os scripts deste repositorio cobrem dois cenarios:
   - rodam Playwright para o `us4-cli`, exigem binario existente, verificam os artefatos gerados e falham se o resultado for so `skip`
 - `update-starter.ps1` / `update-starter.sh`
   - atualizam a estrutura instalada do starter de forma segura
+- `install-completions.ps1`
+  - instala o script de completions do `us4-cli` no profile atual do PowerShell
+- `build-portable-zip.ps1`
+  - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`
+- `build-msix.ps1`
+  - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis
 
 ## Regras
 

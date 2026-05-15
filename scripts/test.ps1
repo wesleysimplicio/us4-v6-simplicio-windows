@@ -14,6 +14,21 @@ if ($errors.Count -gt 0) {
     exit 1
 }
 
+foreach ($scriptPath in @(
+    (Join-Path (Get-Location) "scripts\install-completions.ps1"),
+    (Join-Path (Get-Location) "scripts\build-portable-zip.ps1"),
+    (Join-Path (Get-Location) "scripts\build-msix.ps1"),
+    (Join-Path (Get-Location) "scripts\completions\us4-cli.ps1")
+)) {
+    $tokens = $null
+    $errors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors) | Out-Null
+    if ($errors.Count -gt 0) {
+        $errors | ForEach-Object { Write-Host $_.Message }
+        exit 1
+    }
+}
+
 if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
     [void](Enable-MsvcToolchain)
     if ((Get-Command cmake -ErrorAction SilentlyContinue) -and

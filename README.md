@@ -35,7 +35,7 @@ us4-cli help
 us4-cli version
 us4-cli probe [--format <text|json>]
 us4-cli serve --model <model-id> [--format <text|json>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
-us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
+us4-cli run --model <model-id> --prompt <text> [--model-path <asset>] [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 us4-cli bench --model <model-id> [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 us4-cli tune --model <model-id> [--format <text|json>] [--max-tokens <count>] [--backend <auto|cpu|cuda|directml|vulkan|windows-ml|npu>] [--mode <auto|full|balanced|degraded|ultra_low|micro|nano|cpu_only>] [--npu]
 ```
@@ -47,11 +47,10 @@ Current behavior:
 - `run` executes the CPU scalar baseline when the resolved plan is CPU-only, prints dry-run execution plans for non-CPU backends, and now also supports `--format json`.
 - `bench` evaluates the current benchmark matrix without persisting a profile. It supports `--format text` and `--format json`.
 - `tune` runs the mini-bench planner, selects the best profile for the current hardware fingerprint, persists that selection to the profile store, and now also supports `--format json`.
-- `version` exists, but the runtime version string is still hardcoded and is not yet a canonical build-generated version source.
+- `version` now comes from the CMake project version generated at build time, although release metadata is still not fully end-to-end.
 
 Not implemented yet:
 
-- `run` still emits text only; JSON parity for the full run path is still open.
 - MSIX packaging, portable zip automation, and release publishing are not finished.
 
 ## Matrix Bench And Tune

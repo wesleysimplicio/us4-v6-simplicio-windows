@@ -12,11 +12,7 @@ Hoje o repositorio ainda nao tem pipeline de release do runtime Windows.
 
 Faltam estes blocos basicos:
 
-- [`.github/workflows/release.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/release.yml)
-- `CHANGELOG.md`
-- `packaging/msix/`
 - `packaging/winget/`
-- uma fonte canonica de versao do runtime gerada pelo build
 - assinatura de binarios
 - smoke de pos-publicacao
 
@@ -77,13 +73,13 @@ Implicacoes:
 
 ### 3.2 O que ainda nao esta pronto como contrato final
 
-- a string exibida por `us4-cli version` existe, mas ainda nao e derivada de uma fonte unica gerada no build.
+- a versao do binario agora e derivada da versao do projeto no CMake, mas a trilha de release ainda nao fecha so com isso.
 
 ### 3.3 Package version x runtime version
 
 Hoje `package.json` existe por causa do tooling herdado do starter e do ecossistema JS do repo. Esse numero nao deve ser tratado sozinho como a versao canonica do runtime C++.
 
-Enquanto a versao do binario continuar hardcoded e sem geracao a partir do build:
+Enquanto a versao do runtime ainda nao estiver conectada a changelog, tag e artefatos finais:
 
 - `package.json` pode acompanhar a trilha do scaffold/tooling
 - `us4-cli version` continua util para smoke
@@ -103,12 +99,13 @@ Enquanto a pipeline de release nao existe, use este processo como preparacao:
 
 ### 4.2 Definir versao
 
-Antes da primeira release, implemente uma fonte unica para a versao do runtime. Caminhos aceitaveis:
+O runtime ja usa a versao do `project(...)` do CMake para alimentar `us4-cli version`.
+O que ainda falta e ligar isso a:
 
-- gerar header de versao a partir do CMake
-- declarar versao no `project(...)` do CMake e propagar para o binario
-
-Nao publique runtime usando apenas a versao de `package.json`, porque esse arquivo hoje cobre tooling herdado do starter, nao o contrato do runtime C++.
+- changelog
+- tags de release
+- artefatos distribuidos
+- assinatura e publicacao
 
 ### 4.3 Criar changelog
 
@@ -134,7 +131,7 @@ SemVer continua sendo a regra alvo do produto:
 - `MINOR`: feature compativel
 - `MAJOR`: quebra de contrato
 
-Mas esse versionamento so passa a valer como processo operacional quando a fonte canonica da versao do runtime estiver implementada.
+Mas esse versionamento so passa a valer como processo operacional quando ele estiver ligado aos artefatos finais e ao processo de publicacao.
 
 Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 
@@ -148,12 +145,12 @@ Mudancas que devem ser tratadas com cuidado de contrato desde ja:
 
 ## 6. Checklist para habilitar release automation
 
-- [ ] `CHANGELOG.md` criado
-- [ ] versao do runtime definida no build C++
-- [ ] `us4-cli version` alinhado a essa fonte canonica
+- [x] `CHANGELOG.md` criado
+- [x] versao do runtime definida no build C++
+- [x] `us4-cli version` alinhado a essa fonte canonica
 - [ ] smoke de release cobrindo `probe`, `run`, `bench` e `tune`
-- [ ] `release.yml` criado
-- [ ] `packaging/msix/` criado
+- [x] `release.yml` criado
+- [x] `packaging/msix/` criado
 - [ ] estrategia de `portable zip` definida
 - [ ] assinatura de binarios definida
 - [ ] smoke de pos-publicacao definido
