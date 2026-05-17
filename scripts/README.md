@@ -18,9 +18,13 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `install-completions.ps1`
   - instala o script de completions do `us4-cli` no profile atual do PowerShell
 - `build-portable-zip.ps1`
-  - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`, usando staging fora do diretório publicável
+  - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`, usando staging fora do diretorio publicavel
 - `build-msix.ps1`
-  - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis, usando staging fora do diretório publicável
+  - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis, usando staging fora do diretorio publicavel
+- `create-dev-signing-cert.ps1`
+  - gera um certificado dev exportavel compativel com o `Publisher` do manifesto MSIX e pode instalar trust local no usuario atual
+- `dev-msix-smoke.ps1`
+  - encadeia uma trilha dev-only de `build -> sign -> install smoke -> cleanup`, falhando com issue codes claros quando tooling de SDK ou signing ainda nao existe no host
 - `generate-checksums.ps1`
   - gera `SHA256SUMS.txt` para os artefatos de release em `dist/`
 - `install-msix-smoke.ps1`
@@ -32,13 +36,15 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `render-project-status.ps1`
   - consolida planejamento, preflight de release, evidencias Playwright e blockers externos em um snapshot unico de projeto
 - `release-dry-run.ps1`
-  - executa o fluxo local completo de release em modo encadeado, gera artefatos/manifests/notas e retorna um resumo estruturado pronto para evidência
+  - executa o fluxo local completo de release em modo encadeado, gera artefatos, manifests e notas e retorna um resumo estruturado pronto para evidencia
 - `render-planning-status.ps1`
   - consolida sprints e tasks versionadas em JSON ou Markdown, inclusive para gerar `.specs/sprints/STATUS.md` a partir dos checkboxes reais dos `SPRINT.md`
 - `render-release-manifest.ps1`
   - gera `release-manifest.json` a partir de artefatos, checksums e URLs renderizadas de distribuicao
 - `render-release-notes.ps1`
   - extrai a secao corrente do `CHANGELOG.md` e combina com `release-manifest.json` para gerar `release-notes.md`
+- `remove-dev-signing-cert.ps1`
+  - remove o certificado dev dos stores `CurrentUser\My`, `CurrentUser\Root` e `CurrentUser\TrustedPeople`
 - `render-winget-manifests.ps1`
   - renderiza manifests de `winget` a partir dos templates versionados em `packaging/winget/templates/`
 - `validate-winget-manifests.ps1`
@@ -46,7 +52,7 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `validate-release-assets.ps1`
   - cruza artefatos em `dist/`, `SHA256SUMS.txt` e manifests renderizados para garantir nomes, versoes e URLs coerentes antes do upload
 - `validate-publish-layout.ps1`
-  - garante que o diretório final de release só contém artefatos publicáveis e metadata esperada, sem staging ou smoke temporário
+  - garante que o diretorio final de release so contem artefatos publicaveis e metadata esperada, sem staging ou smoke temporario
 - `validate-release-tag.ps1`
   - garante que a tag de release (`vX.Y.Z`) corresponde exatamente a `package.json`
 - `sign-msix.ps1`

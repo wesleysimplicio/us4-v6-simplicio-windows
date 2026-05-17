@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.33] - 2026-05-17
+
+### Added
+
+- `scripts/create-dev-signing-cert.ps1` and `scripts/remove-dev-signing-cert.ps1` for a reproducible local MSIX signing scaffold
+- `scripts/dev-msix-smoke.ps1` for dev-only `build -> sign -> install smoke -> cleanup`, plus E2E coverage for the new local MSIX path
+
+### Changed
+
+- release docs now distinguish self-signed local MSIX validation from the external blocker of a trusted production signing certificate
+
 ## [0.1.32] - 2026-05-17
 
 ### Added

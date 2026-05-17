@@ -32,12 +32,14 @@ O que existe hoje e suficiente para validar base de engenharia:
 - validacao de tag de release via `scripts/validate-release-tag.ps1`
 - `release-notes.md` gerado via `scripts/render-release-notes.ps1`
 - scaffold de assinatura via `scripts/sign-msix.ps1`
+- scaffold de certificado dev via `scripts/create-dev-signing-cert.ps1`
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
 - preflight de release via `scripts/preflight-release.ps1`
 - dry-run local encadeado via `scripts/release-dry-run.ps1`
 - snapshot consolidado de projeto/release via `scripts/render-project-status.ps1`
 - smoke de instalacao MSIX via `scripts/install-msix-smoke.ps1`
+- smoke local dev-only de MSIX autoassinado via `scripts/dev-msix-smoke.ps1`
 - validacao de layout publicavel via `scripts/validate-publish-layout.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
@@ -148,6 +150,8 @@ O que ainda falta para fechar distribuicao:
 - assinatura com certificado real em CI
 - smoke de pos-publicacao em host real para MSIX
 - politica de rollback operacional
+
+Importante: a trilha `create-dev-signing-cert.ps1` + `dev-msix-smoke.ps1` reduz o gap local de `T12.6`, mas nao muda o blocker de producao. Certificado autoassinado continua insuficiente para release publica.
 
 ---
 

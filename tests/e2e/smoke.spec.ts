@@ -2088,6 +2088,69 @@ test.describe('us4-cli smoke', () => {
         expect(`${result.stdout}\n${result.stderr}`).toContain('MSIX signing requires certificate configuration');
     });
 
+    test('creates and removes a dev signing certificate for local MSIX smoke flows', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('dev-signing-cert');
+        const createScriptPath = path.resolve(process.cwd(), 'scripts', 'create-dev-signing-cert.ps1');
+        const removeScriptPath = path.resolve(process.cwd(), 'scripts', 'remove-dev-signing-cert.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const createResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            createScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-CertificatePassword',
+            'us4-dev-pass',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'create-dev-signing-cert', createResult.stdout, createResult.stderr);
+
+        expect(createResult.exitCode).toBe(0);
+        const createPayload = JSON.parse(createResult.stdout) as
+        {
+            execution: string;
+            status: string;
+            subject: string;
+            thumbprint: string;
+            pfx_path: string;
+            cer_path: string;
+        };
+        expect(createPayload.execution).toBe('create-dev-signing-cert');
+        expect(createPayload.status).toBe('ready');
+        expect(createPayload.subject).toBe('CN=US4 Dev');
+        expect(existsSync(createPayload.pfx_path)).toBeTruthy();
+        expect(existsSync(createPayload.cer_path)).toBeTruthy();
+
+        const removeResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            removeScriptPath,
+            '-Thumbprint',
+            createPayload.thumbprint,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'remove-dev-signing-cert', removeResult.stdout, removeResult.stderr);
+
+        expect(removeResult.exitCode).toBe(0);
+        const removePayload = JSON.parse(removeResult.stdout) as
+        {
+            execution: string;
+            status: string;
+            thumbprint: string;
+        };
+        expect(removePayload.execution).toBe('remove-dev-signing-cert');
+        expect(removePayload.status).toBe('ready');
+        expect(removePayload.thumbprint).toBe(createPayload.thumbprint);
+    });
+
     test('exports release preflight as json for the current local state', async ({}, testInfo) => {
         const preflightScriptPath = path.resolve(process.cwd(), 'scripts', 'preflight-release.ps1');
         const cliBuildDir = path.resolve(process.cwd(), 'build');
@@ -2160,6 +2223,42 @@ test.describe('us4-cli smoke', () => {
              expect(payload.status).toBe('blocked');
              expect(payload.issue_codes).toContain('signing_config_missing');
          });
+
+    test('exports dev MSIX smoke preflight readiness or clear local blockers', async ({}, testInfo) => {
+        const devMsixSmokeScriptPath = path.resolve(process.cwd(), 'scripts', 'dev-msix-smoke.ps1');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            devMsixSmokeScriptPath,
+            '-CertificatePassword',
+            'us4-dev-pass',
+            '-PreflightOnly',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'dev-msix-smoke-preflight', result.stdout, result.stderr);
+
+        const payload = JSON.parse(result.stdout) as
+        {
+            execution: string;
+            status: string;
+            preflight_only?: boolean;
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('dev-msix-smoke');
+
+        if (result.exitCode === 0) {
+            expect(payload.status).toBe('ready');
+            expect(payload.preflight_only).toBeTruthy();
+            expect(payload.issue_codes).toHaveLength(0);
+        } else {
+            expect(payload.status).toBe('blocked');
+            expect(payload.issue_codes.some((code) => code.endsWith('_missing'))).toBeTruthy();
+        }
+    });
 
     test('fails MSIX install smoke with a clear signing/trust prerequisite message',
          async ({}, testInfo) => {
