@@ -1610,6 +1610,129 @@ test.describe('us4-cli smoke', () => {
                                             step.status === 'passed')).toBeTruthy();
         expect(payload.steps.some((step) => step.name === 'build-msix' &&
                                             (step.status === 'passed' || step.status === 'skipped'))).toBeTruthy();
+        expect(payload.steps.some((step) => step.status === 'failed')).toBeFalsy();
+    });
+
+    test('renders consolidated project status from planning, release, and evidence signals', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('project-status-dist');
+        const manifestDir = testInfo.outputPath('project-status-winget');
+        const reportDir = testInfo.outputPath('project-status-playwright-report');
+        const testResultsDir = testInfo.outputPath('project-status-test-results');
+        const markdownPath = testInfo.outputPath('project-status.md');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const projectStatusScriptPath = path.resolve(process.cwd(), 'scripts', 'render-project-status.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+        mkdirSync(reportDir, {recursive : true});
+        mkdirSync(testResultsDir, {recursive : true});
+        writeFileSync(path.join(reportDir, 'index.html'), '<html><body>report</body></html>', 'utf8');
+        mkdirSync(path.join(testResultsDir, 'spec-a'), {recursive : true});
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'trace.zip'), 'trace', 'utf8');
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'shot.png'), 'png', 'utf8');
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'video.webm'), 'webm', 'utf8');
+
+        const jsonResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            projectStatusScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-PlaywrightReportDir',
+            reportDir,
+            '-TestResultsDir',
+            testResultsDir,
+            '-RequireEvidence',
+            '-IncludeReleaseDryRun',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'project-status-json', jsonResult.stdout, jsonResult.stderr);
+
+        expect(jsonResult.exitCode).toBe(0);
+        const payload = JSON.parse(jsonResult.stdout) as
+        {
+            execution: string;
+            status: string;
+            planning: {
+                sprint_count: number;
+                total_tasks: number;
+                done_tasks: number;
+                remaining_tasks: number;
+                sprints: Array<{sprint: string; total_tasks: number; done_tasks: number; remaining_tasks: number;}>;
+            };
+            release: {
+                preflight: {
+                    execution: string;
+                    status: string;
+                    package_version: string;
+                    cmake_version: string;
+                    has_cli_binary: boolean;
+                };
+                dry_run: {
+                    execution: string;
+                    status: string;
+                    steps: Array<{status: string;}>;
+                } | null;
+            };
+            evidence: {
+                has_html_report: boolean;
+                trace_count: number;
+                screenshot_count: number;
+                video_count: number;
+            };
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('project-status');
+        expect(payload.status).not.toBe('blocked');
+        expect(payload.planning.sprint_count).toBe(payload.planning.sprints.length);
+        expect(payload.planning.total_tasks).toBe(payload.planning.done_tasks + payload.planning.remaining_tasks);
+        expect(payload.release.preflight.execution).toBe('release-preflight');
+        expect(payload.release.preflight.package_version).toBe(packageVersion);
+        expect(payload.release.preflight.cmake_version).toBe(packageVersion);
+        expect(payload.release.preflight.has_cli_binary).toBeTruthy();
+        expect(payload.release.dry_run?.execution).toBe('release-dry-run');
+        expect(payload.release.dry_run?.status).toBe('ready');
+        expect(payload.release.dry_run?.steps.some((step) => step.status === 'failed')).toBeFalsy();
+        expect(payload.evidence.has_html_report).toBeTruthy();
+        expect(payload.evidence.trace_count).toBeGreaterThan(0);
+        expect(payload.evidence.screenshot_count).toBeGreaterThan(0);
+        expect(payload.evidence.video_count).toBeGreaterThan(0);
+        expect(Array.isArray(payload.issue_codes)).toBeTruthy();
+
+        const markdownResult = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            projectStatusScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-PlaywrightReportDir',
+            reportDir,
+            '-TestResultsDir',
+            testResultsDir,
+            '-OutputPath',
+            markdownPath,
+            '-Format',
+            'markdown',
+        ]);
+        await attachProcessOutput(testInfo, 'project-status-markdown', markdownResult.stdout, markdownResult.stderr);
+
+        expect(markdownResult.exitCode).toBe(0);
+        expect(existsSync(markdownPath)).toBeTruthy();
+        const markdown = readFileSync(markdownPath, 'utf8');
+        expect(markdown).toContain('# Project Status');
+        expect(markdown).toContain('## Planning');
+        expect(markdown).toContain('## Release');
+        expect(markdown).toContain('## Evidence');
+        expect(markdown).toContain('## Remaining Work');
     });
 
     test('validates release tag against the current package version', async ({}, testInfo) => {

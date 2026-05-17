@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.30] - 2026-05-17
+
+### Added
+
+- `scripts/render-project-status.ps1` to consolidate planning, release, and evidence state in one status contract
+- E2E regression coverage for project status JSON and Markdown rendering
+
+### Changed
+
+- release docs now expose `render-project-status.ps1` as the main high-level status snapshot for Sprint 12
+
 ## [0.1.18] - 2026-05-15
 
 ### Added
