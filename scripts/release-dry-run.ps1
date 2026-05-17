@@ -1,7 +1,7 @@
 param(
     [string]$BuildDir = "build",
     [string]$OutputDir = "dist",
-    [string]$ManifestDir = "packaging\\winget\\manifests",
+    [string]$ManifestDir = "",
     [string]$Version = "",
     [string]$Tag = "",
     [string]$Repository = "wesleysimplicio/us4-v6-simplicio-windows",
@@ -35,16 +35,18 @@ $resolvedOutputDir = if ([System.IO.Path]::IsPathRooted($OutputDir)) {
     Join-Path (Get-Location) $OutputDir
 }
 
-$resolvedManifestDir = if ([System.IO.Path]::IsPathRooted($ManifestDir)) {
-    $ManifestDir
-} else {
-    Join-Path (Get-Location) $ManifestDir
-}
-
 if ([string]::IsNullOrWhiteSpace($WorkingDir)) {
     $WorkingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("us4-release-dry-run-" + [System.Guid]::NewGuid().ToString("N"))
 } elseif (-not [System.IO.Path]::IsPathRooted($WorkingDir)) {
     $WorkingDir = Join-Path (Get-Location) $WorkingDir
+}
+
+$resolvedManifestDir = if ([string]::IsNullOrWhiteSpace($ManifestDir)) {
+    Join-Path $WorkingDir "winget-manifests"
+} elseif ([System.IO.Path]::IsPathRooted($ManifestDir)) {
+    $ManifestDir
+} else {
+    Join-Path (Get-Location) $ManifestDir
 }
 
 if (Test-Path $resolvedOutputDir) {

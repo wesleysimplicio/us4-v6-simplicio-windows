@@ -2,7 +2,7 @@ param(
     [string]$BuildDir = "build",
     [string]$SprintsDir = ".specs\\sprints",
     [string]$OutputDir = "dist",
-    [string]$ManifestDir = "packaging\\winget\\manifests",
+    [string]$ManifestDir = "",
     [string]$PlaywrightReportDir = "playwright-report",
     [string]$TestResultsDir = "test-results",
     [string]$Format = "json",
@@ -44,9 +44,13 @@ function Add-IssueCode {
 $resolvedBuildDir = Resolve-LocalPath $BuildDir
 $resolvedSprintsDir = Resolve-LocalPath $SprintsDir
 $resolvedOutputDir = Resolve-LocalPath $OutputDir
-$resolvedManifestDir = Resolve-LocalPath $ManifestDir
 $resolvedPlaywrightReportDir = Resolve-LocalPath $PlaywrightReportDir
 $resolvedTestResultsDir = Resolve-LocalPath $TestResultsDir
+$resolvedManifestDir = if ([string]::IsNullOrWhiteSpace($ManifestDir)) {
+    Join-Path ([System.IO.Path]::GetTempPath()) ("us4-project-status-" + [System.Guid]::NewGuid().ToString("N") + "\winget-manifests")
+} else {
+    Resolve-LocalPath $ManifestDir
+}
 
 $planningScriptPath = Join-Path (Get-Location) "scripts\render-planning-status.ps1"
 $preflightScriptPath = Join-Path (Get-Location) "scripts\preflight-release.ps1"

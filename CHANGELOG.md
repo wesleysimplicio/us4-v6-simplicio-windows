@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.32] - 2026-05-17
+
+### Added
+
+- E2E regression coverage to guarantee that local `release-dry-run` and `render-project-status` use ephemeral winget manifests by default
+
+### Changed
+
+- `release-dry-run.ps1` now defaults `ManifestDir` to an ephemeral working directory instead of `packaging/winget/manifests`
+- `render-project-status.ps1` now uses an ephemeral manifest directory for its optional local release dry-run unless the caller passes `-ManifestDir`
+
 ## [0.1.31] - 2026-05-17
 
 ### Added

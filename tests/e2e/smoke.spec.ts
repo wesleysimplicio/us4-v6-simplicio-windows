@@ -1717,6 +1717,47 @@ test.describe('us4-cli smoke', () => {
         expect(payload.steps.some((step) => step.status === 'failed')).toBeFalsy();
     });
 
+    test('keeps release dry-run manifests ephemeral when no manifest directory is provided', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-dry-run-default-manifests-dist');
+        const workingDir = testInfo.outputPath('release-dry-run-default-manifests-working');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const releaseDryRunScriptPath = path.resolve(process.cwd(), 'scripts', 'release-dry-run.ps1');
+        const repoManifestDir = path.resolve(process.cwd(), 'packaging', 'winget', 'manifests');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(workingDir, {recursive : true});
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            releaseDryRunScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+            '-WorkingDir',
+            workingDir,
+            '-Version',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-dry-run-default-manifests', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            status: string;
+            manifest_dir: string;
+        };
+        expect(payload.status).toBe('ready');
+        expect(payload.manifest_dir).toBe(path.join(workingDir, 'winget-manifests'));
+        expect(existsSync(path.join(workingDir, 'winget-manifests', 'installer.yaml'))).toBeTruthy();
+        expect(existsSync(repoManifestDir)).toBeFalsy();
+    });
+
     test('renders consolidated project status from planning, release, and evidence signals', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('project-status-dist');
         const manifestDir = testInfo.outputPath('project-status-winget');
@@ -1837,6 +1878,58 @@ test.describe('us4-cli smoke', () => {
         expect(markdown).toContain('## Release');
         expect(markdown).toContain('## Evidence');
         expect(markdown).toContain('## Remaining Work');
+    });
+
+    test('keeps project-status release dry-run manifests ephemeral by default', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('project-status-default-manifests-dist');
+        const reportDir = testInfo.outputPath('project-status-default-manifests-report');
+        const testResultsDir = testInfo.outputPath('project-status-default-manifests-results');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const projectStatusScriptPath = path.resolve(process.cwd(), 'scripts', 'render-project-status.ps1');
+        const repoManifestDir = path.resolve(process.cwd(), 'packaging', 'winget', 'manifests');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(reportDir, {recursive : true});
+        mkdirSync(testResultsDir, {recursive : true});
+        writeFileSync(path.join(reportDir, 'index.html'), '<html><body>report</body></html>', 'utf8');
+        mkdirSync(path.join(testResultsDir, 'spec-a'), {recursive : true});
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'trace.zip'), 'trace', 'utf8');
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'shot.png'), 'png', 'utf8');
+        writeFileSync(path.join(testResultsDir, 'spec-a', 'video.webm'), 'webm', 'utf8');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            projectStatusScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+            '-PlaywrightReportDir',
+            reportDir,
+            '-TestResultsDir',
+            testResultsDir,
+            '-IncludeReleaseDryRun',
+            '-RequireEvidence',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'project-status-default-manifests', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            release: {
+                dry_run: {
+                    manifest_dir: string;
+                } | null;
+            };
+        };
+        expect(payload.release.dry_run?.manifest_dir).not.toBe(repoManifestDir);
+        expect(payload.release.dry_run?.manifest_dir).toContain('winget-manifests');
+        expect(existsSync(repoManifestDir)).toBeFalsy();
     });
 
     test('validates release tag against the current package version', async ({}, testInfo) => {
