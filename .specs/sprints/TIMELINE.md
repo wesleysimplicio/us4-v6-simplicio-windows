@@ -1,6 +1,7 @@
 # TIMELINE — `US4 V6 Windows Edition`
 
 > Consolidated 12-sprint roadmap, dependency graph, critical path, and release milestones for `us4-v6-simplicio-windows`. Authoritative source for sprint scheduling; per-sprint detail lives in `sprint-XX/SPRINT.md`.
+> Current checkbox-based progress snapshot is generated into `STATUS.md` by `scripts/render-planning-status.ps1`.
 
 - **Roadmap window**: 2026-05-14 → 2026-10-28 (24 weeks, ~5.5 months)
 - **Cadence**: 2 weeks per sprint, 12 sprints

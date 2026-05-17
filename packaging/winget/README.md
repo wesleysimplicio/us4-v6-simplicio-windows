@@ -13,13 +13,13 @@ Typical local render:
 
 ```powershell
 .\scripts\render-winget-manifests.ps1 `
-  -Version 0.1.27 `
-  -PortableUrl https://example.invalid/us4-v6-windows-0.1.27-portable.zip `
-  -MsixUrl https://example.invalid/us4-v6-windows-0.1.27.0.msix
+  -Version 0.1.28 `
+  -PortableUrl https://example.invalid/us4-v6-windows-0.1.28-portable.zip `
+  -MsixUrl https://example.invalid/us4-v6-windows-0.1.28.0.msix
 
 .\scripts\validate-winget-manifests.ps1 `
   -ManifestDir packaging\winget\manifests `
-  -ExpectedVersion 0.1.27
+  -ExpectedVersion 0.1.28
 ```
 
 This scaffold does not publish to winget automatically yet.

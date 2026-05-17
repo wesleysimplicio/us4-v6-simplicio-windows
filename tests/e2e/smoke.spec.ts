@@ -1600,6 +1600,75 @@ test.describe('us4-cli smoke', () => {
         expect(payload.issue_codes).toContain('tag_version_mismatch');
     });
 
+    test('exports planning status as json from versioned sprint files', async ({}, testInfo) => {
+        const planningStatusScriptPath = path.resolve(process.cwd(), 'scripts', 'render-planning-status.ps1');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            planningStatusScriptPath,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'planning-status-json', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            sprint_count: number;
+            total_tasks: number;
+            done_tasks: number;
+            remaining_tasks: number;
+            sprints: Array<{
+                sprint: string;
+                status: string;
+                total_tasks: number;
+                done_tasks: number;
+                remaining_tasks: number;
+            }>;
+        };
+        expect(payload.sprint_count).toBe(12);
+        expect(payload.total_tasks).toBe(88);
+        expect(payload.done_tasks).toBe(6);
+        expect(payload.remaining_tasks).toBe(82);
+        expect(payload.sprints.some((entry) => entry.sprint === 'sprint-12' &&
+                                               entry.status === 'in_progress' &&
+                                               entry.done_tasks === 6 &&
+                                               entry.remaining_tasks === 2)).toBeTruthy();
+    });
+
+    test('renders planning status markdown artifact', async ({}, testInfo) => {
+        const planningStatusScriptPath = path.resolve(process.cwd(), 'scripts', 'render-planning-status.ps1');
+        const outputPath = testInfo.outputPath('planning-status.md');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            planningStatusScriptPath,
+            '-Format',
+            'markdown',
+            '-OutputPath',
+            outputPath,
+        ]);
+        await attachProcessOutput(testInfo, 'planning-status-markdown', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        expect(existsSync(outputPath)).toBeTruthy();
+
+        const content = readFileSync(outputPath, 'utf8');
+        expect(content).toContain('# Planning Status');
+        expect(content).toContain('Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.');
+        expect(content).toContain('- Sprints: 12');
+        expect(content).toContain('- Total tasks: 88');
+        expect(content).toContain('- Done tasks: 6');
+        expect(content).toContain('- Remaining tasks: 82');
+        expect(content).toContain('| sprint-12 | in_progress | 6 | 2 | 8 |');
+    });
+
     test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('signing');
         const packagePath = path.join(outputDir, `unsigned-${packageVersion}.msix`);

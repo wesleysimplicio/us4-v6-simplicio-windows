@@ -15,6 +15,7 @@ Reference master spec: `../../US4-V6-Windows-Edition.md`.
 - Planning files currently define `12` sprints and `88` tasks.
 - Versioned checkboxes currently mark `6` tasks as done and `82` as still open.
 - The repo implementation is ahead of the raw sprint checkboxes in some areas, but planning should stay conservative until each sprint task is fully evidenced and documented.
+- The generated companion snapshot lives in `STATUS.md` and can be refreshed via `scripts/render-planning-status.ps1`.
 
 ## Sprint Matrix
 

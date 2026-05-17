@@ -29,6 +29,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
 - `preflight-release.ps1`
   - valida readiness de release cruzando versao, changelog, build, ferramentas de packaging e configuracao de assinatura
+- `render-planning-status.ps1`
+  - consolida sprints e tasks versionadas em JSON ou Markdown, inclusive para gerar `.specs/sprints/STATUS.md` a partir dos checkboxes reais dos `SPRINT.md`
 - `render-release-manifest.ps1`
   - gera `release-manifest.json` a partir de artefatos, checksums e URLs renderizadas de distribuicao
 - `render-release-notes.ps1`

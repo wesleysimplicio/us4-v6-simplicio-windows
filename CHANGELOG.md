@@ -87,6 +87,17 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - CI release metadata render step after asset validation
 - E2E regression coverage for release manifest generation from artifacts, checksums, and distribution URLs
 
+## [0.1.28] - 2026-05-16
+
+### Added
+
+- `scripts/render-planning-status.ps1` for JSON and Markdown planning snapshots
+- E2E regression coverage for generated planning status output and artifact rendering
+
+### Changed
+
+- planning docs now point to the generated `STATUS.md` companion snapshot
+
 ## [0.1.27] - 2026-05-16
 
 ### Added
