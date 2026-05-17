@@ -55,10 +55,12 @@ $resolvedManifestDir = if ([string]::IsNullOrWhiteSpace($ManifestDir)) {
 $planningScriptPath = Join-Path (Get-Location) "scripts\render-planning-status.ps1"
 $preflightScriptPath = Join-Path (Get-Location) "scripts\preflight-release.ps1"
 $releaseDryRunScriptPath = Join-Path (Get-Location) "scripts\release-dry-run.ps1"
+$devMsixSmokeScriptPath = Join-Path (Get-Location) "scripts\dev-msix-smoke.ps1"
 
 $planning = (& $planningScriptPath -SprintsDir $resolvedSprintsDir -Format json) | ConvertFrom-Json
 
 $releasePreflight = (& $preflightScriptPath -BuildDir $resolvedBuildDir -Format json) | ConvertFrom-Json
+$devMsixPreflight = (& $devMsixSmokeScriptPath -BuildDir $resolvedBuildDir -PreflightOnly -Format json) | ConvertFrom-Json
 
 $releaseDryRun = $null
 if ($IncludeReleaseDryRun) {
@@ -156,6 +158,7 @@ $payload = [pscustomobject][ordered]@{
     }
     release = [pscustomobject][ordered]@{
         preflight = $releasePreflight
+        dev_msix_preflight = $devMsixPreflight
         dry_run = $releaseDryRun
     }
     evidence = [pscustomobject][ordered]@{
@@ -189,6 +192,7 @@ if ($Format -eq "json") {
     [void]$lines.Add("- Package version: $($payload.release.preflight.package_version)")
     [void]$lines.Add("- CMake version: $($payload.release.preflight.cmake_version)")
     [void]$lines.Add("- Has CLI binary: $($payload.release.preflight.has_cli_binary)")
+    [void]$lines.Add("- Dev MSIX preflight: $($payload.release.dev_msix_preflight.status)")
     if ($IncludeReleaseDryRun -and $null -ne $payload.release.dry_run) {
         [void]$lines.Add("- Dry-run status: $($payload.release.dry_run.status)")
     }

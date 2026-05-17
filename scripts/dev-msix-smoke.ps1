@@ -13,7 +13,7 @@ if ($Format -notin @("text", "json")) {
     throw "Unknown value for -Format. Use text or json."
 }
 
-if ([string]::IsNullOrWhiteSpace($CertificatePassword)) {
+if (-not $PreflightOnly -and [string]::IsNullOrWhiteSpace($CertificatePassword)) {
     throw "CertificatePassword is required."
 }
 

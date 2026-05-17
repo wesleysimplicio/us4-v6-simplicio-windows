@@ -1820,6 +1820,10 @@ test.describe('us4-cli smoke', () => {
                     cmake_version: string;
                     has_cli_binary: boolean;
                 };
+                dev_msix_preflight: {
+                    execution: string;
+                    status: string;
+                };
                 dry_run: {
                     execution: string;
                     status: string;
@@ -1842,6 +1846,8 @@ test.describe('us4-cli smoke', () => {
         expect(payload.release.preflight.package_version).toBe(packageVersion);
         expect(payload.release.preflight.cmake_version).toBe(packageVersion);
         expect(payload.release.preflight.has_cli_binary).toBeTruthy();
+        expect(payload.release.dev_msix_preflight.execution).toBe('dev-msix-smoke');
+        expect(['ready', 'blocked']).toContain(payload.release.dev_msix_preflight.status);
         expect(payload.release.dry_run?.execution).toBe('release-dry-run');
         expect(payload.release.dry_run?.status).toBe('ready');
         expect(payload.release.dry_run?.steps.some((step) => step.status === 'failed')).toBeFalsy();
@@ -1878,6 +1884,7 @@ test.describe('us4-cli smoke', () => {
         expect(markdown).toContain('## Release');
         expect(markdown).toContain('## Evidence');
         expect(markdown).toContain('## Remaining Work');
+        expect(markdown).toContain('Dev MSIX preflight:');
     });
 
     test('keeps project-status release dry-run manifests ephemeral by default', async ({}, testInfo) => {
@@ -2233,8 +2240,6 @@ test.describe('us4-cli smoke', () => {
             'Bypass',
             '-File',
             devMsixSmokeScriptPath,
-            '-CertificatePassword',
-            'us4-dev-pass',
             '-PreflightOnly',
             '-Format',
             'json',

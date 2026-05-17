@@ -4,6 +4,13 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.34] - 2026-05-17
+
+### Changed
+
+- `render-project-status.ps1` now exposes `dev_msix_preflight` so local SDK/tooling blockers are visible separately from external production blockers
+- `dev-msix-smoke.ps1 -PreflightOnly` no longer requires a certificate password because it performs no signing side effects
+
 ## [0.1.33] - 2026-05-17
 
 ### Added
