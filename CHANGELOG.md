@@ -4,6 +4,18 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.31] - 2026-05-17
+
+### Added
+
+- `scripts/validate-publish-layout.ps1` to guarantee that the final release output only contains publishable artifacts and metadata
+- E2E regression coverage for clean and dirty publish-layout scenarios
+
+### Changed
+
+- release packaging now stages portable zip and MSIX work outside the publishable output directory
+- `release.yml` now uploads and releases only the canonical artifact set instead of `dist/**`
+
 ## [0.1.30] - 2026-05-17
 
 ### Added

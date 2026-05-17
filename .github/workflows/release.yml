@@ -16,6 +16,7 @@ permissions:
 env:
   BUILD_DIR: build
   CMAKE_BUILD_TYPE: Release
+  RELEASE_OUTPUT_DIR: dist
 
 jobs:
   release:
@@ -61,7 +62,7 @@ jobs:
 
       - name: Smoke CLI release surface
         run: |
-          $env:US4_PROFILE_STORE_PATH = Join-Path $PWD "dist\release-smoke-profiles.json"
+          $env:US4_PROFILE_STORE_PATH = Join-Path $env:RUNNER_TEMP "release-smoke-profiles.json"
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe version
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe --probe
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe run --model qwen-0.5b --prompt "release smoke" --backend cpu --mode cpu-only --format json
@@ -69,10 +70,10 @@ jobs:
           .\$env:BUILD_DIR\runtime\cli\us4-cli.exe tune --model qwen-0.5b --backend cpu --mode cpu-only --format json
 
       - name: Build portable zip
-        run: .\scripts\build-portable-zip.ps1 -BuildDir $env:BUILD_DIR -OutputDir dist
+        run: .\scripts\build-portable-zip.ps1 -BuildDir $env:BUILD_DIR -OutputDir $env:RELEASE_OUTPUT_DIR -WorkingDir (Join-Path $env:RUNNER_TEMP "us4-portable-package")
 
       - name: Build unsigned MSIX when packaging tools are available
-        run: .\scripts\build-msix.ps1 -BuildDir $env:BUILD_DIR -OutputDir dist
+        run: .\scripts\build-msix.ps1 -BuildDir $env:BUILD_DIR -OutputDir $env:RELEASE_OUTPUT_DIR -WorkingDir (Join-Path $env:RUNNER_TEMP "us4-msix-package")
         continue-on-error: true
 
       - name: Sign MSIX when certificate secrets are configured
@@ -82,14 +83,14 @@ jobs:
           US4_SIGN_CERT_PATH: ${{ secrets.US4_SIGN_CERT_PATH }}
           US4_SIGN_CERT_PASSWORD: ${{ secrets.US4_SIGN_CERT_PASSWORD }}
         run: |
-          $msix = Get-ChildItem -Path dist -Filter *.msix | Select-Object -First 1 -ExpandProperty FullName
+          $msix = Get-ChildItem -Path $env:RELEASE_OUTPUT_DIR -Filter *.msix | Select-Object -First 1 -ExpandProperty FullName
           if (-not $msix) {
             throw "MSIX artifact not found for signing."
           }
-          .\scripts\sign-msix.ps1 -PackagePath $msix -WorkingDir dist\signing
+          .\scripts\sign-msix.ps1 -PackagePath $msix -WorkingDir (Join-Path $env:RUNNER_TEMP "us4-signing")
 
       - name: Generate release checksums
-        run: .\scripts\generate-checksums.ps1 -OutputDir dist
+        run: .\scripts\generate-checksums.ps1 -OutputDir $env:RELEASE_OUTPUT_DIR
 
       - name: Render winget manifests
         run: |
@@ -112,25 +113,32 @@ jobs:
       - name: Validate release asset set
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $requireMsix = Test-Path (Join-Path $PWD "dist\*.msix")
+          $requireMsix = @(Get-ChildItem -Path $env:RELEASE_OUTPUT_DIR -Filter *.msix -ErrorAction SilentlyContinue).Count -gt 0
           if ($requireMsix) {
             .\scripts\validate-release-assets.ps1 `
-              -OutputDir dist `
+              -OutputDir $env:RELEASE_OUTPUT_DIR `
               -ManifestDir packaging\winget\manifests `
               -ExpectedVersion $version `
               -RequireMsix
           } else {
             .\scripts\validate-release-assets.ps1 `
-              -OutputDir dist `
+              -OutputDir $env:RELEASE_OUTPUT_DIR `
               -ManifestDir packaging\winget\manifests `
               -ExpectedVersion $version
           }
+
+      - name: Validate publish layout
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          .\scripts\validate-publish-layout.ps1 `
+            -OutputDir $env:RELEASE_OUTPUT_DIR `
+            -ExpectedVersion $version
 
       - name: Render release manifest
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           .\scripts\render-release-manifest.ps1 `
-            -OutputDir dist `
+            -OutputDir $env:RELEASE_OUTPUT_DIR `
             -ManifestDir packaging\winget\manifests `
             -ExpectedVersion $version
 
@@ -140,19 +148,31 @@ jobs:
           .\scripts\render-release-notes.ps1 `
             -Version $version `
             -ChangelogPath CHANGELOG.md `
-            -ReleaseManifestPath dist\release-manifest.json `
-            -OutputPath dist\release-notes.md
+            -ReleaseManifestPath $env:RELEASE_OUTPUT_DIR\release-manifest.json `
+            -OutputPath $env:RELEASE_OUTPUT_DIR\release-notes.md
+
+      - name: Re-validate publish layout after metadata generation
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          .\scripts\validate-publish-layout.ps1 `
+            -OutputDir $env:RELEASE_OUTPUT_DIR `
+            -ExpectedVersion $version
 
       - name: Smoke portable release artifact
         run: |
-          $zip = Get-ChildItem -Path dist -Filter *.zip | Select-Object -First 1 -ExpandProperty FullName
-          .\scripts\post-publish-smoke.ps1 -ArtifactPath $zip -WorkingDir dist\portable-smoke
+          $zip = Get-ChildItem -Path $env:RELEASE_OUTPUT_DIR -Filter *.zip | Select-Object -First 1 -ExpandProperty FullName
+          .\scripts\post-publish-smoke.ps1 -ArtifactPath $zip -WorkingDir (Join-Path $env:RUNNER_TEMP "us4-portable-smoke")
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
-          path: dist/**
+          path: |
+            ${{ env.RELEASE_OUTPUT_DIR }}/*.zip
+            ${{ env.RELEASE_OUTPUT_DIR }}/*.msix
+            ${{ env.RELEASE_OUTPUT_DIR }}/SHA256SUMS.txt
+            ${{ env.RELEASE_OUTPUT_DIR }}/release-manifest.json
+            ${{ env.RELEASE_OUTPUT_DIR }}/release-notes.md
           if-no-files-found: error
           retention-days: 14
 
@@ -161,5 +181,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          body_path: dist/release-notes.md
-          files: dist/**
+          body_path: ${{ env.RELEASE_OUTPUT_DIR }}/release-notes.md
+          files: |
+            ${{ env.RELEASE_OUTPUT_DIR }}/*.zip
+            ${{ env.RELEASE_OUTPUT_DIR }}/*.msix
+            ${{ env.RELEASE_OUTPUT_DIR }}/SHA256SUMS.txt
+            ${{ env.RELEASE_OUTPUT_DIR }}/release-manifest.json

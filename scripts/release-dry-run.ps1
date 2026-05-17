@@ -42,7 +42,7 @@ $resolvedManifestDir = if ([System.IO.Path]::IsPathRooted($ManifestDir)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($WorkingDir)) {
-    $WorkingDir = Join-Path $resolvedOutputDir "release-dry-run"
+    $WorkingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("us4-release-dry-run-" + [System.Guid]::NewGuid().ToString("N"))
 } elseif (-not [System.IO.Path]::IsPathRooted($WorkingDir)) {
     $WorkingDir = Join-Path (Get-Location) $WorkingDir
 }
@@ -107,14 +107,16 @@ Invoke-Step "preflight" {
 Invoke-Step "build-portable-zip" {
     & (Join-Path (Get-Location) "scripts\build-portable-zip.ps1") `
         -BuildDir $resolvedBuildDir `
-        -OutputDir $resolvedOutputDir *> $null
+        -OutputDir $resolvedOutputDir `
+        -WorkingDir (Join-Path $WorkingDir "portable-package") *> $null
 }
 
 $msixBuilt = $false
 try {
     & (Join-Path (Get-Location) "scripts\build-msix.ps1") `
         -BuildDir $resolvedBuildDir `
-        -OutputDir $resolvedOutputDir *> $null
+        -OutputDir $resolvedOutputDir `
+        -WorkingDir (Join-Path $WorkingDir "msix-package") *> $null
     $msixBuilt = @(Get-ChildItem -Path $resolvedOutputDir -Filter *.msix -ErrorAction SilentlyContinue).Count -gt 0
     if ($msixBuilt) {
         Add-Step -Name "build-msix" -Status "passed"
@@ -174,6 +176,13 @@ Invoke-Step "render-release-notes" {
         -ChangelogPath (Join-Path (Get-Location) "CHANGELOG.md") `
         -ReleaseManifestPath (Join-Path $resolvedOutputDir "release-manifest.json") `
         -OutputPath (Join-Path $resolvedOutputDir "release-notes.md") *> $null
+}
+
+Invoke-Step "validate-publish-layout" {
+    & (Join-Path (Get-Location) "scripts\validate-publish-layout.ps1") `
+        -OutputDir $resolvedOutputDir `
+        -ExpectedVersion $Version `
+        -Format json *> $null
 }
 
 Invoke-Step "portable-smoke" {

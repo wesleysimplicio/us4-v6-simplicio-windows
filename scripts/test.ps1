@@ -28,6 +28,7 @@ foreach ($scriptPath in @(
     (Join-Path (Get-Location) "scripts\render-release-manifest.ps1"),
     (Join-Path (Get-Location) "scripts\render-release-notes.ps1"),
     (Join-Path (Get-Location) "scripts\render-winget-manifests.ps1"),
+    (Join-Path (Get-Location) "scripts\validate-publish-layout.ps1"),
     (Join-Path (Get-Location) "scripts\validate-release-assets.ps1"),
     (Join-Path (Get-Location) "scripts\validate-release-tag.ps1"),
     (Join-Path (Get-Location) "scripts\validate-winget-manifests.ps1"),

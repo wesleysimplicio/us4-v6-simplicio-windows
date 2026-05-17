@@ -38,6 +38,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - dry-run local encadeado via `scripts/release-dry-run.ps1`
 - snapshot consolidado de projeto/release via `scripts/render-project-status.ps1`
 - smoke de instalacao MSIX via `scripts/install-msix-smoke.ps1`
+- validacao de layout publicavel via `scripts/validate-publish-layout.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
 
@@ -140,6 +141,7 @@ Hoje o repo ja inclui:
 - `scripts/generate-checksums.ps1`
 - `scripts/post-publish-smoke.ps1`
 - `scripts/release-dry-run.ps1`
+- `scripts/validate-publish-layout.ps1`
 
 O que ainda falta para fechar distribuicao:
 
@@ -197,8 +199,9 @@ Hoje o rollback ainda e semiautomatico, mas ja existe um procedimento concreto p
 5. rode `scripts/post-publish-smoke.ps1` contra o zip reconstruido
 6. se o problema estiver em manifests, rerenderize `packaging/winget/manifests/` com URLs corretos e rode `scripts/validate-winget-manifests.ps1 -RequirePublishableUrls`
 7. rode `scripts/validate-release-assets.ps1` para garantir que artefatos, checksums e manifests continuam coerentes
-8. registre o incidente em `.specs/incidents/` quando essa pasta existir
-9. adicione teste, smoke ou gate que teria evitado a regressao
+8. rode `scripts/validate-publish-layout.ps1` para garantir que nenhum staging, smoke temporario ou arquivo incidental vazou para o diretorio publicavel
+9. registre o incidente em `.specs/incidents/` quando essa pasta existir
+10. adicione teste, smoke ou gate que teria evitado a regressao
 
 Se a falha estiver apenas no MSIX:
 

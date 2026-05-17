@@ -1264,6 +1264,108 @@ test.describe('us4-cli smoke', () => {
              expect(payload.issue_codes).toHaveLength(0);
          });
 
+    test('validates a publishable release layout without staging directories', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('publish-layout-clean');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const portableScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const checksumScriptPath = path.resolve(process.cwd(), 'scripts', 'generate-checksums.ps1');
+        const layoutScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-publish-layout.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            portableScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'publish-layout-build-portable', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const checksum = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            checksumScriptPath,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'publish-layout-checksums', checksum.stdout, checksum.stderr);
+        expect(checksum.exitCode).toBe(0);
+
+        writeFileSync(path.join(outputDir, 'release-manifest.json'), '{}', 'utf8');
+        writeFileSync(path.join(outputDir, 'release-notes.md'), '# notes', 'utf8');
+
+        const validate = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            layoutScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'publish-layout-clean-validate', validate.stdout, validate.stderr);
+
+        expect(validate.exitCode).toBe(0);
+        const payload = JSON.parse(validate.stdout) as
+        {
+            execution: string;
+            status: string;
+            directories: string[];
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('validate-publish-layout');
+        expect(payload.status).toBe('ready');
+        expect(payload.directories).toHaveLength(0);
+        expect(payload.issue_codes).toHaveLength(0);
+    });
+
+    test('fails publish layout validation when staging directories leak into the release output', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('publish-layout-dirty');
+        const layoutScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-publish-layout.ps1');
+
+        mkdirSync(path.join(outputDir, 'msix-staging'), {recursive : true});
+        writeFileSync(path.join(outputDir, `us4-v6-windows-${packageVersion}-portable.zip`), 'zip', 'utf8');
+        writeFileSync(path.join(outputDir, 'SHA256SUMS.txt'), 'checksum', 'utf8');
+
+        const validate = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            layoutScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'publish-layout-dirty-validate', validate.stdout, validate.stderr);
+
+        expect(validate.exitCode).toBe(1);
+        const payload = JSON.parse(validate.stdout) as
+        {
+            status: string;
+            directories: string[];
+            issue_codes: string[];
+        };
+        expect(payload.status).toBe('blocked');
+        expect(payload.directories).toContain('msix-staging');
+        expect(payload.issue_codes).toContain('unexpected_directory_present');
+    });
+
     test('fails release asset validation when checksums are missing', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('release-assets-missing-checksums');
         const manifestDir = testInfo.outputPath('release-assets-missing-checksums-winget');
@@ -1603,6 +1705,8 @@ test.describe('us4-cli smoke', () => {
         expect(payload.steps.some((step) => step.name === 'render-winget-manifests' &&
                                             step.status === 'passed')).toBeTruthy();
         expect(payload.steps.some((step) => step.name === 'validate-release-assets' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'validate-publish-layout' &&
                                             step.status === 'passed')).toBeTruthy();
         expect(payload.steps.some((step) => step.name === 'render-release-notes' &&
                                             step.status === 'passed')).toBeTruthy();

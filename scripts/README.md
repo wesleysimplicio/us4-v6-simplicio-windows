@@ -18,9 +18,9 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `install-completions.ps1`
   - instala o script de completions do `us4-cli` no profile atual do PowerShell
 - `build-portable-zip.ps1`
-  - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`
+  - monta um zip portatil minimo com `us4-cli.exe`, `README` e `CHANGELOG`, usando staging fora do diretório publicável
 - `build-msix.ps1`
-  - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis
+  - tenta montar um MSIX nao assinado usando `MakeAppx.exe` quando as tooling de packaging do Windows SDK estiverem disponiveis, usando staging fora do diretório publicável
 - `generate-checksums.ps1`
   - gera `SHA256SUMS.txt` para os artefatos de release em `dist/`
 - `install-msix-smoke.ps1`
@@ -45,6 +45,8 @@ Os scripts deste repositorio cobrem dois cenarios:
   - valida manifests renderizados, detecta placeholders restantes e pode exigir URLs HTTPS publicaveis
 - `validate-release-assets.ps1`
   - cruza artefatos em `dist/`, `SHA256SUMS.txt` e manifests renderizados para garantir nomes, versoes e URLs coerentes antes do upload
+- `validate-publish-layout.ps1`
+  - garante que o diretório final de release só contém artefatos publicáveis e metadata esperada, sem staging ou smoke temporário
 - `validate-release-tag.ps1`
   - garante que a tag de release (`vX.Y.Z`) corresponde exatamente a `package.json`
 - `sign-msix.ps1`

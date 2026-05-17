@@ -1,7 +1,8 @@
 param(
     [string]$BuildDir = "build",
     [string]$OutputDir = "dist",
-    [string]$MsixVersion = ""
+    [string]$MsixVersion = "",
+    [string]$WorkingDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +27,10 @@ if ([string]::IsNullOrWhiteSpace($MsixVersion)) {
 }
 
 $manifestTemplate = Join-Path "packaging\msix" "AppxManifest.xml.in"
-$stagingDir = Join-Path $OutputDir "msix-staging"
+if ([string]::IsNullOrWhiteSpace($WorkingDir)) {
+    $WorkingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("us4-msix-" + [System.Guid]::NewGuid().ToString("N"))
+}
+$stagingDir = Join-Path $WorkingDir "msix-staging"
 $assetsDir = Join-Path $stagingDir "Assets"
 $manifestPath = Join-Path $stagingDir "AppxManifest.xml"
 $packagePath = Join-Path $OutputDir "us4-v6-windows-$MsixVersion.msix"
