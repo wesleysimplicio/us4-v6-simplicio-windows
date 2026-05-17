@@ -16,10 +16,16 @@ Auto-tuning hardware-aware (tile/batch por profile). Matriz benchmark (8 hardwar
 - [x] T12.2 - `runtime/tuning/profiles.json` (cached profile por GPU+CPU+RAM+VRAM)
 - [x] T12.3 - Matriz benchmark `runtime/benchmarks/matrix_runner.cpp` (8 hardware profiles x 9 adapters)
 - [x] T12.4 - CLI polish: `us4.exe serve|run|probe|bench|tune` + JSON output; PowerShell completions
-- [ ] T12.5 - Docs finais: `README.md` + `.specs/architecture/{DESIGN,PATTERNS}.md`
+- [x] T12.5 - Docs finais: `README.md` + `.specs/architecture/{DESIGN,PATTERNS}.md`
 - [ ] T12.6 - MSIX installer + signed binary x64
 - [ ] T12.7 - Release v1.0: tag, changelog, GitHub Releases
 - [x] T12.8 - Migration guide + troubleshooting
+
+## Status snapshot (2026-05-16)
+
+- Planejamento versionado: 12 sprints, 88 tasks totais.
+- Checkboxes marcados hoje: 6 concluidas, 82 ainda abertas.
+- Sprint 12 segue em progresso porque os blocos restantes dependem de assinatura/publicacao real, apesar da trilha local de release ja cobrir preflight, manifests, checksums, release manifest e release notes.
 
 ## Test plan
 - Unit: auto-tuner converges; profile cache load/save.

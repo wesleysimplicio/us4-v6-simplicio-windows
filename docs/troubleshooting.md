@@ -93,6 +93,12 @@
 - Diagnose: confira `SHA256SUMS.txt` e `packaging/winget/manifests/installer.yaml`.
 - Fix: rode `scripts/render-release-manifest.ps1 -OutputDir dist -ManifestDir packaging\winget\manifests` depois de validar o pacote de release.
 
+## Release tag or release notes are inconsistent
+
+- Symptom: `scripts/validate-release-tag.ps1` retorna `blocked` ou `release-notes.md` sai sem a secao da versao atual.
+- Diagnose: confira a tag `vX.Y.Z`, a versao de `package.json` e a secao correspondente em `CHANGELOG.md`.
+- Fix: alinhe a tag com a versao publicada e regenere `scripts/render-release-notes.ps1 -Version <version> -ReleaseManifestPath dist\release-manifest.json`.
+
 ## Build artifacts locked
 
 - Symptom: compilador nao consegue sobrescrever artefatos em `build/`.

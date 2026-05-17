@@ -130,14 +130,15 @@ Release artifact helpers:
 ```powershell
 .\scripts\build-portable-zip.ps1 -BuildDir build -OutputDir dist
 .\scripts\generate-checksums.ps1 -OutputDir dist
-.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.26-portable.zip
-.\scripts\render-winget-manifests.ps1 -Version 0.1.26
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.27-portable.zip
+.\scripts\render-winget-manifests.ps1 -Version 0.1.27
 .\scripts\validate-winget-manifests.ps1 -ManifestDir .\packaging\winget\manifests
 .\scripts\validate-release-assets.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
 .\scripts\render-release-manifest.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
-.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.26.0.msix
+.\scripts\render-release-notes.ps1 -Version 0.1.27 -ReleaseManifestPath .\dist\release-manifest.json
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.27.0.msix
 .\scripts\preflight-release.ps1 -BuildDir build
-.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.26.0.msix
+.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.27.0.msix
 ```
 
 ## Repo Layout

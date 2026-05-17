@@ -87,6 +87,18 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - CI release metadata render step after asset validation
 - E2E regression coverage for release manifest generation from artifacts, checksums, and distribution URLs
 
+## [0.1.27] - 2026-05-16
+
+### Added
+
+- release tag validation via `scripts/validate-release-tag.ps1`
+- release notes generation via `scripts/render-release-notes.ps1`
+- E2E regression coverage for release tag validation and release notes rendering
+
+### Changed
+
+- planning docs now record the current sprint/task count snapshot and mark Sprint 12 docs as complete
+
 ## [0.1.17] - 2026-05-15
 
 ### Added

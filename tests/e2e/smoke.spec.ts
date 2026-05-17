@@ -1437,6 +1437,169 @@ test.describe('us4-cli smoke', () => {
                                                      artifact.sha256.length === 64)).toBeTruthy();
     });
 
+    test('renders release notes from changelog and release manifest', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-notes-dist');
+        const manifestDir = testInfo.outputPath('release-notes-winget');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const portableScriptPath = path.resolve(process.cwd(), 'scripts', 'build-portable-zip.ps1');
+        const checksumScriptPath = path.resolve(process.cwd(), 'scripts', 'generate-checksums.ps1');
+        const renderWingetScriptPath = path.resolve(process.cwd(), 'scripts', 'render-winget-manifests.ps1');
+        const renderManifestScriptPath = path.resolve(process.cwd(), 'scripts', 'render-release-manifest.ps1');
+        const renderNotesScriptPath = path.resolve(process.cwd(), 'scripts', 'render-release-notes.ps1');
+        const portableUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}-portable.zip`;
+        const msixUrl = `https://github.com/wesleysimplicio/us4-v6-simplicio-windows/releases/download/v${packageVersion}/us4-v6-windows-${packageVersion}.0.msix`;
+        const releaseManifestPath = path.join(outputDir, 'release-manifest.json');
+        const releaseNotesPath = path.join(outputDir, 'release-notes.md');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+
+        const build = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            portableScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-notes-build-portable', build.stdout, build.stderr);
+        expect(build.exitCode).toBe(0);
+
+        const checksum = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            checksumScriptPath,
+            '-OutputDir',
+            outputDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-notes-checksums', checksum.stdout, checksum.stderr);
+        expect(checksum.exitCode).toBe(0);
+
+        const renderWinget = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderWingetScriptPath,
+            '-Version',
+            packageVersion,
+            '-PortableUrl',
+            portableUrl,
+            '-MsixUrl',
+            msixUrl,
+            '-OutputDir',
+            manifestDir,
+        ]);
+        await attachProcessOutput(testInfo, 'release-notes-winget-render', renderWinget.stdout, renderWinget.stderr);
+        expect(renderWinget.exitCode).toBe(0);
+
+        const renderManifest = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderManifestScriptPath,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-ExpectedVersion',
+            packageVersion,
+            '-OutputPath',
+            releaseManifestPath,
+        ]);
+        await attachProcessOutput(testInfo, 'release-notes-release-manifest', renderManifest.stdout, renderManifest.stderr);
+        expect(renderManifest.exitCode).toBe(0);
+
+        const renderNotes = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            renderNotesScriptPath,
+            '-Version',
+            packageVersion,
+            '-ChangelogPath',
+            path.resolve(process.cwd(), 'CHANGELOG.md'),
+            '-ReleaseManifestPath',
+            releaseManifestPath,
+            '-OutputPath',
+            releaseNotesPath,
+        ]);
+        await attachProcessOutput(testInfo, 'release-notes-render', renderNotes.stdout, renderNotes.stderr);
+        expect(renderNotes.exitCode).toBe(0);
+        expect(existsSync(releaseNotesPath)).toBeTruthy();
+
+        const content = readFileSync(releaseNotesPath, 'utf8');
+        expect(content).toContain(`# Release ${packageVersion}`);
+        expect(content).toContain('## Highlights');
+        expect(content).toContain('## Artifacts');
+        expect(content).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
+    });
+
+    test('validates release tag against the current package version', async ({}, testInfo) => {
+        const validateTagScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-release-tag.ps1');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            validateTagScriptPath,
+            '-Tag',
+            `v${packageVersion}`,
+            '-ExpectedVersion',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-tag-validate', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            execution: string;
+            status: string;
+            issue_codes: string[];
+        };
+        expect(payload.execution).toBe('validate-release-tag');
+        expect(payload.status).toBe('ready');
+        expect(payload.issue_codes).toHaveLength(0);
+    });
+
+    test('fails release tag validation when the tag mismatches the package version', async ({}, testInfo) => {
+        const validateTagScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-release-tag.ps1');
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            validateTagScriptPath,
+            '-Tag',
+            'v9.9.9',
+            '-ExpectedVersion',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-tag-validate-mismatch', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(1);
+        const payload = JSON.parse(result.stdout) as
+        {
+            status: string;
+            issue_codes: string[];
+        };
+        expect(payload.status).toBe('blocked');
+        expect(payload.issue_codes).toContain('tag_version_mismatch');
+    });
+
     test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('signing');
         const packagePath = path.join(outputDir, `unsigned-${packageVersion}.msix`);

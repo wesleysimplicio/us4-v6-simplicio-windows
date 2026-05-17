@@ -29,6 +29,8 @@ O que existe hoje e suficiente para validar base de engenharia:
 - validacao de manifests de `winget` via `scripts/validate-winget-manifests.ps1`
 - validacao cruzada de artefatos + checksums + manifests via `scripts/validate-release-assets.ps1`
 - `release-manifest.json` gerado via `scripts/render-release-manifest.ps1`
+- validacao de tag de release via `scripts/validate-release-tag.ps1`
+- `release-notes.md` gerado via `scripts/render-release-notes.ps1`
 - scaffold de assinatura via `scripts/sign-msix.ps1`
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
