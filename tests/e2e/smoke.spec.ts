@@ -1542,6 +1542,76 @@ test.describe('us4-cli smoke', () => {
         expect(content).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
     });
 
+    test('executes the local release dry-run and exports a structured summary', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-dry-run-dist');
+        const manifestDir = testInfo.outputPath('release-dry-run-winget');
+        const workingDir = testInfo.outputPath('release-dry-run-working');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const releaseDryRunScriptPath = path.resolve(process.cwd(), 'scripts', 'release-dry-run.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+        mkdirSync(workingDir, {recursive : true});
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            releaseDryRunScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-WorkingDir',
+            workingDir,
+            '-Version',
+            packageVersion,
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-dry-run', result.stdout, result.stderr);
+
+        expect(result.exitCode).toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            execution: string;
+            status: string;
+            version: string;
+            artifact_names: string[];
+            issue_codes: string[];
+            steps: Array<{
+                name: string;
+                status: string;
+                detail: string;
+            }>;
+        };
+        expect(payload.execution).toBe('release-dry-run');
+        expect(payload.status).toBe('ready');
+        expect(payload.version).toBe(packageVersion);
+        expect(payload.artifact_names).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
+        expect(payload.artifact_names).toContain('SHA256SUMS.txt');
+        expect(payload.issue_codes).toHaveLength(0);
+        expect(payload.steps.some((step) => step.name === 'preflight' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'build-portable-zip' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'generate-checksums' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'render-winget-manifests' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'validate-release-assets' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'render-release-notes' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'portable-smoke' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'build-msix' &&
+                                            (step.status === 'passed' || step.status === 'skipped'))).toBeTruthy();
+    });
+
     test('validates release tag against the current package version', async ({}, testInfo) => {
         const validateTagScriptPath = path.resolve(process.cwd(), 'scripts', 'validate-release-tag.ps1');
 

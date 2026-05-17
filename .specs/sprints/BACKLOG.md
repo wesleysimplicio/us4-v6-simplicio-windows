@@ -10,7 +10,7 @@ Reference master spec: `../../US4-V6-Windows-Edition.md`.
 - DoD gate: lint + unit (>=80% cov on touched code) + Playwright E2E + correctness diff vs reference within tolerance.
 - Loop: read -> plan -> edit -> lint -> unit -> e2e -> regression -> ralph fix -> commit.
 
-## Status snapshot (2026-05-16)
+## Status snapshot (2026-05-17)
 
 - Planning files currently define `12` sprints and `88` tasks.
 - Versioned checkboxes currently mark `6` tasks as done and `82` as still open.

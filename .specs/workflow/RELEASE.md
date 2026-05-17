@@ -35,6 +35,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
 - preflight de release via `scripts/preflight-release.ps1`
+- dry-run local encadeado via `scripts/release-dry-run.ps1`
 - smoke de instalacao MSIX via `scripts/install-msix-smoke.ps1`
 - evidencia Playwright quando a PR toca CLI/UX
 - gate de corpo de PR e ADR via [`.github/workflows/dod.yml`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.github/workflows/dod.yml)
@@ -137,6 +138,7 @@ Hoje o repo ja inclui:
 - `scripts/build-msix.ps1`
 - `scripts/generate-checksums.ps1`
 - `scripts/post-publish-smoke.ps1`
+- `scripts/release-dry-run.ps1`
 
 O que ainda falta para fechar distribuicao:
 

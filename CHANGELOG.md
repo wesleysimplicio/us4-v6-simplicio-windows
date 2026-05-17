@@ -87,6 +87,17 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 - CI release metadata render step after asset validation
 - E2E regression coverage for release manifest generation from artifacts, checksums, and distribution URLs
 
+## [0.1.29] - 2026-05-17
+
+### Added
+
+- `scripts/release-dry-run.ps1` to execute the local release preparation flow as a single structured contract
+- E2E regression coverage for the chained local release dry-run summary
+
+### Changed
+
+- release docs and examples now point to the dry-run entrypoint for Sprint 12 packaging evidence
+
 ## [0.1.28] - 2026-05-16
 
 ### Added
