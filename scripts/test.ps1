@@ -85,6 +85,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe")
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe") } "Hybrid planner gate failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_block_gemm_bench.exe")) {
+    Write-Host "Detected CPU block GEMM benchmark binary. Running oneDNN vs scalar local benchmark evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_block_gemm_bench.exe") } "CPU block GEMM benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

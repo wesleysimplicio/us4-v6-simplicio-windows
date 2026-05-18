@@ -6,6 +6,7 @@
 #include "us4/runtime/backends/directml/dml_device.h"
 #include "us4/runtime/backends/directml/dml_graph.h"
 #include "us4/runtime/backends/onednn/block_gemm_contract.h"
+#include "us4/runtime/backends/onednn/onednn_backend.h"
 #include "us4/runtime/backends/vulkan/vulkan_context.h"
 #include "us4/runtime/backends/vulkan/vulkan_execution_plan.h"
 #include "us4/runtime/backends/vulkan/vulkan_kernel_library.h"
@@ -835,6 +836,58 @@ namespace us4::runtime::tests
             const auto matmulPlan = backends::cpu_avx::ExplainScalarMatMulPlan(left, right);
             EXPECT_TRUE(matmulPlan.packRightHandSide);
             EXPECT_GE(matmulPlan.tile.depthBlock, 16U);
+        }
+
+        TEST(BackendPlannerTest, OneDnnBackendMatchesScalarReferenceMatMul)
+        {
+            us4::core::Tensor left({32U, 64U});
+            us4::core::Tensor right({64U, 48U});
+            for (std::size_t index = 0; index < left.ElementCount(); ++index)
+            {
+                left[index] = 0.125F + static_cast<float>((index % 17U)) * 0.03125F;
+            }
+            for (std::size_t index = 0; index < right.ElementCount(); ++index)
+            {
+                right[index] = -0.25F + static_cast<float>((index % 13U)) * 0.0625F;
+            }
+
+            const auto scalarProfile = backends::cpu_avx::BuildKernelProfile({
+                .avx2 = false,
+                .avx512f = false,
+                .amxInt8 = false,
+                .amxBf16 = false,
+                .hardwareThreadCount = 1U,
+            });
+            const auto avx512Profile = backends::cpu_avx::BuildKernelProfile({
+                .avx2 = true,
+                .avx512f = true,
+                .avx512Vnni = true,
+                .l2BytesPerCore = 2048U * 1024U,
+                .hardwareThreadCount = 8U,
+            });
+
+            const auto scalarPlan = backends::cpu_avx::MakeReferenceMatMulPlan(
+                left.Dim(0), left.Dim(1), right.Dim(1), &scalarProfile);
+            const auto scalarOutput = backends::cpu_avx::BlockedMatMul(left, right, scalarPlan);
+
+            backends::onednn::OneDnnBackend backend({
+                .allowAmx = true,
+                .allowAvx512 = true,
+                .preferPersistentCache = true,
+                .l2BytesPerCore = 2048U * 1024U,
+                .threadCountHint = 8U,
+            });
+            const auto result = backend.ExecuteMatMul(left, right, &avx512Profile);
+
+            EXPECT_TRUE(result.plan.valid);
+            EXPECT_TRUE(result.blockedPlan.useOneDnnFriendlyBlocking);
+            EXPECT_NE(result.blockedPlan.kernelTag.find("onednn-"), std::string::npos);
+            EXPECT_EQ(result.output.Shape(), scalarOutput.Shape());
+            EXPECT_EQ(result.output.ElementCount(), scalarOutput.ElementCount());
+            for (std::size_t index = 0; index < result.output.ElementCount(); ++index)
+            {
+                EXPECT_NEAR(result.output[index], scalarOutput[index], 1e-3F);
+            }
         }
 
         TEST(BackendPlannerTest, CpuFallbackTracksDetectedInstructionSetLevel)

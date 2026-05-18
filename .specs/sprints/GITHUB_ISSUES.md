@@ -2,7 +2,7 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **70** (tasks with versioned checkboxes marked as done).
+> Fechados: **71** (tasks with versioned checkboxes marked as done).
 
 ## Sprint Epics
 
@@ -11,7 +11,7 @@
 | 01 | [#1](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/1) | Foundations & Skeleton | done | 10/10 |
 | 02 | [#2](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/2) | CPU Scalar Baseline ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Qwen + Gemma | done | 9/9 |
 | 03 | [#3](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/3) | CUDA + DirectML Skeleton | in_progress | 3/7 |
-| 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | in_progress | 1/7 |
+| 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | in_progress | 2/7 |
 | 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | in_progress | 5/7 |
 | 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | done | 7/7 |
 | 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 4/6 |
@@ -60,7 +60,7 @@
 - [#40](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/40) T04.2 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AMX BF16/INT8
 - [#41](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/41) T04.3 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AVX attention fused
 - [#42](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/42) T04.4 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Dequant INT8/INT4
-- [#43](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/43) T04.5 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â OneDnnBackend block GEMM
+- [#43](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/43) T04.5 - OneDnnBackend block GEMM **done**
 - [#44](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/44) T04.6 - Auto-select AVX via cpuid **done**
 - [#45](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/45) T04.7 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Re-bench Qwen/Gemma AVX vs scalar
 

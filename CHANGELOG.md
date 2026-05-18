@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.53] - 2026-05-18
+
+### Added
+- a concrete `OneDnnBackend` wrapper for block GEMM planning/execution on top of the existing oneDNN-compatible contract
+- a committed local CPU block GEMM benchmark runner plus a versioned Sprint 04 benchmark note snapshot
+
+### Changed
+- `scripts/test.ps1` and `scripts/test.sh` now execute the CPU block GEMM benchmark when the binary is available so oneDNN evidence stays in the local validation loop
+
 ## [0.1.52] - 2026-05-18
 
 ### Added

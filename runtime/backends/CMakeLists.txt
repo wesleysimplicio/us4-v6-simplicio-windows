@@ -1,5 +1,4 @@
 add_subdirectory(cpu_avx)
-
 if(US4_ENABLE_CUDA)
     add_subdirectory(cuda)
 endif()

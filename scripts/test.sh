@@ -28,6 +28,11 @@ if [[ -f build/runtime/benchmarks/hybrid_planner_gate.exe ]]; then
   build/runtime/benchmarks/hybrid_planner_gate.exe
 fi
 
+if [[ -f build/runtime/benchmarks/cpu_block_gemm_bench.exe ]]; then
+  echo "Detected CPU block GEMM benchmark binary. Running oneDNN vs scalar local benchmark evidence."
+  build/runtime/benchmarks/cpu_block_gemm_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"
