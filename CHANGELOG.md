@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.56] - 2026-05-18
+
+### Added
+
+- `AVX2` group-wise `INT8` and `INT4` CPU dequant paths with dedicated unit coverage and local `Q8/Q4` throughput evidence in the Sprint 04 benchmark report
+
+### Changed
+
+- extended `cpu_block_gemm_bench` to emit `cpu-q8-avx2` and `cpu-q4-avx2` samples with `tokens_per_second`, keeping Sprint 04 quantized CPU evidence committed alongside the AVX matmul work
+
 ## [0.1.55] - 2026-05-18
 
 ### Added

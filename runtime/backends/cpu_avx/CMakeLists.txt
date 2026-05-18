@@ -6,6 +6,8 @@ add_library(
     src/avx512_matmul.cpp
     src/bitnet_reference.cpp
     src/blocked_matmul.cpp
+    src/dequant_int4.cpp
+    src/dequant_int8.cpp
     src/kernel_profile.cpp
     src/scalar_attention.cpp
     src/scalar_matmul.cpp)
@@ -27,8 +29,12 @@ target_link_libraries(
 if(MSVC)
     set_source_files_properties(src/avx2_matmul.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
     set_source_files_properties(src/avx512_matmul.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX512")
+    set_source_files_properties(src/dequant_int4.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+    set_source_files_properties(src/dequant_int8.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
 else()
     set_source_files_properties(src/avx2_matmul.cpp PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
+    set_source_files_properties(src/dequant_int4.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
+    set_source_files_properties(src/dequant_int8.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
     set_source_files_properties(
         src/avx512_matmul.cpp
         PROPERTIES COMPILE_OPTIONS "-mavx512f;-mavx512vl;-mavx512dq;-mavx512bw;-mavx512vnni")
