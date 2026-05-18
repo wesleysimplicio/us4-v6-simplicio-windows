@@ -1,4 +1,7 @@
 add_library(us4_runtime_speculative
+  src/draft_model_loader.cpp
+  src/eagle3_decoder.cpp
+  src/peagle_decoder.cpp
   src/speculative_engine.cpp
 )
 

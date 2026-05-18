@@ -1,6 +1,7 @@
 add_library(us4_runtime_moe
   src/expert_pager.cpp
   src/expert_router.cpp
+  src/speculative_prefetch.cpp
 )
 
 target_include_directories(us4_runtime_moe

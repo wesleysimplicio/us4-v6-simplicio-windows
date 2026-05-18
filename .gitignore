@@ -66,3 +66,6 @@ Thumbs.db
 # Agentic starter local state
 .starter-meta.json
 .claude/settings.local.json
+build-full/
+build-test/
+runtime/tuning/profiles.json

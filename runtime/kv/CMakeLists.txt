@@ -1,5 +1,6 @@
 add_library(us4_runtime_kv
   src/kv_pager.cpp
+  src/ssd_cold_store.cpp
   src/summarizer.cpp
 )
 

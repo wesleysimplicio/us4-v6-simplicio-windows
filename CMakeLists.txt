@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.36
+    VERSION 0.1.37
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
@@ -49,6 +49,7 @@ add_subdirectory(runtime/memory)
 add_subdirectory(runtime/kv)
 add_subdirectory(runtime/cache)
 add_subdirectory(runtime/moe)
+add_subdirectory(runtime/scheduler)
 add_subdirectory(runtime/speculative)
 add_subdirectory(runtime/tuning)
 add_subdirectory(runtime/telemetry)
@@ -66,19 +67,37 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             us4_core_tests
             tests/unit/backend_planner_test.cpp
             tests/unit/bitnet_ternary_test.cpp
+            tests/unit/continuous_batcher_test.cpp
             tests/unit/cuda_backend_test.cpp
+            tests/unit/draft_model_loader_test.cpp
+            tests/unit/eagle3_decoder_test.cpp
+            tests/unit/glm_adapter_test.cpp
             tests/unit/hardware_probe_test.cpp
             tests/unit/auto_tuner_test.cpp
             tests/unit/kv_runtime_test.cpp
+            tests/unit/llama_config_test.cpp
             tests/unit/llama_runtime_test.cpp
-            tests/unit/moe_runtime_test.cpp)
+            tests/unit/minimax_adapter_test.cpp
+            tests/unit/moe_runtime_test.cpp
+            tests/unit/multimodal_cache_test.cpp
+            tests/unit/peagle_decoder_test.cpp
+            tests/unit/session_pool_test.cpp
+            tests/unit/sparsity_aware_cache_test.cpp
+            tests/unit/speculative_prefetch_test.cpp
+            tests/unit/ssd_cold_store_test.cpp)
 
         target_link_libraries(
             us4_core_tests
             PRIVATE
+                us4_runtime_adapters
                 us4_runtime_benchmark_registry
-                us4_runtime_matrix_runner
+                us4_runtime_cache
                 us4_runtime_core
+                us4_runtime_kv
+                us4_runtime_matrix_runner
+                us4_runtime_moe
+                us4_runtime_scheduler
+                us4_runtime_speculative
                 GTest::gtest_main
                 us4_build_options
                 us4_build_warnings)
