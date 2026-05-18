@@ -30,7 +30,7 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `install-msix-smoke.ps1`
   - valida assinatura/trust e tenta instalar um `.msix` em host Windows apto, falhando claramente quando o pacote ainda nao e instalavel
 - `post-publish-smoke.ps1`
-  - executa um smoke local de artefato publicado; hoje cobre o portable zip e falha claramente para MSIX nao automatizado
+  - executa um smoke local de artefato publicado; cobre portable zip por padrao e, com `-EnableDevMsixSmoke`, valida um `.msix` em modo dev-only com assinatura autoassinada temporaria e cleanup local
 - `preflight-release.ps1`
   - valida readiness de release cruzando versao, changelog, build, ferramentas de packaging e configuracao de assinatura
 - `render-project-status.ps1`

@@ -4,6 +4,13 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.36] - 2026-05-18
+
+### Changed
+
+- `post-publish-smoke.ps1` now supports a dev-only `.msix` path that signs a temporary copy with a self-signed certificate, runs install smoke, and cleans up local trust state
+- `sign-msix.ps1` now allows local signing without a timestamp URL so dev-only validation does not depend on external timestamp infrastructure
+
 ## [0.1.35] - 2026-05-18
 
 ### Changed

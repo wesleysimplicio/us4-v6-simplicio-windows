@@ -50,7 +50,20 @@ if (-not $signtool) {
     throw "signtool.exe not found. Install Windows SDK signing tools before signing MSIX artifacts."
 }
 
-& $signtool.Source sign /fd SHA256 /td SHA256 /tr $TimestampUrl /f $CertificatePath /p $CertificatePassword $PackagePath
+$signArguments = @(
+    "sign",
+    "/fd", "SHA256",
+    "/f", $CertificatePath,
+    "/p", $CertificatePassword
+)
+
+if (-not [string]::IsNullOrWhiteSpace($TimestampUrl)) {
+    $signArguments += @("/td", "SHA256", "/tr", $TimestampUrl)
+}
+
+$signArguments += $PackagePath
+
+& $signtool.Source @signArguments
 if ($LASTEXITCODE -ne 0) {
     throw "signtool.exe failed while signing $PackagePath"
 }

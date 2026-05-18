@@ -130,26 +130,27 @@ Release artifact helpers:
 ```powershell
 .\scripts\build-portable-zip.ps1 -BuildDir build -OutputDir dist
 .\scripts\generate-checksums.ps1 -OutputDir dist
-.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.35-portable.zip
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.36-portable.zip
 .\scripts\release-dry-run.ps1 -BuildDir build -OutputDir dist -ManifestDir .\packaging\winget\manifests -Format json
 .\scripts\render-project-status.ps1 -BuildDir build -RequireEvidence -Format markdown -OutputPath .\dist\project-status.md
-.\scripts\render-winget-manifests.ps1 -Version 0.1.35
+.\scripts\render-winget-manifests.ps1 -Version 0.1.36
 .\scripts\validate-winget-manifests.ps1 -ManifestDir .\packaging\winget\manifests
 .\scripts\validate-release-assets.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
 .\scripts\validate-publish-layout.ps1 -OutputDir .\dist
 .\scripts\render-release-manifest.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
-.\scripts\render-release-notes.ps1 -Version 0.1.35 -ReleaseManifestPath .\dist\release-manifest.json
+.\scripts\render-release-notes.ps1 -Version 0.1.36 -ReleaseManifestPath .\dist\release-manifest.json
 .\scripts\render-planning-status.ps1 -Format markdown -OutputPath .\.specs\sprints\STATUS.md
 .\scripts\create-dev-signing-cert.ps1 -CertificatePassword us4-dev-pass -Format json
 .\scripts\dev-msix-smoke.ps1 -BuildDir build -CertificatePassword us4-dev-pass -Format json
-.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.35.0.msix
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.36.0.msix -EnableDevMsixSmoke -DevCertificatePassword us4-dev-pass
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.36.0.msix
 .\scripts\preflight-release.ps1 -BuildDir build
-.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.35.0.msix
+.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.36.0.msix
 ```
 
 `release-dry-run.ps1` and `render-project-status.ps1` now default to ephemeral winget manifests so local validation does not dirty `packaging/winget/manifests/`. Pass `-ManifestDir .\packaging\winget\manifests` only when you explicitly want repo-owned rendered manifests.
 
-`dev-msix-smoke.ps1` is a local dev-only path. It reduces the MSIX gap by exercising self-signed packaging on a single host, but it does not satisfy the production requirement for a trusted release certificate.
+`dev-msix-smoke.ps1` and `post-publish-smoke.ps1 -EnableDevMsixSmoke` are local dev-only paths. They reduce the MSIX gap by exercising self-signed packaging on a single host, but they do not satisfy the production requirement for a trusted release certificate.
 
 ## Repo Layout
 

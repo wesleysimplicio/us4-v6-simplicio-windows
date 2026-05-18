@@ -35,6 +35,7 @@ O que existe hoje e suficiente para validar base de engenharia:
 - scaffold de certificado dev via `scripts/create-dev-signing-cert.ps1`
 - `scripts/generate-checksums.ps1`
 - smoke local de portable zip via `scripts/post-publish-smoke.ps1`
+- smoke local dev-only de `.msix` assinado temporariamente via `scripts/post-publish-smoke.ps1 -EnableDevMsixSmoke`
 - preflight de release via `scripts/preflight-release.ps1`
 - dry-run local encadeado via `scripts/release-dry-run.ps1`
 - snapshot consolidado de projeto/release via `scripts/render-project-status.ps1`
@@ -142,6 +143,7 @@ Hoje o repo ja inclui:
 - `scripts/build-msix.ps1`
 - `scripts/generate-checksums.ps1`
 - `scripts/post-publish-smoke.ps1`
+  - cobre smoke do zip publicado e tambem um caminho opt-in dev-only para `.msix`, sem substituir a validacao de instalacao em host real para release publica
 - `scripts/release-dry-run.ps1`
   - valida `vX.Y.Z` vs `package.json`, empacota artefatos locais, renderiza manifests/notas e pode expor readiness dev-only de MSIX sem esconder blockers externos de producao
 - `scripts/validate-publish-layout.ps1`
@@ -201,7 +203,7 @@ Hoje o rollback ainda e semiautomatico, mas ja existe um procedimento concreto p
 2. preserve os checksums e artefatos do ultimo snapshot conhecido como bom
 3. remova do draft release os artefatos ruins ou descarte o draft
 4. gere novamente `portable zip`, `SHA256SUMS.txt` e, se aplicavel, o MSIX
-5. rode `scripts/post-publish-smoke.ps1` contra o zip reconstruido
+5. rode `scripts/post-publish-smoke.ps1` contra o zip reconstruido e, se estiver fechando o gap local de MSIX no mesmo host, use `-EnableDevMsixSmoke` no `.msix`
 6. se o problema estiver em manifests, rerenderize `packaging/winget/manifests/` com URLs corretos e rode `scripts/validate-winget-manifests.ps1 -RequirePublishableUrls`
 7. rode `scripts/validate-release-assets.ps1` para garantir que artefatos, checksums e manifests continuam coerentes
 8. rode `scripts/validate-publish-layout.ps1` para garantir que nenhum staging, smoke temporario ou arquivo incidental vazou para o diretorio publicavel

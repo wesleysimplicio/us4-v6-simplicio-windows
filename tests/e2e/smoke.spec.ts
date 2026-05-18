@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 import type {TestInfo} from '@playwright/test';
 import {execFile} from 'node:child_process';
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {promisify} from 'node:util';
 
@@ -1056,6 +1056,70 @@ test.describe('us4-cli smoke', () => {
         expect(smoke.exitCode).toBe(0);
         expect(smoke.stdout).toContain('Portable zip smoke passed');
     });
+
+    test('runs post-publish smoke against an MSIX artifact in dev-only mode or fails with a clear local prerequisite',
+         async ({}, testInfo) => {
+             const outputDir = testInfo.outputPath('post-publish-msix-dist');
+             const buildScriptPath = path.resolve(process.cwd(), 'scripts', 'build-msix.ps1');
+             const smokeScriptPath = path.resolve(process.cwd(), 'scripts', 'post-publish-smoke.ps1');
+             const cliBuildDir = path.resolve(process.cwd(), 'build');
+             const workingDir = path.join(outputDir, 'msix-smoke-work');
+
+             mkdirSync(outputDir, {recursive : true});
+
+             const build = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 buildScriptPath,
+                 '-BuildDir',
+                 cliBuildDir,
+                 '-OutputDir',
+                 outputDir,
+             ]);
+             await attachProcessOutput(testInfo, 'post-publish-build-msix', build.stdout, build.stderr);
+
+             if (build.exitCode !== 0)
+             {
+                 expect(`${build.stdout}\n${build.stderr}`).toContain('MakeAppx.exe not found');
+                 return;
+             }
+
+             const msixEntry = readdirSync(outputDir).find((entry) => entry.toLowerCase().endsWith('.msix'));
+             if (!msixEntry)
+             {
+                 expect(build.stdout).toContain('.msix');
+                 return;
+             }
+             const msixPath = path.join(outputDir, msixEntry);
+
+             const smoke = await runPowerShell([
+                 '-NoProfile',
+                 '-ExecutionPolicy',
+                 'Bypass',
+                 '-File',
+                 smokeScriptPath,
+                 '-ArtifactPath',
+                 msixPath,
+                 '-WorkingDir',
+                 workingDir,
+                 '-EnableDevMsixSmoke',
+                 '-DevCertificatePassword',
+                 'us4-dev-pass',
+             ]);
+             await attachProcessOutput(testInfo, 'post-publish-msix-smoke', smoke.stdout, smoke.stderr);
+
+             if (smoke.exitCode === 0)
+             {
+                 expect(smoke.stdout).toContain('Dev MSIX smoke passed');
+                 return;
+             }
+
+             expect(`${smoke.stdout}\n${smoke.stderr}`).toMatch(
+                 /signtool\.exe not found|Add-AppxPackage is not available|Get-AppxPackage is not available|Local dev MSIX signing prerequisites are unavailable|MSIX package is not signed with a trusted certificate/
+             );
+         });
 
     test('renders and validates publishable winget manifests from repository templates', async ({}, testInfo) => {
         const outputDir = testInfo.outputPath('winget-manifests');
