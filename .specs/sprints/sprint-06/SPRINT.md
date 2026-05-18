@@ -1,6 +1,6 @@
 ---
 sprint: sprint-06
-status: todo
+status: in_progress
 start: 2026-07-23
 end: 2026-08-05
 owner: us4-core
@@ -12,11 +12,11 @@ owner: us4-core
 Pager hot-cold KV (VRAM hot, RAM warm, SSD cold via mmap). Prefix cache. KV summarization. Eviction policies.
 
 ## Tasks
-- [ ] T06.1 — `runtime/kv/KvPager` (page table, LRU, tiers VRAM/RAM/SSD)
-- [ ] T06.2 — `runtime/kv/PrefixCache` (shared prefix by hash)
+- [x] T06.1 — `runtime/kv/KvPager` (page table, LRU, tiers VRAM/RAM/SSD)
+- [x] T06.2 — `runtime/kv/PrefixCache` (shared prefix by hash)
 - [ ] T06.3 — `runtime/kv/SsdColdStore` (mmap Windows `CreateFileMapping` + async flush)
-- [ ] T06.4 — `runtime/kv/Summarizer` (compress old tokens)
-- [ ] T06.5 — Eviction policy: LRU + frequency hybrid, cost-aware (VRAM mais caro)
+- [x] T06.4 — `runtime/kv/Summarizer` (compress old tokens)
+- [x] T06.5 — Eviction policy: LRU + frequency hybrid, cost-aware (VRAM mais caro)
 - [ ] T06.6 — Adapter hooks: append, lookup, evict, summarize
 - [ ] T06.7 — Telemetry: hit-rate VRAM/RAM/SSD/summary
 

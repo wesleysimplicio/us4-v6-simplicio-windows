@@ -4,6 +4,14 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.44] - 2026-05-18
+
+### Changed
+
+- reconciled the versioned sprint checklists with the implemented runtime and release surface, bringing planning status up to date across S01, S02, S03, S05, S06, S07, S08, S11 and S12
+- refreshed the planning status Playwright assertions so release and project-status flows validate the new `49 done / 39 remaining` planning snapshot
+- synchronized GitHub issue closure with the versioned sprint status for the tasks now fully evidenced by unit, regression, correctness and CLI E2E gates
+
 ## [0.1.43] - 2026-05-18
 
 ### Added

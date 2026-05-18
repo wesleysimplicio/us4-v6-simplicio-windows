@@ -10,11 +10,11 @@ Reference master spec: `../../US4-V6-Windows-Edition.md`.
 - DoD gate: lint + unit (>=80% cov on touched code) + Playwright E2E + correctness diff vs reference within tolerance.
 - Loop: read -> plan -> edit -> lint -> unit -> e2e -> regression -> ralph fix -> commit.
 
-## Status snapshot (2026-05-17)
+## Status snapshot (2026-05-18)
 
 - Planning files currently define `12` sprints and `88` tasks.
-- Versioned checkboxes currently mark `6` tasks as done and `82` as still open.
-- The repo implementation is ahead of the raw sprint checkboxes in some areas, but planning should stay conservative until each sprint task is fully evidenced and documented.
+- Versioned checkboxes currently mark `49` tasks as done and `39` as still open.
+- The repo implementation and the versioned sprint checkboxes are now aligned for the tasks already evidenced by unit, E2E, regression and correctness gates.
 - The generated companion snapshot lives in `STATUS.md` and can be refreshed via `scripts/render-planning-status.ps1`.
 
 ## Sprint Matrix

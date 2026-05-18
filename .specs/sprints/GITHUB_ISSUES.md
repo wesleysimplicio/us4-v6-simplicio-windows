@@ -2,23 +2,23 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **6** (Sprint 12 done checkboxes).
+> Fechados: **49** (tasks com checkbox versionado marcado como concluído).
 
 ## Sprint Epics
 
 | Sprint | Epic | Theme | Status | Done |
 |---|---|---|---|---:|
-| 01 | [#1](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/1) | Foundations & Skeleton | todo | 0/10 |
-| 02 | [#2](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/2) | CPU Scalar Baseline — Qwen + Gemma | todo | 0/9 |
-| 03 | [#3](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/3) | CUDA + DirectML Skeleton | todo | 0/7 |
+| 01 | [#1](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/1) | Foundations & Skeleton | in_progress | 9/10 |
+| 02 | [#2](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/2) | CPU Scalar Baseline — Qwen + Gemma | done | 9/9 |
+| 03 | [#3](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/3) | CUDA + DirectML Skeleton | in_progress | 3/7 |
 | 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | todo | 0/7 |
-| 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | todo | 0/7 |
-| 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | todo | 0/7 |
-| 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | todo | 0/6 |
-| 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation — DeepSeek + Kimi | todo | 0/6 |
+| 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | in_progress | 5/7 |
+| 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | in_progress | 4/7 |
+| 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 2/6 |
+| 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation — DeepSeek + Kimi | in_progress | 4/6 |
 | 09 | [#9](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/9) | MoE Advanced — MiniMax + GLM, SP-MoE | todo | 0/6 |
 | 10 | [#10](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/10) | Batching + Speculative Decoding | todo | 0/7 |
-| 11 | [#11](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/11) | Vulkan + Windows ML / NPU | todo | 0/8 |
+| 11 | [#11](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/11) | Vulkan + Windows ML / NPU | in_progress | 7/8 |
 | 12 | [#12](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/12) | Auto-Tune + Release v1.0 | in_progress | 6/8 |
 
 ## Task Issues

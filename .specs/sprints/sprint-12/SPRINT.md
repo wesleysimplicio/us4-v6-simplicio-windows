@@ -21,10 +21,10 @@ Auto-tuning hardware-aware (tile/batch por profile). Matriz benchmark (8 hardwar
 - [ ] T12.7 - Release v1.0: tag, changelog, GitHub Releases
 - [x] T12.8 - Migration guide + troubleshooting
 
-## Status snapshot (2026-05-17)
+## Status snapshot (2026-05-18)
 
 - Planejamento versionado: 12 sprints, 88 tasks totais.
-- Checkboxes marcados hoje: 6 concluidas, 82 ainda abertas.
+- Checkboxes marcados hoje: 49 concluidas, 39 ainda abertas.
 - Sprint 12 segue em progresso porque os blocos restantes dependem de assinatura/publicacao real, apesar da trilha local de release ja cobrir preflight, dry-run encadeado, manifests, checksums, release manifest e release notes.
 
 ## Test plan

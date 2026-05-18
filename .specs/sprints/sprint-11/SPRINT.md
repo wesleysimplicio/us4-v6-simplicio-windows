@@ -1,6 +1,6 @@
 ---
 sprint: sprint-11
-status: todo
+status: in_progress
 start: 2026-10-01
 end: 2026-10-14
 owner: us4-core
@@ -12,14 +12,14 @@ owner: us4-core
 Vulkan compute backend (cross-vendor AMD/Intel + fallback NVIDIA). Windows ML adapter para NPU (Snapdragon X / Intel Core Ultra / AMD Ryzen AI). Dense layer offload pro NPU.
 
 ## Tasks
-- [ ] T11.1 — `runtime/backends/vulkan/VulkanContext` (device, queue, descriptor sets)
-- [ ] T11.2 — `runtime/backends/vulkan/kernels/{matmul,softmax,rmsnorm}.comp` (GLSL)
-- [ ] T11.3 — `runtime/backends/windows_ml/WinMlAdapter` (ONNX graph via Windows ML, NPU exec provider)
-- [ ] T11.4 — `runtime/backends/windows_ml/LayerOffloader` (dense layers -> NPU)
-- [ ] T11.5 — Mixed dispatch (GPU primary + NPU dense static)
-- [ ] T11.6 — Power/thermal monitor (Windows ETW + `GetSystemPowerStatus`) downgrade dispatch
+- [x] T11.1 — `runtime/backends/vulkan/VulkanContext` (device, queue, descriptor sets)
+- [x] T11.2 — `runtime/backends/vulkan/kernels/{matmul,softmax,rmsnorm}.comp` (GLSL)
+- [x] T11.3 — `runtime/backends/windows_ml/WinMlAdapter` (ONNX graph via Windows ML, NPU exec provider)
+- [x] T11.4 — `runtime/backends/windows_ml/LayerOffloader` (dense layers -> NPU)
+- [x] T11.5 — Mixed dispatch (GPU primary + NPU dense static)
+- [x] T11.6 — Power/thermal monitor (Windows ETW + `GetSystemPowerStatus`) downgrade dispatch
 - [ ] T11.7 — Bench Qwen/Llama em Vulkan; em NPU offload
-- [ ] T11.8 — Fallback graceful sem NPU
+- [x] T11.8 — Fallback graceful sem NPU
 
 ## Test plan
 - Unit: Vulkan matmul vs scalar; WinML graph compile; thermal monitor read.

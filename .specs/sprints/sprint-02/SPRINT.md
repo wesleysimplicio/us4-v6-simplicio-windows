@@ -1,6 +1,6 @@
 ---
 sprint: sprint-02
-status: todo
+status: done
 start: 2026-05-28
 end: 2026-06-10
 owner: us4-core
@@ -12,15 +12,15 @@ owner: us4-core
 Tensor primitives + baseline escalar (matmul, attention) em C++ puro. Adapter dense base com Qwen + Gemma em CPU_ONLY mode.
 
 ## Tasks
-- [ ] T02.1 — `runtime/core/Tensor.{h,cpp}` (shape, dtype FP32/FP16/BF16/INT8/INT4)
-- [ ] T02.2 — `runtime/backends/cpu_avx/scalar_matmul.cpp` (reference scalar GEMM, FP32)
-- [ ] T02.3 — `runtime/backends/cpu_avx/scalar_attention.cpp` (causal mask, softmax stable, KV concat)
-- [ ] T02.4 — `runtime/adapters/DenseAdapterBase`
-- [ ] T02.5 — `runtime/adapters/qwen/QwenAdapter` (scalar path)
-- [ ] T02.6 — `runtime/adapters/gemma/GemmaAdapter` (scalar path)
-- [ ] T02.7 — Loader GGUF/Safetensors minimal (FP32/FP16)
-- [ ] T02.8 — Benchmark harness `runtime/benchmarks/dense_baseline.cpp`
-- [ ] T02.9 — Runtime mode CPU_ONLY funcional
+- [x] T02.1 — `runtime/core/Tensor.{h,cpp}` (shape, dtype FP32/FP16/BF16/INT8/INT4)
+- [x] T02.2 — `runtime/backends/cpu_avx/scalar_matmul.cpp` (reference scalar GEMM, FP32)
+- [x] T02.3 — `runtime/backends/cpu_avx/scalar_attention.cpp` (causal mask, softmax stable, KV concat)
+- [x] T02.4 — `runtime/adapters/DenseAdapterBase`
+- [x] T02.5 — `runtime/adapters/qwen/QwenAdapter` (scalar path)
+- [x] T02.6 — `runtime/adapters/gemma/GemmaAdapter` (scalar path)
+- [x] T02.7 — Loader GGUF/Safetensors minimal (FP32/FP16)
+- [x] T02.8 — Benchmark harness `runtime/benchmarks/dense_baseline.cpp`
+- [x] T02.9 — Runtime mode CPU_ONLY funcional
 
 ## Test plan
 - Unit: matmul vs naive reference (atol 1e-4); attention shape/mask; tokenizer round-trip.

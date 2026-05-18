@@ -1,6 +1,6 @@
 ---
 sprint: sprint-07
-status: todo
+status: in_progress
 start: 2026-08-06
 end: 2026-08-19
 owner: us4-core
@@ -14,8 +14,8 @@ Llama 3/4 adapter com GQA, RoPE scaling (linear/dynamic/YaRN), ALiBi opcional. F
 ## Tasks
 - [ ] T07.1 — `runtime/adapters/llama/LlamaConfig`
 - [ ] T07.2 — `runtime/adapters/llama/LlamaAdapter`
-- [ ] T07.3 — `runtime/core/rope.{h,cpp}` (linear + dynamic + YaRN)
-- [ ] T07.4 — `runtime/core/gqa_attention.{h,cpp}`
+- [x] T07.3 — `runtime/core/rope.{h,cpp}` (linear + dynamic + YaRN)
+- [x] T07.4 — `runtime/core/gqa_attention.{h,cpp}`
 - [ ] T07.5 — Loader Llama GGUF + safetensors + tokenizer.json
 - [ ] T07.6 — Bench Llama 3.x 8B em CUDA + DirectML + AVX
 

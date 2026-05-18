@@ -1,6 +1,6 @@
 ---
 sprint: sprint-05
-status: todo
+status: in_progress
 start: 2026-07-09
 end: 2026-07-22
 owner: us4-core
@@ -14,11 +14,11 @@ BitNet 1.58-bit (CUDA + AVX) + Ternary (PT-BitNet). MICRO + NANO modes.
 ## Tasks
 - [ ] T05.1 — `runtime/backends/cuda/kernels/bitnet_matmul.cu` (packed 1.58-bit)
 - [ ] T05.2 — `runtime/backends/cpu_avx/bitnet_matmul.cpp` (AVX2 popcount + lookup)
-- [ ] T05.3 — `runtime/adapters/bitnet/BitNetAdapter` (load packed weights)
-- [ ] T05.4 — `runtime/adapters/ternary/TernaryAdapter` (PT-BitNet -1/0/+1)
-- [ ] T05.5 — Ternary LUT (256-entry para 4-ternary chunks, AVX shuffle)
-- [ ] T05.6 — Loader: BitNet GGUF variant + ternary safetensors
-- [ ] T05.7 — RuntimeMode MICRO/NANO trigger (RAM<=8GB -> ternary preferido)
+- [x] T05.3 — `runtime/adapters/bitnet/BitNetAdapter` (load packed weights)
+- [x] T05.4 — `runtime/adapters/ternary/TernaryAdapter` (PT-BitNet -1/0/+1)
+- [x] T05.5 — Ternary LUT (256-entry para 4-ternary chunks, AVX shuffle)
+- [x] T05.6 — Loader: BitNet GGUF variant + ternary safetensors
+- [x] T05.7 — RuntimeMode MICRO/NANO trigger (RAM<=8GB -> ternary preferido)
 
 ## Test plan
 - Unit: BitNet CUDA vs scalar reference (atol 5e-3); ternary LUT correctness; AVX popcount path.
