@@ -5,6 +5,10 @@
 
 ![us4-v6-simplicio-windows](us4-v6-simplicio-windows.PNG)
 
+![Visao geral do runtime US4](assets/us4-runtime-overview.svg)
+
+![Fluxo de mapper e release](assets/us4-mapper-release-flow.svg)
+
 ## O que e
 
 US4 V6 e um runtime C++ para inferencia local de LLMs em Windows x86-64 com dispatch adaptativo entre CPU, CUDA, DirectML, Vulkan e caminhos opcionais via Windows ML / NPU. O repositorio ja saiu do estado de planejamento puro: ele tem uma superficie real de CLI, selecao de backend orientada a hardware, baseline CPU scalar, scaffolds de benchmark/tuning por matriz e documentacao de produto e arquitetura suficiente para sustentar os sprints restantes.
@@ -25,6 +29,15 @@ A base atual ja inclui:
 - cobertura unitaria, E2E Playwright de CLI, gates de correctness e documentacao em [`.specs/`](./.specs/)
 
 Na pratica, o repo esta em fase forte de implementacao: os contratos de CLI e planner ja sao reais, enquanto execucao device-side mais profunda, packaging e fechamento de release seguem evoluindo sprint a sprint.
+
+## Status do LLM Project Mapper
+
+Este repositorio mantem a camada do `llm-project-mapper` versionada dentro do proprio projeto, em vez de trata-la como algo externo:
+
+- a proveniencia esta registrada em [`.llm-project-mapper.json`](./.llm-project-mapper.json)
+- o snapshot de inspecao mais recente esta em [`.specs/journal/inspection-2026-05-18.md`](./.specs/journal/inspection-2026-05-18.md)
+- os pontos de update continuam sendo [`scripts/update-starter.ps1`](./scripts/update-starter.ps1) e [`scripts/update-starter.sh`](./scripts/update-starter.sh)
+- docs operacionais, status de sprint, release dry-run e project status seguem versionados no repo para humanos e agentes
 
 ## Superficie Atual Da CLI
 

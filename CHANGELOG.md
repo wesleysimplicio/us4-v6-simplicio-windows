@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.59] - 2026-05-18
+
+### Added
+
+- versioned `llm-project-mapper` provenance in `.llm-project-mapper.json`, a committed inspection journal, and SVG repository overview visuals now embedded in both README files
+
+### Changed
+
+- aligned the packaged file list and local setup docs so the mapper overlay, inspection trail, and repo visuals ship together as first-class project context
+
 ## [0.1.58] - 2026-05-18
 
 ### Added

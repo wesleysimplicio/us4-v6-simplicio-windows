@@ -5,6 +5,11 @@ Este repositorio tem duas camadas ativas:
 - a camada do `llm-project-mapper`, usada para bootstrap, mapeamento automatico, docs, packaging e Playwright
 - a camada do runtime `US4 V6 Windows Edition` em C++/CMake, com CLI, benchmark matrix, tuning persistente e gates de evidencia
 
+Rastro atual do mapper:
+
+- proveniencia: [`.llm-project-mapper.json`](../.llm-project-mapper.json)
+- inspecao mais recente: [`.specs/journal/inspection-2026-05-18.md`](../.specs/journal/inspection-2026-05-18.md)
+
 ## Prerequisites
 
 - Node.js `>=16.7` para tooling do starter e Playwright

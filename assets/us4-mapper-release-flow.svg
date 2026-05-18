@@ -1,0 +1,60 @@
+<svg width="1600" height="840" viewBox="0 0 1600 840" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">US4 mapper and release flow</title>
+  <desc id="desc">Diagram showing how llm-project-mapper overlay, sprint specs, runtime code, and release validation connect in this repository.</desc>
+  <defs>
+    <linearGradient id="bg2" x1="90" y1="60" x2="1510" y2="780" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#020617" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="840" rx="28" fill="url(#bg2)"/>
+  <text x="110" y="120" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="700">LLM Project Mapper in this repository</text>
+  <text x="110" y="164" fill="#94A3B8" font-family="Segoe UI, Arial, sans-serif" font-size="26">Operational context, sprint tracking, validation, and publishability gates stay versioned together.</text>
+
+  <g filter="url(#shadow2)">
+    <rect x="110" y="230" width="300" height="190" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="142" y="284" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Mapper overlay</text>
+    <text x="142" y="326" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">AGENTS / hooks / scripts</text>
+    <text x="142" y="362" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">docs/ + .specs/ scaffolding</text>
+    <text x="142" y="398" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">auto-map provenance</text>
+  </g>
+
+  <g filter="url(#shadow2)">
+    <rect x="480" y="230" width="300" height="190" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="512" y="284" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Planning source</text>
+    <text x="512" y="326" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">12 sprints / 88 tasks</text>
+    <text x="512" y="362" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">issue map + status snapshot</text>
+    <text x="512" y="398" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">release workflow contracts</text>
+  </g>
+
+  <g filter="url(#shadow2)">
+    <rect x="850" y="230" width="300" height="190" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="882" y="284" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Runtime work</text>
+    <text x="882" y="326" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">C++ runtime + adapters</text>
+    <text x="882" y="362" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">backends / benchmarks</text>
+    <text x="882" y="398" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">issue-by-issue delivery</text>
+  </g>
+
+  <g filter="url(#shadow2)">
+    <rect x="1220" y="230" width="270" height="190" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="1252" y="284" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Release gates</text>
+    <text x="1252" y="326" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">portable zip / MSIX</text>
+    <text x="1252" y="362" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">winget / manifests</text>
+    <text x="1252" y="398" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">preflight / smoke / notes</text>
+  </g>
+
+  <path d="M410 325H480" stroke="#38BDF8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M780 325H850" stroke="#38BDF8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M1150 325H1220" stroke="#38BDF8" stroke-width="8" stroke-linecap="round"/>
+
+  <g filter="url(#shadow2)">
+    <rect x="220" y="520" width="1160" height="170" rx="24" fill="#0B1220" stroke="#1E293B" stroke-width="2"/>
+    <text x="262" y="580" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Local definition of done loop</text>
+    <text x="262" y="626" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">edit → clang-format → build → ctest → correctness gates → Playwright CLI → pack:dry → commit → push</text>
+  </g>
+
+  <text x="110" y="762" fill="#86EFAC" font-family="Segoe UI, Arial, sans-serif" font-size="22">External blockers stay explicit: production signing certificate, public MSIX install smoke, and live release publication.</text>
+</svg>

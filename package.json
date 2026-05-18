@@ -1,6 +1,6 @@
 {
   "name": "@wesleysimplicio/llm-project-mapper",
-  "version": "0.1.58",
+  "version": "0.1.59",
   "description": "AI-friendly project scaffold with AGENTS.md ecosystem (Claude Code, Codex, Copilot, Cursor, Aider, Hermes, OpenClaw). Specs as code, atomic tasks, automated Definition of Done, reusable skills, multi-agent ready.",
   "type": "commonjs",
   "bin": {
@@ -8,11 +8,13 @@
     "llm-project-mapper": "bin/cli.js"
   },
   "files": [
+    "assets/",
     "bin/",
     "AGENTS.md",
     "CLAUDE.md",
     "INIT.md",
     "_BOOTSTRAP.md",
+    ".llm-project-mapper.json",
     "README.md",
     "README.pt-BR.md",
     "INSTALL.md",

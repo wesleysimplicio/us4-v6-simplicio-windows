@@ -1,0 +1,77 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">US4 runtime overview</title>
+  <desc id="desc">Diagram showing the US4 Windows runtime pipeline from probe to adapters, schedulers, backends, and validation layers.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="1480" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="250" y1="160" x2="1330" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#020617" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+  <rect x="72" y="72" width="1456" height="756" rx="28" fill="#0B1220" stroke="#1E293B" stroke-width="2"/>
+  <text x="120" y="150" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700">US4 V6 Windows Edition</text>
+  <text x="120" y="194" fill="#94A3B8" font-family="Segoe UI, Arial, sans-serif" font-size="26">Probe → plan → adapters → backend execution → evidence</text>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="248" width="360" height="172" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="152" y="300" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Host discovery</text>
+    <text x="152" y="342" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">HardwareProbe</text>
+    <text x="152" y="378" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">BackendSelector</text>
+    <text x="152" y="414" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">RuntimeMode / profile</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="620" y="248" width="360" height="172" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="652" y="300" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Adapter layer</text>
+    <text x="652" y="342" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">Qwen / Gemma / Llama</text>
+    <text x="652" y="378" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">BitNet / Ternary / MoE</text>
+    <text x="652" y="414" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">KV hooks / tokenization</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1120" y="248" width="360" height="172" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="1152" y="300" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Execution backends</text>
+    <text x="1152" y="342" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">CPU AVX / oneDNN</text>
+    <text x="1152" y="378" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">CUDA / DirectML / Vulkan</text>
+    <text x="1152" y="414" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">Windows ML / NPU opt-in</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="520" width="430" height="218" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="152" y="574" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Runtime services</text>
+    <text x="152" y="618" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">KvPager / PrefixCache</text>
+    <text x="152" y="654" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">ExpertPager / router telemetry</text>
+    <text x="152" y="690" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">AutoTuner / MatrixRunner</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="600" y="520" width="430" height="218" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="632" y="574" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">CLI + packaging</text>
+    <text x="632" y="618" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">probe / run / bench / tune / serve</text>
+    <text x="632" y="654" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">portable zip / MSIX / winget</text>
+    <text x="632" y="690" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">release dry-run / project status</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1080" y="520" width="400" height="218" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="1112" y="574" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700">Evidence gates</text>
+    <text x="1112" y="618" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">GoogleTest + CTest</text>
+    <text x="1112" y="654" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">Playwright CLI smoke</text>
+    <text x="1112" y="690" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">Correctness + regression reports</text>
+  </g>
+
+  <path d="M480 334H620" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M980 334H1120" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M300 420V520" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M800 420V520" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M1280 420V520" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+
+  <text x="120" y="802" fill="#7DD3FC" font-family="Segoe UI, Arial, sans-serif" font-size="22">Current focus: close remaining local sprint gaps while keeping release blockers explicit.</text>
+</svg>

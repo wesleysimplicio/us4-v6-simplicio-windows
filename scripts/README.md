@@ -5,6 +5,11 @@ Os scripts deste repositorio cobrem dois cenarios:
 - validar e atualizar a camada do `llm-project-mapper` que hoje esta versionada aqui
 - preparar e validar o caminho do runtime C++/CLI sem mascarar bloqueios de toolchain
 
+Proveniencia atual do mapper:
+
+- config canonica: [`.llm-project-mapper.json`](../.llm-project-mapper.json)
+- ultimo snapshot local de inspecao: [`.specs/journal/inspection-2026-05-18.md`](../.specs/journal/inspection-2026-05-18.md)
+
 ## Scripts atuais
 
 - `start.ps1` / `start.sh`

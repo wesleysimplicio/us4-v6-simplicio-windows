@@ -1,0 +1,26 @@
+{
+  "source": "https://github.com/wesleysimplicio/llm-project-mapper",
+  "requested_ref": "custom-runtime-overlay",
+  "resolved_ref": "us4-v6-simplicio-windows@0.1.59",
+  "synced_at": "2026-05-18T23:15:00Z",
+  "mode": "customized-overlay",
+  "managed_paths": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "README.pt-BR.md",
+    "bootstrap.ps1",
+    "bootstrap.sh",
+    "playwright.config.ts",
+    "bin",
+    ".agents",
+    ".claude",
+    ".codex",
+    ".skills",
+    ".github",
+    ".specs",
+    "docs",
+    "scripts",
+    "tests/e2e"
+  ]
+}

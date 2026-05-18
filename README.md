@@ -5,6 +5,10 @@
 
 ![us4-v6-simplicio-windows](us4-v6-simplicio-windows.PNG)
 
+![US4 runtime overview](assets/us4-runtime-overview.svg)
+
+![LLM Project Mapper release flow](assets/us4-mapper-release-flow.svg)
+
 ## What
 
 US4 V6 is a C++ runtime for local LLM inference on Windows x86-64 with adaptive backend dispatch across CPU, CUDA, DirectML, Vulkan, and optional Windows ML / NPU paths. The repository is already beyond planning-only mode: it contains a working CLI surface, hardware-aware backend selection, a CPU scalar execution baseline, matrix benchmarking/tuning scaffolds, and filled product and architecture documentation to support the remaining runtime sprints.
@@ -25,6 +29,15 @@ The current baseline already includes:
 - unit coverage, Playwright CLI E2E coverage, correctness gates, and workflow docs under [`.specs/`](./.specs/)
 
 This means the repo is now in an implementation-heavy stage: the CLI and planner contracts are real, while device-side execution depth, release packaging, and the final runtime polish continue sprint by sprint.
+
+## LLM Project Mapper Status
+
+This repository keeps the `llm-project-mapper` overlay versioned as part of the project itself, instead of treating it as an external afterthought:
+
+- provenance is tracked in [`.llm-project-mapper.json`](./.llm-project-mapper.json)
+- the latest local inspection snapshot lives in [`.specs/journal/inspection-2026-05-18.md`](./.specs/journal/inspection-2026-05-18.md)
+- update entrypoints remain [`scripts/update-starter.ps1`](./scripts/update-starter.ps1) and [`scripts/update-starter.sh`](./scripts/update-starter.sh)
+- operational docs, sprint status, release dry-run, and project status all stay versioned in-repo for agents and humans
 
 ## CLI Surface
 
