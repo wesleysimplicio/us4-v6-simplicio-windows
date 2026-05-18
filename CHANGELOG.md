@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.48] - 2026-05-18
+
+### Added
+
+- imported the upstream `auto-map.js` engine from `llm-project-mapper` and wired the local CLI to run the automatic mapping pass immediately after bootstrap metadata is written
+
+### Changed
+
+- re-aligned the starter surface from `agentic-starter` to `llm-project-mapper` across the CLI handoff contract, bootstrap/update scripts, install docs, package metadata and local-setup guidance while preserving the legacy `agentic-starter` bin alias for compatibility
+
 ## [0.1.47] - 2026-05-18
 
 ### Added

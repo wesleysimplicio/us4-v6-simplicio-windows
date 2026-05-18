@@ -2,7 +2,7 @@
 
 Os scripts deste repositorio cobrem dois cenarios:
 
-- validar e atualizar a camada do `agentic-starter` que hoje esta versionada aqui
+- validar e atualizar a camada do `llm-project-mapper` que hoje esta versionada aqui
 - preparar e validar o caminho do runtime C++/CLI sem mascarar bloqueios de toolchain
 
 ## Scripts atuais
@@ -75,6 +75,6 @@ Os scripts deste repositorio cobrem dois cenarios:
 Usar clone local do starter:
 
 ```powershell
-$env:AGENTIC_STARTER_SOURCE="C:\Users\you\source\repos\agentic-starter"
+$env:LLM_PROJECT_MAPPER_SOURCE="C:\Users\you\source\repos\llm-project-mapper"
 .\scripts\update-starter.ps1
 ```

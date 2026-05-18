@@ -2,7 +2,7 @@
 
 Este repositorio tem duas camadas ativas:
 
-- a camada do `agentic-starter`, usada para bootstrap, docs, packaging e Playwright
+- a camada do `llm-project-mapper`, usada para bootstrap, mapeamento automatico, docs, packaging e Playwright
 - a camada do runtime `US4 V6 Windows Edition` em C++/CMake, com CLI, benchmark matrix, tuning persistente e gates de evidencia
 
 ## Prerequisites
@@ -36,7 +36,7 @@ Se `scripts/start.ps1` falhar dizendo que o compilador nao foi encontrado, a cau
 | Variable | Required | Example | Notes |
 |---|---:|---|---|
 | `BASE_URL` | no | `http://127.0.0.1:4173` | Usada por Playwright quando houver fluxo CLI/UX com evidencia. |
-| `AGENTIC_STARTER_SOURCE` | no | `C:\Users\wesley\src\agentic-starter` | Faz `scripts/update-starter.ps1` atualizar a partir de um clone local do starter. |
+| `LLM_PROJECT_MAPPER_SOURCE` | no | `C:\Users\wesley\src\llm-project-mapper` | Faz `scripts/update-starter.ps1` atualizar a partir de um clone local do mapeador. |
 | `TEST_COMMAND` | no | `npm run test:cli` | Override de validacao auxiliar do starter. |
 | `US4_CLI_PATH` | no | `C:\abs\path\us4-cli.exe` | Override do binario usado pelos testes Playwright e scripts de evidencia. |
 | `US4_PROFILE_STORE_PATH` | no | `C:\temp\us4-profiles.json` | Override do arquivo persistido por `tune`. O padrao e `runtime/tuning/profiles.json`. |

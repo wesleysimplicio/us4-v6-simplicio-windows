@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap.sh â€” Agentic Starter installer/upgrader.
+# bootstrap.sh — Agentic Starter installer/upgrader.
 #
 # Philosophy: zero questions about the project itself. The agent reads code
 # and infers domain, personas, vision, team. The only human input is operational
@@ -168,7 +168,7 @@ detect_product_name_in() {
 }
 
 # ---------------------------------------------------------------------------
-# project mode (workspace signal detection â€” no projects/ folder needed)
+# project mode (workspace signal detection — no projects/ folder needed)
 # ---------------------------------------------------------------------------
 has_workspace_signal() {
   [[ -f "pnpm-workspace.yaml" ]] && return 0
@@ -245,7 +245,7 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# detect existing instruction files (DO NOT overwrite â€” flag for INIT.md)
+# detect existing instruction files (DO NOT overwrite — flag for INIT.md)
 # ---------------------------------------------------------------------------
 EXISTING_INSTRUCTION_FILES=()
 for f in AGENTS.md CLAUDE.md INIT.md .github/copilot-instructions.md; do
@@ -333,9 +333,9 @@ echo "-> $TOUCHED files updated (only starter-managed paths)."
 echo ""
 
 # ---------------------------------------------------------------------------
-# .gitignore â€” NEVER overwrite. Append (or create) on opt-in only.
+# .gitignore — NEVER overwrite. Append (or create) on opt-in only.
 # ---------------------------------------------------------------------------
-RECOMMENDED_IGNORES='# === Agentic Starter (auto-managed) â€” do not remove this header ===
+RECOMMENDED_IGNORES='# === Agentic Starter (auto-managed) — do not remove this header ===
 # Local agent state and ephemeral artifacts created by the starter.
 .starter-meta.json
 .codex/local
@@ -491,7 +491,7 @@ chmod +x .claude/hooks/*.sh 2>/dev/null || true
 # ---------------------------------------------------------------------------
 # choose CLI / LLM
 # ---------------------------------------------------------------------------
-INIT_PROMPT='Read INIT.md and execute it. Do NOT modify any user source files (.razor, .cs, .ts, .py, .go, .rs, package.json, etc). Only write inside .specs/, .agents/, .skills/, .claude/, .codex/, .github/copilot*, .github/workflows/dod.yml plus root AGENTS.md/CLAUDE.md/INIT.md/README*.md. If AGENTS.md/CLAUDE.md/copilot-instructions.md already existed before bootstrap (see .starter-meta.json), READ them and IMPROVE in place â€” preserve their essence. DO NOT ask the human about team, domain, vision, personas, or product purpose: infer ALL of them by reading the codebase (README, package.json/angular.json/*.csproj/pyproject.toml/etc, entry points, routes, tests, env.example). Default persona is "developer"; additional personas must be derived from code (auth roles, route guards, UI flows, customer-facing copy). Honor workspace mode: if .starter-meta.json.project_mode == "monorepo", iterate over .starter-meta.json.projects[] and produce per-project .specs/. Use parallel multi-agents.'
+INIT_PROMPT='Read INIT.md and execute it. Do NOT modify any user source files (.razor, .cs, .ts, .py, .go, .rs, package.json, etc). Only write inside .specs/, .agents/, .skills/, .claude/, .codex/, .github/copilot*, .github/workflows/dod.yml plus root AGENTS.md/CLAUDE.md/INIT.md/README*.md. If AGENTS.md/CLAUDE.md/copilot-instructions.md already existed before bootstrap (see .starter-meta.json), READ them and IMPROVE in place — preserve their essence. DO NOT ask the human about team, domain, vision, personas, or product purpose: infer ALL of them by reading the codebase (README, package.json/angular.json/*.csproj/pyproject.toml/etc, entry points, routes, tests, env.example). Default persona is "developer"; additional personas must be derived from code (auth roles, route guards, UI flows, customer-facing copy). Honor workspace mode: if .starter-meta.json.project_mode == "monorepo", iterate over .starter-meta.json.projects[] and produce per-project .specs/. Use parallel multi-agents.'
 
 declare -a CLI_OPTS=(
   "claude|Claude Code|claude"
@@ -500,7 +500,7 @@ declare -a CLI_OPTS=(
   "vscode|VS Code Agent Mode (paste into Chat)|code"
   "windsurf|Windsurf / Cascade (Codeium)|windsurf"
   "kiro|Kiro (AWS, paste into Chat)|kiro"
-  "copilot|GitHub Copilot CLI (chat â€” no agent loop)|gh"
+  "copilot|GitHub Copilot CLI (chat — no agent loop)|gh"
   "deepseek|Deepseek (via aider --model deepseek/deepseek-coder)|aider"
   "kimi|Kimi K2.6 (via aider --model openrouter/moonshotai/kimi-k2)|aider"
   "minimax|MiniMax M2.7 (via aider --model openrouter/minimax/minimax-text-01)|aider"
@@ -509,7 +509,7 @@ declare -a CLI_OPTS=(
   "openclaw|OpenClaw|openclaw"
   "aider|Aider (pick model interactively)|aider"
   "other|Other / manual (copy prompt to clipboard)|"
-  "skip|Skip â€” I will run INIT.md later|"
+  "skip|Skip — I will run INIT.md later|"
 )
 
 choose_cli() {
@@ -580,7 +580,7 @@ case "$CLI_CHOICE" in
     ;;
   copilot)
     command -v gh >/dev/null 2>&1 || { echo "gh CLI not installed: https://cli.github.com"; exit 1; }
-    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable â€” copy manually below)"
+    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable — copy manually below)"
     echo ""
     echo "GitHub Copilot CLI does not run an autonomous agent loop."
     echo "Open Copilot Chat (VS Code / IDE) and paste the prompt:"
@@ -593,7 +593,7 @@ case "$CLI_CHOICE" in
     exec cursor-agent "$INIT_PROMPT"
     ;;
   vscode)
-    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable â€” copy manually below)"
+    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable — copy manually below)"
     echo ""
     echo "VS Code Agent Mode runs in-IDE (no autonomous CLI loop)."
     echo "1) Open this folder in VS Code."
@@ -608,7 +608,7 @@ case "$CLI_CHOICE" in
     fi
     ;;
   windsurf)
-    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable â€” copy manually below)"
+    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable — copy manually below)"
     echo ""
     echo "Windsurf Cascade runs in-IDE."
     echo "1) Open this folder in Windsurf."
@@ -621,7 +621,7 @@ case "$CLI_CHOICE" in
     fi
     ;;
   kiro)
-    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable â€” copy manually below)"
+    copy_to_clipboard "$INIT_PROMPT" && echo "Prompt copied to clipboard." || echo "(clipboard unavailable — copy manually below)"
     echo ""
     echo "Kiro runs in-IDE."
     echo "1) Open this folder in Kiro."
@@ -666,7 +666,7 @@ case "$CLI_CHOICE" in
     if copy_to_clipboard "$INIT_PROMPT"; then
       echo "Prompt copied to clipboard. Paste it into your CLI/agent of choice."
     else
-      echo "(clipboard unavailable â€” copy the prompt below manually)"
+      echo "(clipboard unavailable — copy the prompt below manually)"
     fi
     echo ""
     echo "Prompt:"
