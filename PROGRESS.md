@@ -38,7 +38,7 @@ Commit and push the validated patch, then close/update the relevant GitHub issue
 
 | Command | Result | Notes |
 |---|---|---|
-| `npm run test:cli` | pass | CLI help surfaced `agentic-starter v0.1.38`. |
+| `npm run test:cli` | pass | CLI help surfaced `llm-project-mapper v0.1.38`. |
 | `npm run pack:dry` | pass | Dry package metadata aligned to `0.1.38`. |
 | `cmake -S . -B build-macos -G "Unix Makefiles"` | pass | Used `build-macos` because local `Ninja` is unavailable. |
 | `cmake --build build-macos -j 8` | pass | Built `us4-cli`, correctness gates, and runtime libraries on AppleClang. |

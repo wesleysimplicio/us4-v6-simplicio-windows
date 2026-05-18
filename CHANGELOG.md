@@ -4,6 +4,13 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.54] - 2026-05-18
+
+### Changed
+- completed the local starter-to-mapper branding pass in `bootstrap.ps1`, `bootstrap.sh`, `_BOOTSTRAP.md`, and `PROGRESS.md` so the packaged overlay/handoff flow now consistently presents `LLM Project Mapper`
+- kept backward-compatible detection for legacy `Agentic Starter` markers in bootstrap preservation and `.gitignore` append checks, avoiding destructive rewrites on older overlays
+- refreshed release examples and versioned smoke commands in `README*` and the runtime version surface to track the `0.1.54` snapshot
+
 ## [0.1.53] - 2026-05-18
 
 ### Added
