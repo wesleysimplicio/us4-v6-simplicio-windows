@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.39] - 2026-05-18
+
+### Added
+
+- speculative acceptance telemetry in the CPU scalar baseline, including per-step delta and token acceptance trace data surfaced through `us4-cli run` text and JSON output
+
+### Changed
+
+- `SpeculativeEngine` now tracks partial prefix acceptance instead of only all-or-nothing draft matches, which makes acceptance-rate reporting meaningful for the speculative decoder scaffolds
+
 ## [0.1.38] - 2026-05-18
 
 ### Changed

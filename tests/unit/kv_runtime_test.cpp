@@ -71,7 +71,7 @@ namespace us4::runtime::tests
             EXPECT_EQ(summary.estimatedBytes, summary.retainedTokens.size() * sizeof(std::int32_t));
         }
 
-        TEST(KvRuntimeTest, CpuScalarRunRecordsKvAndCacheTelemetry)
+        TEST(KvRuntimeTest, CpuScalarRunRecordsKvCacheAndSpeculativeTelemetry)
         {
             us4::runtime::backends::HardwareCapabilities capabilities{};
             capabilities.hasAvx2 = true;
@@ -92,6 +92,12 @@ namespace us4::runtime::tests
             EXPECT_EQ(runResult.report.prefixCacheEntries, 1U);
             EXPECT_EQ(runResult.report.prefixCacheWarmEntries, 1U);
             EXPECT_GE(runResult.report.telemetryEventCount, 3U);
+            EXPECT_TRUE(runResult.report.speculativeTelemetry.active);
+            EXPECT_EQ(runResult.report.speculativeTelemetry.decoder, "peagle");
+            EXPECT_GT(runResult.report.speculativeTelemetry.acceptedTokens, 0U);
+            EXPECT_GT(runResult.report.speculativeTelemetry.rejectedTokens, 0U);
+            EXPECT_FALSE(runResult.report.speculativeTelemetry.steps.empty());
+            EXPECT_FALSE(runResult.report.speculativeTelemetry.tokenAcceptanceTrace.empty());
         }
 
     } // namespace

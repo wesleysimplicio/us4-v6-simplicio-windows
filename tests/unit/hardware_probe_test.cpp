@@ -530,6 +530,10 @@ namespace us4::core
             EXPECT_EQ(runResult.report.kvStats.segmentCount, 1U);
             EXPECT_EQ(runResult.report.prefixCacheWarmEntries, 1U);
             EXPECT_GE(runResult.report.telemetryEventCount, 3U);
+            EXPECT_TRUE(runResult.report.speculativeTelemetry.active);
+            EXPECT_EQ(runResult.report.speculativeTelemetry.decoder, "peagle");
+            EXPECT_GT(runResult.report.speculativeTelemetry.acceptanceRate, 0.0F);
+            EXPECT_GT(runResult.report.speculativeTelemetry.rejectedTokens, 0U);
         }
 
         TEST(HardwareProbeTest, FormatsHumanReadableProbeSummary)
@@ -648,7 +652,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.38"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.39"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -692,6 +696,8 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("generated_tokens:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("kv.segment_count: 1"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("prefix_cache.entries: 1"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("speculative.acceptance_rate_pct:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("speculative.step_1.delta_pct:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("run_status: completed"), std::string::npos);
             EXPECT_TRUE(result.stderrText.empty());
         }
@@ -719,6 +725,10 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"status\": \"completed\""), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"backend\": \"cpu-avx2\""), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"generated_tokens\": ["), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"speculative\": {"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"acceptance_rate_pct\": "), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"token_acceptance_trace\": ["),
+                      std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
         }
 

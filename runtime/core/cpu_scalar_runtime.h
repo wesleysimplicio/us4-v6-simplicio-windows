@@ -13,6 +13,31 @@
 namespace us4::core
 {
 
+    struct SpeculativeStepTelemetry
+    {
+        std::size_t draftTokens = 0;
+        std::size_t acceptedTokens = 0;
+        std::size_t rejectedTokens = 0;
+        float acceptanceRate = 0.0F;
+        float deltaFromPreviousStep = 0.0F;
+    };
+
+    struct SpeculativeTelemetryReport
+    {
+        bool active = false;
+        std::string decoder;
+        bool draftModelLoaded = false;
+        std::size_t draftModelParameterCount = 0;
+        std::size_t draftedTokens = 0;
+        std::size_t acceptedTokens = 0;
+        std::size_t rejectedTokens = 0;
+        float acceptanceRate = 0.0F;
+        float lastStepDelta = 0.0F;
+        float estimatedSpeedup = 1.0F;
+        std::vector<int> tokenAcceptanceTrace;
+        std::vector<SpeculativeStepTelemetry> steps;
+    };
+
     struct CpuScalarRunReport
     {
         std::string modelPath;
@@ -34,6 +59,7 @@ namespace us4::core
         std::size_t moeHotExperts = 0;
         std::size_t moeWarmExperts = 0;
         std::size_t moeColdExperts = 0;
+        SpeculativeTelemetryReport speculativeTelemetry;
     };
 
     struct CpuScalarRunResult

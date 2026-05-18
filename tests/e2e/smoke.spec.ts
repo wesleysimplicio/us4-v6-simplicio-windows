@@ -281,6 +281,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('mode: CPU_ONLY');
         expect(stdout).toContain('run_status: completed');
         expect(stdout).toContain('generated_tokens:');
+        expect(stdout).toContain('speculative.acceptance_rate_pct:');
+        expect(stdout).toContain('speculative.step_1.delta_pct:');
     });
 
     test('exports the cpu-only scalar baseline as json', async ({}, testInfo) => {
@@ -313,6 +315,12 @@ test.describe('us4-cli smoke', () => {
             backend: string;
             generated_text: string;
             generated_tokens: number[];
+            speculative: {
+                active: boolean;
+                decoder: string;
+                acceptance_rate_pct: number;
+                token_acceptance_trace: number[];
+            };
         };
         expect(payload.execution).toBe('run');
         expect(payload.status).toBe('completed');
@@ -320,6 +328,10 @@ test.describe('us4-cli smoke', () => {
         expect(payload.backend).toBe('cpu-avx2');
         expect(Array.isArray(payload.generated_tokens)).toBeTruthy();
         expect(typeof payload.generated_text).toBe('string');
+        expect(payload.speculative.active).toBeTruthy();
+        expect(payload.speculative.decoder).toBe('peagle');
+        expect(payload.speculative.acceptance_rate_pct).toBeGreaterThan(0);
+        expect(Array.isArray(payload.speculative.token_acceptance_trace)).toBeTruthy();
     });
 
     test('renders a DirectML dry-run plan', async ({}, testInfo) => {

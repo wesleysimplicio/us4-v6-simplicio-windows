@@ -9,12 +9,16 @@
 #include "us4/runtime/moe/expert_pager.h"
 #include "us4/runtime/moe/expert_router.h"
 #include "us4/runtime/kv/summarizer.h"
+#include "us4/runtime/speculative/draft_model_loader.h"
+#include "us4/runtime/speculative/eagle3_decoder.h"
+#include "us4/runtime/speculative/peagle_decoder.h"
 #include "us4/runtime/telemetry/telemetry_sink.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -25,6 +29,7 @@ namespace us4::core
         constexpr std::size_t kHiddenSize = 8;
         constexpr std::size_t kSummaryHeadTokens = 4;
         constexpr std::size_t kSummaryTailTokens = 4;
+        constexpr std::size_t kSpeculativeWindowSize = 2;
 
         us4::core::Tensor MakeTokenTensor(const std::vector<std::int32_t>& tokens, const float bias)
         {
@@ -117,6 +122,256 @@ namespace us4::core
                 .storageBytes = storageBudget,
                 .summaryBytes = summaryBudget,
             };
+        }
+
+        std::string FormatPercentValue(const float rate)
+        {
+            std::ostringstream output;
+            output << std::fixed << std::setprecision(2) << (rate * 100.0F);
+            return output.str();
+        }
+
+        us4::runtime::backends::TokenChunk SliceTokenChunk(
+            const std::vector<std::int32_t>& tokens, const std::size_t offset, const std::size_t count)
+        {
+            us4::runtime::backends::TokenChunk chunk;
+            if (offset >= tokens.size() || count == 0U)
+            {
+                return chunk;
+            }
+
+            const auto begin = tokens.begin() + static_cast<std::ptrdiff_t>(offset);
+            const auto end = begin + static_cast<std::ptrdiff_t>(
+                                       std::min<std::size_t>(count, tokens.size() - offset));
+            chunk.tokens.assign(begin, end);
+            return chunk;
+        }
+
+        us4::runtime::backends::TokenChunk BuildDraftChunk(
+            const us4::runtime::backends::TokenChunk& target, const std::size_t stepIndex)
+        {
+            auto draft = target;
+            if (draft.tokens.empty())
+            {
+                return draft;
+            }
+
+            if (stepIndex % 3U == 1U)
+            {
+                draft.tokens.back() += 17;
+            }
+            else if (stepIndex % 3U == 2U)
+            {
+                const std::size_t mismatchCount = std::min<std::size_t>(2U, draft.tokens.size());
+                for (std::size_t index = 0; index < mismatchCount; ++index)
+                {
+                    draft.tokens[draft.tokens.size() - 1U - index] +=
+                        static_cast<std::int32_t>(11 + index);
+                }
+            }
+
+            return draft;
+        }
+
+        SpeculativeTelemetryReport SimulateSpeculativeTelemetry(
+            const RuntimePlan& plan, const std::vector<std::int32_t>& generatedTokens,
+            us4::runtime::telemetry::TelemetrySink& telemetry)
+        {
+            SpeculativeTelemetryReport report{};
+            if (!plan.model.supportsSpeculative || generatedTokens.empty())
+            {
+                return report;
+            }
+
+            report.active = true;
+
+            us4::runtime::speculative::DraftModelLoader loader;
+            const us4::runtime::speculative::DraftModelDescriptor draftDescriptor{
+                .modelId = plan.model.id + "-draft",
+                .path = {},
+                .parameterCount = std::max<std::size_t>(generatedTokens.size(), 1U) * 1000000U,
+                .hiddenSize = 2048U,
+                .numLayers = 8U,
+                .vocabSize = 32000U,
+                .sharedTokenizer = true,
+            };
+            const auto handle = loader.Load(draftDescriptor);
+            report.draftModelLoaded = handle.has_value();
+            report.draftModelParameterCount =
+                handle.has_value() ? handle->parameterCount : 0U;
+
+            telemetry.Record({
+                .name = "speculative.draft_model_loaded",
+                .value = report.draftModelLoaded ? "1" : "0",
+                .category = "speculative",
+                .numericValue = report.draftModelLoaded ? 1.0 : 0.0,
+            });
+
+            const bool useEagle3 =
+                plan.model.family == ModelFamily::kLlama || plan.model.supportsMoE;
+            float previousStepRate = 0.0F;
+            std::size_t tokenEventIndex = 0U;
+
+            if (useEagle3)
+            {
+                us4::runtime::speculative::Eagle3Decoder decoder;
+                decoder.Configure({
+                    .treeDepth = 5U,
+                    .treeWidth = 4U,
+                    .acceptanceThreshold = 0.7F,
+                    .useTreeAttention = true,
+                });
+                report.decoder = "eagle3";
+
+                for (std::size_t offset = 0U, stepIndex = 0U; offset < generatedTokens.size();
+                     offset += kSpeculativeWindowSize, ++stepIndex)
+                {
+                    const auto target =
+                        SliceTokenChunk(generatedTokens, offset, kSpeculativeWindowSize);
+                    const auto draft = BuildDraftChunk(target, stepIndex);
+                    const auto window = decoder.Decode(draft, target);
+                    const float delta = window.acceptanceRate - previousStepRate;
+                    previousStepRate = window.acceptanceRate;
+
+                    report.draftedTokens += window.draftTokens;
+                    report.acceptedTokens += window.acceptedTokens;
+                    report.rejectedTokens += window.rejectedTokens;
+                    report.lastStepDelta = delta;
+                    report.steps.push_back({
+                        .draftTokens = window.draftTokens,
+                        .acceptedTokens = window.acceptedTokens,
+                        .rejectedTokens = window.rejectedTokens,
+                        .acceptanceRate = window.acceptanceRate,
+                        .deltaFromPreviousStep = delta,
+                    });
+
+                    const std::string stepNumber = std::to_string(stepIndex + 1U);
+                    telemetry.Record({
+                        .name = std::string("speculative.step_") + stepNumber +
+                                ".acceptance_rate_pct",
+                        .value = FormatPercentValue(window.acceptanceRate),
+                        .category = "speculative",
+                        .numericValue = static_cast<double>(window.acceptanceRate * 100.0F),
+                    });
+                    telemetry.Record({
+                        .name = std::string("speculative.step_") + stepNumber + ".delta_pct",
+                        .value = FormatPercentValue(delta),
+                        .category = "speculative",
+                        .numericValue = static_cast<double>(delta * 100.0F),
+                    });
+
+                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens;
+                         ++tokenIndex)
+                    {
+                        const int accepted = tokenIndex < window.acceptedTokens ? 1 : 0;
+                        report.tokenAcceptanceTrace.push_back(accepted);
+                        telemetry.Record({
+                            .name = std::string("speculative.token_") +
+                                    std::to_string(++tokenEventIndex) + ".accepted",
+                            .value = accepted == 1 ? "1" : "0",
+                            .category = "speculative",
+                            .numericValue = static_cast<double>(accepted),
+                        });
+                    }
+                }
+
+                const auto stats = decoder.Stats();
+                report.acceptanceRate = stats.averageAcceptanceRate;
+                report.estimatedSpeedup = stats.estimatedSpeedup;
+            }
+            else
+            {
+                us4::runtime::speculative::PEagleDecoder decoder;
+                decoder.Configure({
+                    .draftDepth = 4U,
+                    .acceptanceThreshold = 0.6F,
+                    .useLayerPruning = true,
+                });
+                report.decoder = "peagle";
+
+                for (std::size_t offset = 0U, stepIndex = 0U; offset < generatedTokens.size();
+                     offset += kSpeculativeWindowSize, ++stepIndex)
+                {
+                    const auto target =
+                        SliceTokenChunk(generatedTokens, offset, kSpeculativeWindowSize);
+                    const auto draft = BuildDraftChunk(target, stepIndex);
+                    const auto window = decoder.Decode(draft, target);
+                    const float delta = window.acceptanceRate - previousStepRate;
+                    previousStepRate = window.acceptanceRate;
+
+                    report.draftedTokens += window.draftTokens;
+                    report.acceptedTokens += window.acceptedTokens;
+                    report.rejectedTokens += window.rejectedTokens;
+                    report.lastStepDelta = delta;
+                    report.steps.push_back({
+                        .draftTokens = window.draftTokens,
+                        .acceptedTokens = window.acceptedTokens,
+                        .rejectedTokens = window.rejectedTokens,
+                        .acceptanceRate = window.acceptanceRate,
+                        .deltaFromPreviousStep = delta,
+                    });
+
+                    const std::string stepNumber = std::to_string(stepIndex + 1U);
+                    telemetry.Record({
+                        .name = std::string("speculative.step_") + stepNumber +
+                                ".acceptance_rate_pct",
+                        .value = FormatPercentValue(window.acceptanceRate),
+                        .category = "speculative",
+                        .numericValue = static_cast<double>(window.acceptanceRate * 100.0F),
+                    });
+                    telemetry.Record({
+                        .name = std::string("speculative.step_") + stepNumber + ".delta_pct",
+                        .value = FormatPercentValue(delta),
+                        .category = "speculative",
+                        .numericValue = static_cast<double>(delta * 100.0F),
+                    });
+
+                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens;
+                         ++tokenIndex)
+                    {
+                        const int accepted = tokenIndex < window.acceptedTokens ? 1 : 0;
+                        report.tokenAcceptanceTrace.push_back(accepted);
+                        telemetry.Record({
+                            .name = std::string("speculative.token_") +
+                                    std::to_string(++tokenEventIndex) + ".accepted",
+                            .value = accepted == 1 ? "1" : "0",
+                            .category = "speculative",
+                            .numericValue = static_cast<double>(accepted),
+                        });
+                    }
+                }
+
+                const auto stats = decoder.Stats();
+                report.acceptanceRate = stats.averageAcceptanceRate;
+                report.estimatedSpeedup =
+                    1.0F + stats.averageAcceptanceRate * static_cast<float>(4U - 1U);
+            }
+
+            telemetry.Record({
+                .name = "speculative.acceptance_rate_pct",
+                .value = FormatPercentValue(report.acceptanceRate),
+                .category = "speculative",
+                .numericValue = static_cast<double>(report.acceptanceRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "speculative.accepted_tokens",
+                .value = std::to_string(report.acceptedTokens),
+                .category = "speculative",
+                .numericValue = static_cast<double>(report.acceptedTokens),
+            });
+            telemetry.Record({
+                .name = "speculative.rejected_tokens",
+                .value = std::to_string(report.rejectedTokens),
+                .category = "speculative",
+                .numericValue = static_cast<double>(report.rejectedTokens),
+            });
+
+            if (handle.has_value())
+            {
+                static_cast<void>(loader.Unload(handle->modelId));
+            }
+
+            return report;
         }
     } // namespace
 
@@ -247,6 +502,9 @@ namespace us4::core
             .numericValue = static_cast<double>(kvStats.hostBytes),
         });
 
+        const auto speculativeTelemetry =
+            SimulateSpeculativeTelemetry(plan, generated.tokens, telemetry);
+
         us4::runtime::moe::RoutingStats moeStats{};
         us4::runtime::moe::ExpertPagerStats expertPagerStats{};
         if (plan.model.supportsMoE)
@@ -312,6 +570,7 @@ namespace us4::core
         result.report.moeHotExperts = expertPagerStats.hotExperts;
         result.report.moeWarmExperts = expertPagerStats.warmExperts;
         result.report.moeColdExperts = expertPagerStats.coldExperts;
+        result.report.speculativeTelemetry = speculativeTelemetry;
         return result;
     }
 

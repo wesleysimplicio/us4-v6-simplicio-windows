@@ -271,6 +271,51 @@ namespace us4::cli
         json << "  \"telemetry\": {\n";
         json << "    \"events\": " << runResult.report.telemetryEventCount << "\n";
         json << "  },\n";
+        json << "  \"speculative\": {\n";
+        json << "    \"active\": "
+             << (runResult.report.speculativeTelemetry.active ? "true" : "false") << ",\n";
+        json << "    \"decoder\": \""
+             << EscapeJson(runResult.report.speculativeTelemetry.decoder) << "\",\n";
+        json << "    \"draft_model_loaded\": "
+             << (runResult.report.speculativeTelemetry.draftModelLoaded ? "true" : "false")
+             << ",\n";
+        json << "    \"draft_model_parameter_count\": "
+             << runResult.report.speculativeTelemetry.draftModelParameterCount << ",\n";
+        json << "    \"drafted_tokens\": "
+             << runResult.report.speculativeTelemetry.draftedTokens << ",\n";
+        json << "    \"accepted_tokens\": "
+             << runResult.report.speculativeTelemetry.acceptedTokens << ",\n";
+        json << "    \"rejected_tokens\": "
+             << runResult.report.speculativeTelemetry.rejectedTokens << ",\n";
+        json << "    \"acceptance_rate_pct\": "
+             << (runResult.report.speculativeTelemetry.acceptanceRate * 100.0F) << ",\n";
+        json << "    \"last_step_delta_pct\": "
+             << (runResult.report.speculativeTelemetry.lastStepDelta * 100.0F) << ",\n";
+        json << "    \"estimated_speedup\": "
+             << runResult.report.speculativeTelemetry.estimatedSpeedup << ",\n";
+        json << "    \"step_acceptance_rates_pct\": [";
+        for (std::size_t index = 0; index < runResult.report.speculativeTelemetry.steps.size();
+             ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << (runResult.report.speculativeTelemetry.steps[index].acceptanceRate * 100.0F);
+        }
+        json << "],\n";
+        json << "    \"token_acceptance_trace\": [";
+        for (std::size_t index = 0;
+             index < runResult.report.speculativeTelemetry.tokenAcceptanceTrace.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << runResult.report.speculativeTelemetry.tokenAcceptanceTrace[index];
+        }
+        json << "]\n";
+        json << "  },\n";
         json << "  \"checksums\": {\n";
         json << "    \"scalar_matmul\": " << runResult.report.scalarMatMulChecksum << ",\n";
         json << "    \"scalar_attention\": " << runResult.report.scalarAttentionChecksum << "\n";
@@ -1186,6 +1231,38 @@ namespace us4::cli
             output << "moe.warm_experts: " << runResult.report.moeWarmExperts << '\n';
             output << "moe.cold_experts: " << runResult.report.moeColdExperts << '\n';
             output << "telemetry.events: " << runResult.report.telemetryEventCount << '\n';
+            output << "speculative.active: "
+                   << (runResult.report.speculativeTelemetry.active ? "yes" : "no") << '\n';
+            if (runResult.report.speculativeTelemetry.active)
+            {
+                output << "speculative.decoder: "
+                       << runResult.report.speculativeTelemetry.decoder << '\n';
+                output << "speculative.draft_model_loaded: "
+                       << (runResult.report.speculativeTelemetry.draftModelLoaded ? "yes" : "no")
+                       << '\n';
+                output << "speculative.acceptance_rate_pct: "
+                       << (runResult.report.speculativeTelemetry.acceptanceRate * 100.0F) << '\n';
+                output << "speculative.last_step_delta_pct: "
+                       << (runResult.report.speculativeTelemetry.lastStepDelta * 100.0F) << '\n';
+                output << "speculative.accepted_tokens: "
+                       << runResult.report.speculativeTelemetry.acceptedTokens << '\n';
+                output << "speculative.rejected_tokens: "
+                       << runResult.report.speculativeTelemetry.rejectedTokens << '\n';
+                output << "speculative.estimated_speedup: "
+                       << runResult.report.speculativeTelemetry.estimatedSpeedup << '\n';
+                output << "speculative.step_count: "
+                       << runResult.report.speculativeTelemetry.steps.size() << '\n';
+                for (std::size_t index = 0;
+                     index < runResult.report.speculativeTelemetry.steps.size(); ++index)
+                {
+                    const auto& step = runResult.report.speculativeTelemetry.steps[index];
+                    const std::size_t stepNumber = index + 1U;
+                    output << "speculative.step_" << stepNumber
+                           << ".acceptance_rate_pct: " << (step.acceptanceRate * 100.0F) << '\n';
+                    output << "speculative.step_" << stepNumber
+                           << ".delta_pct: " << (step.deltaFromPreviousStep * 100.0F) << '\n';
+                }
+            }
             output << "run_status: completed\n";
             return CommandOutput{
                 kSuccessExitCode,
