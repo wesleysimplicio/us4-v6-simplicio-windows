@@ -2,7 +2,7 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **67** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
+> Fechados: **68** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
 
 ## Sprint Epics
 
@@ -15,7 +15,7 @@
 | 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | in_progress | 5/7 |
 | 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | done | 7/7 |
 | 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 4/6 |
-| 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation Ã¢â‚¬â€ DeepSeek + Kimi | in_progress | 5/6 |
+| 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation - DeepSeek + Kimi | done | 6/6 |
 | 09 | [#9](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/9) | MoE Advanced â€” MiniMax + GLM, SP-MoE | done | 6/6 |
 | 10 | [#10](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/10) | Batching + Speculative Decoding | in_progress | 6/7 |
 | 11 | [#11](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/11) | Vulkan + Windows ML / NPU | in_progress | 7/8 |
@@ -95,7 +95,7 @@
 - [#67](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/67) T08.2 Ã¢â‚¬â€ ExpertPager
 - [#68](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/68) T08.3 Ã¢â‚¬â€ DeepSeekMoEAdapter
 - [#69](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/69) T08.4 Ã¢â‚¬â€ KimiMoEAdapter
-- [#70](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/70) T08.5 Ã¢â‚¬â€ Loader MoE lazy
+- [#70](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/70) T08.5 Ã¢â‚¬â€ Loader MoE lazy **done**
 - [#71](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/71) T08.6 Ã¢â‚¬â€ Telemetry MoE
 
 ### Sprint 09 Ã¢â‚¬â€ MoE Advanced (#9)
@@ -141,5 +141,6 @@
 - Cada **task** tem AC mensurÃƒÂ¡vel + DoD herdado do sprint.
 - **Status real do cÃƒÂ³digo** vs **checkbox versionado**: o repo jÃƒÂ¡ implementa partes de muitas tasks anteriores ao sprint atual; mantÃƒÂ©m-se conservador no checkbox atÃƒÂ© evidÃƒÂªncia (test + correctness diff + E2E).
 - AtualizaÃƒÂ§ÃƒÂ£o de status: edite o checkbox em `.specs/sprints/sprint-XX/SPRINT.md` e rode `scripts/render-planning-status.ps1` para regenerar `STATUS.md`. Issues no GitHub fecham via PR (Conventional Commits) ou manualmente quando DoD verde.
+
 
 

@@ -1,6 +1,6 @@
 ---
 sprint: sprint-08
-status: in_progress
+status: done
 start: 2026-08-20
 end: 2026-09-02
 owner: us4-core
@@ -16,7 +16,7 @@ DeepSeek + Kimi MoE. Expert pager VRAM->RAM->SSD. Top-k routing. Cold expert off
 - [x] T08.2 — `runtime/moe/ExpertPager` (VRAM resident hot, RAM warm, SSD cold)
 - [x] T08.3 — `runtime/adapters/deepseek/DeepSeekMoEAdapter` (shared + routed experts)
 - [x] T08.4 — `runtime/adapters/kimi/KimiMoEAdapter`
-- [ ] T08.5 — Loader MoE: lazy load expert por demanda (mmap shards)
+- [x] T08.5 — Loader MoE: lazy load expert por demanda (mmap shards)
 - [x] T08.6 — Telemetry: expert hit-rate, eviction count, router entropy
 
 ## Test plan
@@ -29,3 +29,4 @@ DeepSeek + Kimi MoE. Expert pager VRAM->RAM->SSD. Top-k routing. Cold expert off
 - DeepSeek + Kimi em FULL/BALANCED.
 - Coverage >=80% em `runtime/moe` + adapters MoE.
 - ADR-007 MoE expert paging strategy.
+

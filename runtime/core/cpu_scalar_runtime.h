@@ -105,6 +105,8 @@ namespace us4::core
         std::size_t moeHotExperts = 0;
         std::size_t moeWarmExperts = 0;
         std::size_t moeColdExperts = 0;
+        std::size_t moeMappedExpertCount = 0;
+        std::vector<std::size_t> moeMappedExpertIds;
         MoePrefetchTelemetryReport moePrefetchTelemetry;
         MoeSparsityTelemetryReport moeSparsityTelemetry;
         MultimodalCacheTelemetryReport multimodalCacheTelemetry;

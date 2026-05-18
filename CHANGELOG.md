@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.50] - 2026-05-18
+
+### Added
+- introduced a Windows memory-mapped MoE shard loader for `expert_NNN.safetensors` directories
+- added unit coverage proving only requested experts are mapped and that CPU MoE runs touch only routed experts
+
+### Changed
+- marked Sprint 08 `T08.5` as complete and advanced the versioned planning snapshots to a fully done Sprint 08
+
 ## [0.1.49] - 2026-05-18
 
 ### Added

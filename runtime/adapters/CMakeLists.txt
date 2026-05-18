@@ -13,6 +13,7 @@ add_library(us4_runtime_adapters
   src/llama_scalar_adapter.cpp
   src/minimax_moe_scalar_adapter.cpp
   src/model_loader.cpp
+  src/moe_model_loader.cpp
   src/null_windows_adapter.cpp
   src/qwen_scalar_adapter.cpp
   src/ternary_model_loader.cpp

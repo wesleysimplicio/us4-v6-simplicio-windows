@@ -3,15 +3,16 @@
 #include "runtime/core/rope.h"
 #include "runtime/core/tensor.h"
 #include "us4/runtime/adapters/adapter_factory.h"
+#include "us4/runtime/adapters/moe_model_loader.h"
 #include "us4/runtime/backends/cpu_avx/scalar_attention.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/cache/multimodal_cache.h"
 #include "us4/runtime/cache/prefix_cache.h"
 #include "us4/runtime/cache/sparsity_aware_cache.h"
+#include "us4/runtime/kv/summarizer.h"
 #include "us4/runtime/moe/expert_pager.h"
 #include "us4/runtime/moe/expert_router.h"
 #include "us4/runtime/moe/speculative_prefetch.h"
-#include "us4/runtime/kv/summarizer.h"
 #include "us4/runtime/speculative/draft_model_loader.h"
 #include "us4/runtime/speculative/eagle3_decoder.h"
 #include "us4/runtime/speculative/peagle_decoder.h"
@@ -21,6 +22,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -141,8 +143,9 @@ namespace us4::core
             return us4::runtime::adapters::KvCacheTier::kHost;
         }
 
-        us4::runtime::backends::TokenChunk SliceTokenChunk(
-            const std::vector<std::int32_t>& tokens, const std::size_t offset, const std::size_t count)
+        us4::runtime::backends::TokenChunk SliceTokenChunk(const std::vector<std::int32_t>& tokens,
+                                                           const std::size_t offset,
+                                                           const std::size_t count)
         {
             us4::runtime::backends::TokenChunk chunk;
             if (offset >= tokens.size() || count == 0U)
@@ -152,13 +155,14 @@ namespace us4::core
 
             const auto begin = tokens.begin() + static_cast<std::ptrdiff_t>(offset);
             const auto end = begin + static_cast<std::ptrdiff_t>(
-                                       std::min<std::size_t>(count, tokens.size() - offset));
+                                         std::min<std::size_t>(count, tokens.size() - offset));
             chunk.tokens.assign(begin, end);
             return chunk;
         }
 
-        us4::runtime::backends::TokenChunk BuildDraftChunk(
-            const us4::runtime::backends::TokenChunk& target, const std::size_t stepIndex)
+        us4::runtime::backends::TokenChunk
+        BuildDraftChunk(const us4::runtime::backends::TokenChunk& target,
+                        const std::size_t stepIndex)
         {
             auto draft = target;
             if (draft.tokens.empty())
@@ -183,9 +187,10 @@ namespace us4::core
             return draft;
         }
 
-        SpeculativeTelemetryReport SimulateSpeculativeTelemetry(
-            const RuntimePlan& plan, const std::vector<std::int32_t>& generatedTokens,
-            us4::runtime::telemetry::TelemetrySink& telemetry)
+        SpeculativeTelemetryReport
+        SimulateSpeculativeTelemetry(const RuntimePlan& plan,
+                                     const std::vector<std::int32_t>& generatedTokens,
+                                     us4::runtime::telemetry::TelemetrySink& telemetry)
         {
             SpeculativeTelemetryReport report{};
             if (!plan.model.supportsSpeculative || generatedTokens.empty())
@@ -207,8 +212,7 @@ namespace us4::core
             };
             const auto handle = loader.Load(draftDescriptor);
             report.draftModelLoaded = handle.has_value();
-            report.draftModelParameterCount =
-                handle.has_value() ? handle->parameterCount : 0U;
+            report.draftModelParameterCount = handle.has_value() ? handle->parameterCount : 0U;
 
             telemetry.Record({
                 .name = "speculative.draft_model_loaded",
@@ -257,8 +261,8 @@ namespace us4::core
 
                     const std::string stepNumber = std::to_string(stepIndex + 1U);
                     telemetry.Record({
-                        .name = std::string("speculative.step_") + stepNumber +
-                                ".acceptance_rate_pct",
+                        .name =
+                            std::string("speculative.step_") + stepNumber + ".acceptance_rate_pct",
                         .value = FormatPercentValue(window.acceptanceRate),
                         .category = "speculative",
                         .numericValue = static_cast<double>(window.acceptanceRate * 100.0F),
@@ -270,8 +274,7 @@ namespace us4::core
                         .numericValue = static_cast<double>(delta * 100.0F),
                     });
 
-                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens;
-                         ++tokenIndex)
+                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens; ++tokenIndex)
                     {
                         const int accepted = tokenIndex < window.acceptedTokens ? 1 : 0;
                         report.tokenAcceptanceTrace.push_back(accepted);
@@ -323,8 +326,8 @@ namespace us4::core
 
                     const std::string stepNumber = std::to_string(stepIndex + 1U);
                     telemetry.Record({
-                        .name = std::string("speculative.step_") + stepNumber +
-                                ".acceptance_rate_pct",
+                        .name =
+                            std::string("speculative.step_") + stepNumber + ".acceptance_rate_pct",
                         .value = FormatPercentValue(window.acceptanceRate),
                         .category = "speculative",
                         .numericValue = static_cast<double>(window.acceptanceRate * 100.0F),
@@ -336,8 +339,7 @@ namespace us4::core
                         .numericValue = static_cast<double>(delta * 100.0F),
                     });
 
-                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens;
-                         ++tokenIndex)
+                    for (std::size_t tokenIndex = 0U; tokenIndex < window.draftTokens; ++tokenIndex)
                     {
                         const int accepted = tokenIndex < window.acceptedTokens ? 1 : 0;
                         report.tokenAcceptanceTrace.push_back(accepted);
@@ -405,7 +407,8 @@ namespace us4::core
             report.moePrefetchTelemetry.predictedExperts = predictions;
             for (const auto predictedExpert : predictions)
             {
-                prefetch.RecordPrefetchOutcome(predictedExpert, predictedExpert == routes.front().expertId);
+                prefetch.RecordPrefetchOutcome(predictedExpert,
+                                               predictedExpert == routes.front().expertId);
             }
             const auto prefetchStats = prefetch.Stats();
             report.moePrefetchTelemetry.observationCount = prefetchStats.observationCount;
@@ -451,10 +454,9 @@ namespace us4::core
             report.moeSparsityTelemetry.residentBytes = sparsityStats.residentBytes;
             report.moeSparsityTelemetry.averageSparsity = sparsityStats.averageSparsity;
             report.moeSparsityTelemetry.hitRatio =
-                totalSparsityLookups == 0U
-                    ? 0.0F
-                    : static_cast<float>(sparsityStats.hitCount) /
-                          static_cast<float>(totalSparsityLookups);
+                totalSparsityLookups == 0U ? 0.0F
+                                           : static_cast<float>(sparsityStats.hitCount) /
+                                                 static_cast<float>(totalSparsityLookups);
 
             telemetry.Record({
                 .name = "moe.sparsity_hit_ratio_pct",
@@ -494,8 +496,10 @@ namespace us4::core
                 .residentBytes = 2048U,
             });
 
-            static_cast<void>(cache.TryGet(plan.model.id + ":vision:" + std::to_string(prompt.size())));
-            static_cast<void>(cache.TryGet(plan.model.id + ":audio:" + std::to_string(prompt.size())));
+            static_cast<void>(
+                cache.TryGet(plan.model.id + ":vision:" + std::to_string(prompt.size())));
+            static_cast<void>(
+                cache.TryGet(plan.model.id + ":audio:" + std::to_string(prompt.size())));
             static_cast<void>(cache.TryGet(plan.model.id + ":video:missing"));
 
             const auto stats = cache.Stats();
@@ -603,7 +607,8 @@ namespace us4::core
             .key = prefixKey,
             .sequenceId = sequenceId,
             .promptTokens = prefill.tokens.size(),
-            .kvBytes = plan.residency.kvBytesPerToken * std::max<std::size_t>(prefill.tokens.size(), 1U),
+            .kvBytes =
+                plan.residency.kvBytesPerToken * std::max<std::size_t>(prefill.tokens.size(), 1U),
         });
         const auto prefixHit = prefixCache.TryGet(prefixKey);
 
@@ -714,12 +719,12 @@ namespace us4::core
         if (plan.model.supportsMoE)
         {
             us4::runtime::moe::ExpertRouter router;
-            const auto routes = router.BuildPlan(std::string(prompt),
-                                                 us4::runtime::moe::RoutingPolicy{
-                                                     .topK = 2U,
-                                                     .preferDeterministic = true,
-                                                     .allowCrossDeviceExperts = true,
-                                                 });
+            const auto routes =
+                router.BuildPlan(std::string(prompt), us4::runtime::moe::RoutingPolicy{
+                                                          .topK = 2U,
+                                                          .preferDeterministic = true,
+                                                          .allowCrossDeviceExperts = true,
+                                                      });
             moeStats = router.Evaluate(routes);
 
             us4::runtime::moe::ExpertPager expertPager;
@@ -736,6 +741,18 @@ namespace us4::core
                 static_cast<void>(expertPager.Touch(route.expertId, 1024U, preferredResidency));
             }
             expertPagerStats = expertPager.Stats();
+
+            us4::runtime::adapters::MoeModelLoader moeLoader;
+            if (!resolvedModelPath.empty() && resolvedModelPath.rfind("builtin://", 0) != 0 &&
+                moeLoader.Open(resolvedModelPath))
+            {
+                for (const auto& route : routes)
+                {
+                    static_cast<void>(moeLoader.LoadExpert(route.expertId));
+                }
+                result.report.moeMappedExpertIds = moeLoader.MappedExpertIds();
+                result.report.moeMappedExpertCount = moeLoader.MappedExpertCount();
+            }
 
             telemetry.Record({
                 .name = "moe.route_count",
