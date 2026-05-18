@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.49] - 2026-05-18
+
+### Added
+- introduced a dedicated `LlamaModelLoader` with concrete `tokenizer.json` parsing, `gguf` metadata extraction and `safetensors` shape validation
+- added unit coverage for Llama tokenizer round-trip, GGUF metadata loading and safetensors shape mismatch rejection
+
+### Changed
+- marked Sprint 07 `T07.5` as complete in the versioned planning snapshots and GitHub issue map
+
 ## [0.1.48] - 2026-05-18
 
 ### Added

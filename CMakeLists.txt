@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.48
+    VERSION 0.1.49
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
@@ -76,6 +76,7 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             tests/unit/auto_tuner_test.cpp
             tests/unit/kv_runtime_test.cpp
             tests/unit/llama_config_test.cpp
+            tests/unit/llama_model_loader_test.cpp
             tests/unit/llama_runtime_test.cpp
             tests/unit/minimax_adapter_test.cpp
             tests/unit/moe_runtime_test.cpp

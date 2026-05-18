@@ -2,7 +2,7 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **66** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
+> Fechados: **67** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
 
 ## Sprint Epics
 
@@ -14,7 +14,7 @@
 | 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | todo | 0/7 |
 | 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | in_progress | 5/7 |
 | 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | done | 7/7 |
-| 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 3/6 |
+| 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 4/6 |
 | 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation Ã¢â‚¬â€ DeepSeek + Kimi | in_progress | 5/6 |
 | 09 | [#9](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/9) | MoE Advanced â€” MiniMax + GLM, SP-MoE | done | 6/6 |
 | 10 | [#10](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/10) | Batching + Speculative Decoding | in_progress | 6/7 |
@@ -87,7 +87,7 @@
 - [#61](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/61) T07.2 Ã¢â‚¬â€ LlamaAdapter full attention
 - [#62](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/62) T07.3 Ã¢â‚¬â€ RoPE (linear + dynamic + YaRN)
 - [#63](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/63) T07.4 Ã¢â‚¬â€ GQA attention
-- [#64](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/64) T07.5 Ã¢â‚¬â€ Loader Llama (GGUF + safetensors + tokenizer)
+- [#64](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/64) T07.5 Ã¢â‚¬â€ Loader Llama (GGUF + safetensors + tokenizer) **done**
 - [#65](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/65) T07.6 Ã¢â‚¬â€ Bench Llama 3.x 8B cross-backend
 
 ### Sprint 08 Ã¢â‚¬â€ MoE Foundation (#8)
@@ -141,4 +141,5 @@
 - Cada **task** tem AC mensurÃƒÂ¡vel + DoD herdado do sprint.
 - **Status real do cÃƒÂ³digo** vs **checkbox versionado**: o repo jÃƒÂ¡ implementa partes de muitas tasks anteriores ao sprint atual; mantÃƒÂ©m-se conservador no checkbox atÃƒÂ© evidÃƒÂªncia (test + correctness diff + E2E).
 - AtualizaÃƒÂ§ÃƒÂ£o de status: edite o checkbox em `.specs/sprints/sprint-XX/SPRINT.md` e rode `scripts/render-planning-status.ps1` para regenerar `STATUS.md`. Issues no GitHub fecham via PR (Conventional Commits) ou manualmente quando DoD verde.
+
 
