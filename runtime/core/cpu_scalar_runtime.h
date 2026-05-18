@@ -59,6 +59,17 @@ namespace us4::core
         float hitRatio = 0.0F;
     };
 
+    struct MultimodalCacheTelemetryReport
+    {
+        std::size_t entryCount = 0;
+        std::size_t hitCount = 0;
+        std::size_t missCount = 0;
+        std::size_t residentBytes = 0;
+        std::size_t imageEntries = 0;
+        std::size_t audioEntries = 0;
+        std::size_t videoEntries = 0;
+    };
+
     struct CpuScalarRunReport
     {
         std::string modelPath;
@@ -82,6 +93,7 @@ namespace us4::core
         std::size_t moeColdExperts = 0;
         MoePrefetchTelemetryReport moePrefetchTelemetry;
         MoeSparsityTelemetryReport moeSparsityTelemetry;
+        MultimodalCacheTelemetryReport multimodalCacheTelemetry;
         SpeculativeTelemetryReport speculativeTelemetry;
     };
 

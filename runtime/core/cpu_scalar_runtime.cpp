@@ -5,6 +5,7 @@
 #include "us4/runtime/adapters/adapter_factory.h"
 #include "us4/runtime/backends/cpu_avx/scalar_attention.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
+#include "us4/runtime/cache/multimodal_cache.h"
 #include "us4/runtime/cache/prefix_cache.h"
 #include "us4/runtime/cache/sparsity_aware_cache.h"
 #include "us4/runtime/moe/expert_pager.h"
@@ -461,6 +462,63 @@ namespace us4::core
                 .numericValue = static_cast<double>(sparsityStats.entryCount),
             });
         }
+
+        void SimulateMultimodalCacheTelemetry(const RuntimePlan& plan, std::string_view prompt,
+                                              CpuScalarRunReport& report,
+                                              us4::runtime::telemetry::TelemetrySink& telemetry)
+        {
+            if (plan.model.family != ModelFamily::kMiniMax)
+            {
+                return;
+            }
+
+            us4::runtime::cache::MultimodalCache cache;
+            cache.Configure(24U * 1024U);
+            cache.Upsert({
+                .key = plan.model.id + ":vision:" + std::to_string(prompt.size()),
+                .channel = us4::runtime::cache::MultimodalChannel::kImage,
+                .tokenCount = std::max<std::size_t>(8U, prompt.size() / 2U),
+                .residentBytes = 4096U,
+            });
+            cache.Upsert({
+                .key = plan.model.id + ":audio:" + std::to_string(prompt.size()),
+                .channel = us4::runtime::cache::MultimodalChannel::kAudio,
+                .tokenCount = std::max<std::size_t>(6U, prompt.size() / 3U),
+                .residentBytes = 2048U,
+            });
+
+            static_cast<void>(cache.TryGet(plan.model.id + ":vision:" + std::to_string(prompt.size())));
+            static_cast<void>(cache.TryGet(plan.model.id + ":audio:" + std::to_string(prompt.size())));
+            static_cast<void>(cache.TryGet(plan.model.id + ":video:missing"));
+
+            const auto stats = cache.Stats();
+            report.multimodalCacheTelemetry.entryCount = stats.entryCount;
+            report.multimodalCacheTelemetry.hitCount = stats.hitCount;
+            report.multimodalCacheTelemetry.missCount = stats.missCount;
+            report.multimodalCacheTelemetry.residentBytes = stats.residentBytes;
+            report.multimodalCacheTelemetry.imageEntries = stats.imageEntries;
+            report.multimodalCacheTelemetry.audioEntries = stats.audioEntries;
+            report.multimodalCacheTelemetry.videoEntries = stats.videoEntries;
+
+            telemetry.Record({
+                .name = "multimodal_cache.hit_count",
+                .value = std::to_string(stats.hitCount),
+                .category = "cache",
+                .numericValue = static_cast<double>(stats.hitCount),
+            });
+            telemetry.Record({
+                .name = "multimodal_cache.miss_count",
+                .value = std::to_string(stats.missCount),
+                .category = "cache",
+                .numericValue = static_cast<double>(stats.missCount),
+            });
+            telemetry.Record({
+                .name = "multimodal_cache.entry_count",
+                .value = std::to_string(stats.entryCount),
+                .category = "cache",
+                .numericValue = static_cast<double>(stats.entryCount),
+            });
+        }
     } // namespace
 
     CpuScalarRunResult ExecuteCpuScalarRun(const RuntimePlan& plan, std::string_view prompt,
@@ -635,6 +693,7 @@ namespace us4::core
             });
             SimulateMoeTelemetry(routes, result.report, telemetry);
         }
+        SimulateMultimodalCacheTelemetry(plan, prompt, result.report, telemetry);
 
         result.ok = true;
         result.report.modelPath = resolvedModelPath;

@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.41] - 2026-05-18
+
+### Added
+
+- MiniMax multimodal cache telemetry in the CPU scalar CLI scaffold, including text and JSON evidence for image/audio token reuse signals
+
+### Changed
+
+- the MiniMax MoE path now wires the existing `MultimodalCache` scaffold into `us4-cli run` so local smoke validation can prove cache hit/miss behavior on `minimax-m2`
+
 ## [0.1.40] - 2026-05-18
 
 ### Added

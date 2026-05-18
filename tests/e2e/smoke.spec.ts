@@ -405,6 +405,71 @@ test.describe('us4-cli smoke', () => {
         expect(payload.moe.sparsity_cache.hit_ratio_pct).toBeGreaterThan(0);
     });
 
+    test('shows MiniMax multimodal cache telemetry in text mode', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'minimax-m2', '--prompt', 'multimodal cache from playwright',
+                '--backend', 'cpu', '--max-tokens', '5'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-minimax-multimodal-cache', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('family: minimax');
+        expect(stdout).toContain('multimodal_cache.entry_count:');
+        expect(stdout).toContain('multimodal_cache.audio_entries:');
+    });
+
+    test('exports MiniMax multimodal cache telemetry as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'minimax-m2', '--prompt', 'multimodal cache from playwright',
+                '--backend', 'cpu', '--max-tokens', '5', '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-minimax-multimodal-cache-json', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as
+        {
+            multimodal_cache: {
+                entry_count: number;
+                hit_count: number;
+                miss_count: number;
+                image_entries: number;
+                audio_entries: number;
+            };
+        };
+        expect(payload.multimodal_cache.entry_count).toBeGreaterThan(0);
+        expect(payload.multimodal_cache.hit_count).toBeGreaterThan(0);
+        expect(payload.multimodal_cache.miss_count).toBeGreaterThan(0);
+        expect(payload.multimodal_cache.image_entries).toBeGreaterThan(0);
+        expect(payload.multimodal_cache.audio_entries).toBeGreaterThan(0);
+    });
+
     test('renders a DirectML dry-run plan', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
 

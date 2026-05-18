@@ -260,6 +260,22 @@ namespace us4::cli
         json << "    \"entries\": " << runResult.report.prefixCacheEntries << ",\n";
         json << "    \"warm_entries\": " << runResult.report.prefixCacheWarmEntries << "\n";
         json << "  },\n";
+        json << "  \"multimodal_cache\": {\n";
+        json << "    \"entry_count\": " << runResult.report.multimodalCacheTelemetry.entryCount
+             << ",\n";
+        json << "    \"hit_count\": " << runResult.report.multimodalCacheTelemetry.hitCount
+             << ",\n";
+        json << "    \"miss_count\": " << runResult.report.multimodalCacheTelemetry.missCount
+             << ",\n";
+        json << "    \"resident_bytes\": "
+             << runResult.report.multimodalCacheTelemetry.residentBytes << ",\n";
+        json << "    \"image_entries\": "
+             << runResult.report.multimodalCacheTelemetry.imageEntries << ",\n";
+        json << "    \"audio_entries\": "
+             << runResult.report.multimodalCacheTelemetry.audioEntries << ",\n";
+        json << "    \"video_entries\": "
+             << runResult.report.multimodalCacheTelemetry.videoEntries << "\n";
+        json << "  },\n";
         json << "  \"moe\": {\n";
         json << "    \"route_count\": " << runResult.report.moeRouteCount << ",\n";
         json << "    \"host_route_count\": " << runResult.report.moeHostRouteCount << ",\n";
@@ -1260,6 +1276,20 @@ namespace us4::cli
             output << "prefix_cache.entries: " << runResult.report.prefixCacheEntries << '\n';
             output << "prefix_cache.warm_entries: " << runResult.report.prefixCacheWarmEntries
                    << '\n';
+            output << "multimodal_cache.entry_count: "
+                   << runResult.report.multimodalCacheTelemetry.entryCount << '\n';
+            output << "multimodal_cache.hit_count: "
+                   << runResult.report.multimodalCacheTelemetry.hitCount << '\n';
+            output << "multimodal_cache.miss_count: "
+                   << runResult.report.multimodalCacheTelemetry.missCount << '\n';
+            output << "multimodal_cache.resident_bytes: "
+                   << runResult.report.multimodalCacheTelemetry.residentBytes << '\n';
+            output << "multimodal_cache.image_entries: "
+                   << runResult.report.multimodalCacheTelemetry.imageEntries << '\n';
+            output << "multimodal_cache.audio_entries: "
+                   << runResult.report.multimodalCacheTelemetry.audioEntries << '\n';
+            output << "multimodal_cache.video_entries: "
+                   << runResult.report.multimodalCacheTelemetry.videoEntries << '\n';
             output << "moe.route_count: " << runResult.report.moeRouteCount << '\n';
             output << "moe.host_route_count: " << runResult.report.moeHostRouteCount << '\n';
             output << "moe.router_entropy: " << runResult.report.moeRouterEntropy << '\n';

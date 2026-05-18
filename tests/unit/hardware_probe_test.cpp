@@ -561,6 +561,29 @@ namespace us4::core
             EXPECT_GT(runResult.report.moeSparsityTelemetry.averageSparsity, 0.0F);
         }
 
+        TEST(HardwareProbeTest, ExecuteMiniMaxRunReturnsMultimodalCacheTelemetry)
+        {
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.modelId = "minimax-m2";
+            request.mode = us4::runtime::backends::RuntimeMode::kCpuOnly;
+            request.preferredBackend = "cpu";
+            request.maxGenerationTokens = 5U;
+
+            const RuntimePlan plan = RuntimeContext::BuildPlan(request, capabilities);
+            const auto runResult = ExecuteCpuScalarRun(plan, "multimodal cache from unit");
+
+            ASSERT_TRUE(runResult.ok);
+            EXPECT_GT(runResult.report.multimodalCacheTelemetry.entryCount, 0U);
+            EXPECT_GT(runResult.report.multimodalCacheTelemetry.hitCount, 0U);
+            EXPECT_GT(runResult.report.multimodalCacheTelemetry.missCount, 0U);
+            EXPECT_GT(runResult.report.multimodalCacheTelemetry.imageEntries, 0U);
+            EXPECT_GT(runResult.report.multimodalCacheTelemetry.audioEntries, 0U);
+        }
+
         TEST(HardwareProbeTest, FormatsHumanReadableProbeSummary)
         {
             ProbeSummary summary{};
@@ -677,7 +700,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.40"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.41"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -808,6 +831,58 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"hit_ratio_pct\": "), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"sparsity_cache\": {"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"predicted_experts\": ["), std::string::npos);
+        }
+
+        TEST(HardwareProbeTest, CompletesMiniMaxRunWithMultimodalCacheTelemetry)
+        {
+            ClearProbeEnv();
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),
+                const_cast<char*>("run"),
+                const_cast<char*>("--model"),
+                const_cast<char*>("minimax-m2"),
+                const_cast<char*>("--prompt"),
+                const_cast<char*>("multimodal cache"),
+                const_cast<char*>("--backend"),
+                const_cast<char*>("cpu"),
+                const_cast<char*>("--max-tokens"),
+                const_cast<char*>("5"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
+            EXPECT_NE(result.stdoutText.find("family: minimax"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("multimodal_cache.entry_count:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("multimodal_cache.audio_entries:"),
+                      std::string::npos);
+            EXPECT_TRUE(result.stderrText.empty());
+        }
+
+        TEST(HardwareProbeTest, ReturnsMiniMaxRunMultimodalCacheTelemetryAsJson)
+        {
+            ClearProbeEnv();
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "minimax-m2";
+            command.prompt = "multimodal cache";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.maxTokens = 5;
+            command.format = "json";
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(result.stderrText.empty());
+            EXPECT_NE(result.stdoutText.find("\"multimodal_cache\": {"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"audio_entries\": "), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"hit_count\": "), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidBackendValue)
