@@ -100,6 +100,14 @@ namespace us4::profiles
     std::string
     ProfileCatalog::RecommendId(const us4::runtime::backends::HardwareCapabilities& capabilities)
     {
+        if (capabilities.budget.hostBytes > 0 && capabilities.budget.hostBytes <= 8ULL * kGiB)
+        {
+            return capabilities.hasCuda || capabilities.hasDirectMl || capabilities.hasVulkan ||
+                           capabilities.hasNpu
+                       ? "micro"
+                       : "nano";
+        }
+
         if (capabilities.hasCuda)
         {
             return capabilities.budget.deviceBytes >= 24ULL * kGiB ? "full" : "balanced";

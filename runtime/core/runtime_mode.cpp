@@ -2,11 +2,15 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 
 namespace us4::core
 {
     namespace
     {
+        constexpr std::uint64_t kGiB = 1024ULL * 1024ULL * 1024ULL;
+        constexpr std::uint64_t kLowHostMemoryThresholdBytes = 8ULL * kGiB;
+
         std::string Normalize(std::string_view value)
         {
             std::string normalized(value);
@@ -20,6 +24,12 @@ namespace us4::core
                                return static_cast<char>(std::toupper(character));
                            });
             return normalized;
+        }
+
+        bool HasLowHostMemory(const us4::runtime::backends::HardwareCapabilities& capabilities)
+        {
+            return capabilities.budget.hostBytes > 0 &&
+                   capabilities.budget.hostBytes <= kLowHostMemoryThresholdBytes;
         }
 
     } // namespace
@@ -101,6 +111,11 @@ namespace us4::core
         if (request.mode == RuntimeMode::kCpuOnly)
         {
             return RuntimeMode::kCpuOnly;
+        }
+
+        if (HasLowHostMemory(capabilities))
+        {
+            return backend.kind == BackendKind::kCpu ? RuntimeMode::kNano : RuntimeMode::kMicro;
         }
 
         if (backend.kind == BackendKind::kWindowsMl)

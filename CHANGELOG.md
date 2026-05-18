@@ -4,6 +4,13 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.38] - 2026-05-18
+
+### Changed
+
+- low-memory host selection now prefers `NANO` on CPU-only paths and `MICRO` on accelerated paths when the detected host budget is 8 GiB or less, aligning Sprint 05 T05.7 with `ProbeHardware`, `RuntimeContext`, and `ProfileCatalog`
+- synchronized the versioned CLI/runtime surface across CMake, npm metadata, lockfile metadata, tests, and release command examples
+
 ## [0.1.37] - 2026-05-18
 
 ### Added

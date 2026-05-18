@@ -123,6 +123,24 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ProbeUsesNanoModeWhenHostMemoryIsConstrained)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HOST_GIB", "8");
+#else
+            setenv("US4_HOST_GIB", "8", 1);
+#endif
+
+            const ProbeSummary summary = ProbeHardware();
+
+            EXPECT_EQ(summary.selectedBackend, "cpu-avx2");
+            EXPECT_EQ(summary.mode, "NANO");
+            EXPECT_FALSE(summary.HasAccelerator());
+
+            ClearProbeEnv();
+        }
+
         TEST(HardwareProbeTest, RuntimeContextBuildsPlanForKnownModel)
         {
             us4::runtime::backends::HardwareCapabilities capabilities{};
@@ -294,6 +312,47 @@ namespace us4::core
             capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
 
             EXPECT_EQ(us4::profiles::ProfileCatalog::RecommendId(capabilities), "cpu-only");
+        }
+
+        TEST(HardwareProbeTest, SelectRuntimeModePrefersNanoForLowMemoryCpuHosts)
+        {
+            us4::runtime::backends::BackendDescriptor backend{};
+            backend.kind = us4::runtime::backends::BackendKind::kCpu;
+            backend.name = "cpu-avx2";
+
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.budget.hostBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.mode = us4::runtime::backends::RuntimeMode::kBalanced;
+
+            EXPECT_EQ(SelectRuntimeMode(backend, capabilities, request),
+                      us4::runtime::backends::RuntimeMode::kNano);
+            EXPECT_EQ(us4::profiles::ProfileCatalog::RecommendId(capabilities), "nano");
+        }
+
+        TEST(HardwareProbeTest, RuntimeContextPrefersMicroProfileForLowMemoryAcceleratedHosts)
+        {
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasDirectMl = true;
+            capabilities.hasAvx2 = true;
+            capabilities.primaryAdapterName = "Integrated GPU";
+            capabilities.primaryAdapterVendor = us4::runtime::backends::BackendVendor::kIntel;
+            capabilities.primaryAdapterClass = us4::runtime::backends::DeviceClass::kIntegratedGpu;
+            capabilities.budget.hostBytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+            capabilities.budget.deviceBytes = 6ULL * 1024ULL * 1024ULL * 1024ULL;
+            capabilities.budget.storageBytes = 256ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.modelId = "qwen-0.5b";
+            request.mode = us4::runtime::backends::RuntimeMode::kBalanced;
+
+            const RuntimePlan plan = RuntimeContext::BuildPlan(request, capabilities);
+
+            EXPECT_EQ(plan.backend.name, "directml");
+            EXPECT_EQ(plan.mode, us4::runtime::backends::RuntimeMode::kMicro);
+            EXPECT_EQ(plan.profile.id, "micro");
         }
 
         TEST(HardwareProbeTest, TensorTracksExpandedSprint02DataTypes)
@@ -589,7 +648,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.36"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.38"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)

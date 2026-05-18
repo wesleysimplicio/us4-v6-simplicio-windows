@@ -234,6 +234,28 @@ test.describe('us4-cli smoke', () => {
         expect(payload.selected_backend).toBe('directml');
     });
 
+    test('reports nano mode for low-memory cpu-only hosts', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(cliPath, [ 'probe' ], {
+            ...process.env,
+            US4_HAS_CUDA : '',
+            US4_HAS_DIRECTML : '',
+            US4_HAS_VULKAN : '',
+            US4_HAS_NPU : '',
+            US4_HOST_GIB : '8',
+            US4_CPU_NAME : 'Playwright Low Memory CPU',
+            US4_GPU_NAME : 'Playwright Low Memory GPU',
+        });
+
+        await attachProcessOutput(testInfo, 'probe-low-memory', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('backend: cpu-avx2');
+        expect(stdout).toContain('mode: NANO');
+        expect(stdout).toContain('Playwright Low Memory CPU');
+    });
+
     test('runs the cpu-only scalar baseline for evidence capture', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
 
