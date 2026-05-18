@@ -95,6 +95,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_attention_bench.exe")
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_attention_bench.exe") } "CPU attention benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_bitnet_bench.exe")) {
+    Write-Host "Detected CPU BitNet benchmark binary. Running AVX2 BitNet local benchmark evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_bitnet_bench.exe") } "CPU BitNet benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

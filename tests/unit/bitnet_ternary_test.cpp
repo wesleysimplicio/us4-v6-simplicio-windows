@@ -4,6 +4,9 @@
 #include "us4/runtime/adapters/ternary_adapter_contracts.h"
 #include "us4/runtime/adapters/ternary_model_loader.h"
 #include "us4/runtime/adapters/ternary_reference_hooks.h"
+#include "us4/runtime/backends/cpu_avx/bitnet_matmul.h"
+#include "us4/runtime/backends/cpu_avx/bitnet_reference.h"
+#include "us4/runtime/backends/cpu_avx/blocked_matmul.h"
 
 #include <gtest/gtest.h>
 
@@ -54,6 +57,30 @@ namespace us4::runtime::tests
             EXPECT_EQ(loadResult.descriptor.hints.activationMode,
                       us4::runtime::adapters::TernaryActivationMode::kInt4Probe);
             EXPECT_EQ(loadResult.descriptor.kvHeads, 8U);
+        }
+
+        TEST(BitNetTernaryTest, Avx2BitNetMatMulMatchesScalarReference)
+        {
+            if (!us4::runtime::backends::cpu_avx::HostSupportsAvx2MatMul())
+            {
+                GTEST_SKIP() << "Host does not expose AVX2 support.";
+            }
+
+            std::vector<float> activations(257U, 0.0F);
+            std::vector<float> weights(257U, 0.0F);
+            for (std::size_t index = 0U; index < activations.size(); ++index)
+            {
+                activations[index] = static_cast<float>((index % 17U) - 8U) * 0.125F;
+                weights[index] = static_cast<float>((index % 7U) - 3U) * 0.35F;
+            }
+
+            const auto packed = us4::runtime::backends::cpu_avx::PackBitNetRow(weights);
+            const float reference =
+                us4::runtime::backends::cpu_avx::DotPackedBitNet(activations, packed);
+            const float accelerated =
+                us4::runtime::backends::cpu_avx::DotPackedBitNetAvx2(activations, packed);
+
+            EXPECT_NEAR(reference, accelerated, 1e-2F);
         }
 
     } // namespace

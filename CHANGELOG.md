@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.58] - 2026-05-18
+
+### Added
+
+- a real `AVX2` BitNet matmul path backed by mask lookup vectors, a dedicated `cpu_bitnet_bench`, and Sprint 05 benchmark notes with committed local evidence
+
+### Changed
+
+- hardened the BitNet unit/benchmark flow to skip honestly on non-`AVX2` hosts and to measure a stable multi-iteration workload instead of sub-millisecond noise
+
 ## [0.1.57] - 2026-05-18
 
 ### Added

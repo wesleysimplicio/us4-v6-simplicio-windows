@@ -13,7 +13,7 @@ BitNet 1.58-bit (CUDA + AVX) + Ternary (PT-BitNet). MICRO + NANO modes.
 
 ## Tasks
 - [ ] T05.1 — `runtime/backends/cuda/kernels/bitnet_matmul.cu` (packed 1.58-bit)
-- [ ] T05.2 — `runtime/backends/cpu_avx/bitnet_matmul.cpp` (AVX2 popcount + lookup)
+- [x] T05.2 — `runtime/backends/cpu_avx/bitnet_matmul.cpp` (AVX2 popcount + lookup)
 - [x] T05.3 — `runtime/adapters/bitnet/BitNetAdapter` (load packed weights)
 - [x] T05.4 — `runtime/adapters/ternary/TernaryAdapter` (PT-BitNet -1/0/+1)
 - [x] T05.5 — Ternary LUT (256-entry para 4-ternary chunks, AVX shuffle)

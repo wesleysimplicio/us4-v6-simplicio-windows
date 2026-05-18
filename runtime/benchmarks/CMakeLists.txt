@@ -70,6 +70,18 @@ target_link_libraries(cpu_attention_bench
     us4_build_warnings
 )
 
+add_executable(cpu_bitnet_bench
+  src/cpu_bitnet_bench.cpp
+)
+
+target_link_libraries(cpu_bitnet_bench
+  PRIVATE
+    us4_runtime_backends
+    us4_runtime_core
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )
