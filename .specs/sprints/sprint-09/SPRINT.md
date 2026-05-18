@@ -1,6 +1,6 @@
 ---
 sprint: sprint-09
-status: todo
+status: done
 start: 2026-09-03
 end: 2026-09-16
 owner: us4-core
@@ -12,12 +12,12 @@ owner: us4-core
 MiniMax + GLM. SP-MoE prefetch. Sparsity-aware cache. Multimodal cache.
 
 ## Tasks
-- [ ] T09.1 — `runtime/adapters/minimax/MiniMaxAdapter`
-- [ ] T09.2 — `runtime/adapters/glm/GLMAdapter`
-- [ ] T09.3 — `runtime/moe/SpeculativePrefetch` (predict next experts + preload)
-- [ ] T09.4 — `runtime/cache/SparsityAwareCache`
-- [ ] T09.5 — `runtime/cache/MultimodalCache` (image/audio tokens)
-- [ ] T09.6 — Telemetry: prefetch hit ratio, sparsity hit ratio
+- [x] T09.1 — `runtime/adapters/minimax/MiniMaxAdapter`
+- [x] T09.2 — `runtime/adapters/glm/GLMAdapter`
+- [x] T09.3 — `runtime/moe/SpeculativePrefetch` (predict next experts + preload)
+- [x] T09.4 — `runtime/cache/SparsityAwareCache`
+- [x] T09.5 — `runtime/cache/MultimodalCache` (image/audio tokens)
+- [x] T09.6 — Telemetry: prefetch hit ratio, sparsity hit ratio
 
 ## Test plan
 - Unit: speculative prefetch correctness; sparsity hit/miss.

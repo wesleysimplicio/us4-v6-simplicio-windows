@@ -4,6 +4,14 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.45] - 2026-05-18
+
+### Changed
+
+- reconciled Sprint 06, Sprint 07, Sprint 09 and Sprint 10 planning status with the newer `main` implementation, including SsdColdStore, LlamaConfig, MiniMax/GLM/SP-MoE, scheduler, draft loader and acceptance telemetry coverage
+- updated the planning-status Playwright assertions to the new `63 done / 25 remaining` snapshot and relaxed the local MSIX package smoke timeout to better fit slower Windows hosts
+- synchronized another GitHub issue closure pass, including the Sprint 09 epic and the newly validated task issues that already had code and tests on `main`
+
 ## [0.1.44] - 2026-05-18
 
 ### Changed

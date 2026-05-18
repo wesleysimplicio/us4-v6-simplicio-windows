@@ -14,7 +14,7 @@ Pager hot-cold KV (VRAM hot, RAM warm, SSD cold via mmap). Prefix cache. KV summ
 ## Tasks
 - [x] T06.1 — `runtime/kv/KvPager` (page table, LRU, tiers VRAM/RAM/SSD)
 - [x] T06.2 — `runtime/kv/PrefixCache` (shared prefix by hash)
-- [ ] T06.3 — `runtime/kv/SsdColdStore` (mmap Windows `CreateFileMapping` + async flush)
+- [x] T06.3 — `runtime/kv/SsdColdStore` (mmap Windows `CreateFileMapping` + async flush)
 - [x] T06.4 — `runtime/kv/Summarizer` (compress old tokens)
 - [x] T06.5 — Eviction policy: LRU + frequency hybrid, cost-aware (VRAM mais caro)
 - [ ] T06.6 — Adapter hooks: append, lookup, evict, summarize

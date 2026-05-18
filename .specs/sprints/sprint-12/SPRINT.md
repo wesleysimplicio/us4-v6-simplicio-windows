@@ -24,7 +24,7 @@ Auto-tuning hardware-aware (tile/batch por profile). Matriz benchmark (8 hardwar
 ## Status snapshot (2026-05-18)
 
 - Planejamento versionado: 12 sprints, 88 tasks totais.
-- Checkboxes marcados hoje: 49 concluidas, 39 ainda abertas.
+- Checkboxes marcados hoje: 63 concluidas, 25 ainda abertas.
 - Sprint 12 segue em progresso porque os blocos restantes dependem de assinatura/publicacao real, apesar da trilha local de release ja cobrir preflight, dry-run encadeado, manifests, checksums, release manifest e release notes.
 
 ## Test plan

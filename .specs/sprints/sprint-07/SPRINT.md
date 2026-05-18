@@ -12,7 +12,7 @@ owner: us4-core
 Llama 3/4 adapter com GQA, RoPE scaling (linear/dynamic/YaRN), ALiBi opcional. Full attention em todos backends.
 
 ## Tasks
-- [ ] T07.1 — `runtime/adapters/llama/LlamaConfig`
+- [x] T07.1 — `runtime/adapters/llama/LlamaConfig`
 - [ ] T07.2 — `runtime/adapters/llama/LlamaAdapter`
 - [x] T07.3 — `runtime/core/rope.{h,cpp}` (linear + dynamic + YaRN)
 - [x] T07.4 — `runtime/core/gqa_attention.{h,cpp}`

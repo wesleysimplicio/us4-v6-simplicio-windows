@@ -1,6 +1,6 @@
 ---
 sprint: sprint-10
-status: todo
+status: in_progress
 start: 2026-09-17
 end: 2026-09-30
 owner: us4-core
@@ -12,13 +12,13 @@ owner: us4-core
 Continuous batching multi-sessao. P-EAGLE / EAGLE-3 speculative. Draft model loader. CUDA Graphs reuse cross-step.
 
 ## Tasks
-- [ ] T10.1 — `runtime/scheduler/ContinuousBatcher`
-- [ ] T10.2 — `runtime/scheduler/SessionPool` (multi-session + KV namespace)
-- [ ] T10.3 — `runtime/speculative/PEagleDecoder`
-- [ ] T10.4 — `runtime/speculative/Eagle3Decoder`
-- [ ] T10.5 — Draft model loader (small companion)
+- [x] T10.1 — `runtime/scheduler/ContinuousBatcher`
+- [x] T10.2 — `runtime/scheduler/SessionPool` (multi-session + KV namespace)
+- [x] T10.3 — `runtime/speculative/PEagleDecoder`
+- [x] T10.4 — `runtime/speculative/Eagle3Decoder`
+- [x] T10.5 — Draft model loader (small companion)
 - [ ] T10.6 — CUDA Graphs reuse entre steps speculative
-- [ ] T10.7 — Acceptance rate telemetry
+- [x] T10.7 — Acceptance rate telemetry
 
 ## Test plan
 - Unit: batcher fairness; speculative accept/reject; session isolation.
