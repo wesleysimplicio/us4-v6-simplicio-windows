@@ -4,6 +4,24 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.37] - 2026-05-18
+
+### Added
+
+- WIP skeletons for Sprint 06/07/09/10 sub-systems mapped from GitHub issues
+- `runtime/kv/SsdColdStore` Windows-flavoured cold KV staging contract (S06 T06.3)
+- `runtime/adapters/LlamaConfig` dedicated config struct with GQA/RoPE validation (S07 T07.1)
+- `runtime/adapters/{MiniMax,Glm}ScalarAdapter` scalar parity scaffolds for the S09 MoE pair (T09.1, T09.2)
+- `runtime/moe/SpeculativePrefetch` frequency-based expert prefetcher with windowed history (S09 T09.3)
+- `runtime/cache/{SparsityAwareCache,MultimodalCache}` per-channel cache contracts (S09 T09.4, T09.5)
+- `runtime/scheduler/{ContinuousBatcher,SessionPool}` new scheduler module for batched multi-session decode (S10 T10.1, T10.2)
+- `runtime/speculative/{PEagleDecoder,Eagle3Decoder,DraftModelLoader}` speculative decode scaffolds layered over `SpeculativeEngine` (S10 T10.3, T10.4, T10.5)
+- 12 unit test suites covering the new scaffolds (28 tests) — all green on the host build
+
+### Changed
+
+- `post-publish-smoke.ps1` now supports a dev-only `.msix` path that signs a temporary copy with a self-signed certificate, runs install smoke, and cleans up local trust state
+
 ## [0.1.36] - 2026-05-18
 
 ### Changed

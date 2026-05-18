@@ -6,8 +6,11 @@ add_library(us4_runtime_adapters
   src/dense_adapter_base.cpp
   src/gemma_scalar_adapter.cpp
   src/deepseek_moe_scalar_adapter.cpp
+  src/glm_moe_scalar_adapter.cpp
   src/kimi_moe_scalar_adapter.cpp
+  src/llama_config.cpp
   src/llama_scalar_adapter.cpp
+  src/minimax_moe_scalar_adapter.cpp
   src/model_loader.cpp
   src/null_windows_adapter.cpp
   src/qwen_scalar_adapter.cpp

@@ -14,5 +14,7 @@ namespace us4::runtime::adapters
     std::unique_ptr<IUS4WindowsAdapter> CreateTernaryScalarAdapter();
     std::unique_ptr<IUS4WindowsAdapter> CreateDeepSeekMoEScalarAdapter();
     std::unique_ptr<IUS4WindowsAdapter> CreateKimiMoEScalarAdapter();
+    std::unique_ptr<IUS4WindowsAdapter> CreateMiniMaxScalarAdapter();
+    std::unique_ptr<IUS4WindowsAdapter> CreateGlmScalarAdapter();
 
 } // namespace us4::runtime::adapters
