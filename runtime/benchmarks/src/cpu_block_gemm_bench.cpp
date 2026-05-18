@@ -1,4 +1,6 @@
 #include "runtime/core/tensor.h"
+#include "us4/runtime/backends/cpu_avx/avx2_matmul.h"
+#include "us4/runtime/backends/cpu_avx/avx512_matmul.h"
 #include "us4/runtime/backends/cpu_avx/blocked_matmul.h"
 #include "us4/runtime/backends/cpu_avx/kernel_profile.h"
 #include "us4/runtime/backends/onednn/onednn_backend.h"
@@ -102,6 +104,28 @@ namespace
         };
     }
 
+    BenchmarkSample MeasureDirectKernel(
+        const std::string& modelId, const us4::core::Tensor& left, const us4::core::Tensor& right,
+        const us4::runtime::backends::cpu_avx::CpuKernelProfile& profile, const std::string& variant,
+        us4::core::Tensor (*executor)(const us4::core::Tensor&, const us4::core::Tensor&,
+                                      const us4::runtime::backends::cpu_avx::BlockedMatMulPlan&))
+    {
+        const auto plan = us4::runtime::backends::cpu_avx::MakeReferenceMatMulPlan(
+            left.Dim(0), left.Dim(1), right.Dim(1), &profile);
+        const auto startedAt = Clock::now();
+        const auto output = executor(left, right, plan);
+        const auto finishedAt = Clock::now();
+
+        return {
+            .modelId = modelId,
+            .variant = variant,
+            .kernelTag = plan.kernelTag,
+            .elapsedMs = std::chrono::duration<double, std::milli>(finishedAt - startedAt).count(),
+            .checksum = Checksum(output),
+            .speedupVsScalar = 1.0,
+        };
+    }
+
     BenchmarkSample MeasureOneDnn(const std::string& modelId, const us4::core::Tensor& left,
                                   const us4::core::Tensor& right,
                                   const us4::runtime::backends::cpu_avx::CpuKernelProfile& profile)
@@ -166,6 +190,12 @@ int main()
         .l2BytesPerCore = 2048U * 1024U,
         .hardwareThreadCount = 8U,
     });
+    const auto avx2Profile = BuildKernelProfile({
+        .avx2 = true,
+        .f16c = true,
+        .l2BytesPerCore = 2048U * 1024U,
+        .hardwareThreadCount = 8U,
+    });
 
     struct ModelShape
     {
@@ -187,14 +217,56 @@ int main()
         const auto right = MakeTensor(shape.inner, shape.cols, -0.5F);
 
         auto scalar = MeasureScalar(shape.modelId, left, right);
-        auto avx512 = MeasureBlocked(shape.modelId, left, right, avx512Profile, "cpu-avx512");
-        auto oneDnn = MeasureOneDnn(shape.modelId, left, right, avx512Profile);
+        const bool hostSupportsAvx2 = us4::runtime::backends::cpu_avx::HostSupportsAvx2MatMul();
+        const bool hostSupportsAvx512 =
+            us4::runtime::backends::cpu_avx::HostSupportsAvx512MatMul();
 
-        avx512.speedupVsScalar = scalar.elapsedMs / avx512.elapsedMs;
+        auto avx2 = hostSupportsAvx2
+                        ? MeasureDirectKernel(shape.modelId, left, right, avx2Profile, "cpu-avx2",
+                                              us4::runtime::backends::cpu_avx::Avx2BlockedMatMul)
+                        : BenchmarkSample{.modelId = shape.modelId,
+                                          .variant = "cpu-avx2-unavailable",
+                                          .kernelTag = "host-no-avx2"};
+        auto avx512Direct =
+            hostSupportsAvx512
+                ? MeasureDirectKernel(shape.modelId, left, right, avx512Profile,
+                                      "cpu-avx512-direct",
+                                      us4::runtime::backends::cpu_avx::Avx512BlockedMatMul)
+                : BenchmarkSample{.modelId = shape.modelId,
+                                  .variant = "cpu-avx512-direct-unavailable",
+                                  .kernelTag = "host-no-avx512"};
+        auto avx512 = hostSupportsAvx512
+                          ? MeasureBlocked(shape.modelId, left, right, avx512Profile, "cpu-avx512")
+                          : BenchmarkSample{.modelId = shape.modelId,
+                                            .variant = "cpu-avx512-blocked-unavailable",
+                                            .kernelTag = "host-no-avx512"};
+        auto oneDnn = MeasureOneDnn(shape.modelId, left, right,
+                                    hostSupportsAvx512 ? avx512Profile : avx2Profile);
+
+        if (hostSupportsAvx2)
+        {
+            avx2.speedupVsScalar = scalar.elapsedMs / avx2.elapsedMs;
+        }
+        if (hostSupportsAvx512)
+        {
+            avx512Direct.speedupVsScalar = scalar.elapsedMs / avx512Direct.elapsedMs;
+        }
+        if (hostSupportsAvx512)
+        {
+            avx512.speedupVsScalar = scalar.elapsedMs / avx512.elapsedMs;
+        }
         oneDnn.speedupVsScalar = scalar.elapsedMs / oneDnn.elapsedMs;
 
         std::cout << shape.modelId << " scalar elapsed_ms=" << std::fixed << std::setprecision(3)
                   << scalar.elapsedMs << " checksum=" << scalar.checksum << '\n';
+        std::cout << shape.modelId << " " << avx2.variant << " elapsed_ms=" << avx2.elapsedMs
+                  << " speedup_vs_scalar=" << avx2.speedupVsScalar
+                  << " kernel_tag=" << avx2.kernelTag << " checksum=" << avx2.checksum << '\n';
+        std::cout << shape.modelId << " " << avx512Direct.variant
+                  << " elapsed_ms=" << avx512Direct.elapsedMs
+                  << " speedup_vs_scalar=" << avx512Direct.speedupVsScalar
+                  << " kernel_tag=" << avx512Direct.kernelTag
+                  << " checksum=" << avx512Direct.checksum << '\n';
         std::cout << shape.modelId << " " << avx512.variant << " elapsed_ms=" << avx512.elapsedMs
                   << " speedup_vs_scalar=" << avx512.speedupVsScalar
                   << " kernel_tag=" << avx512.kernelTag << " checksum=" << avx512.checksum << '\n';
@@ -203,6 +275,8 @@ int main()
                   << " kernel_tag=" << oneDnn.kernelTag << " checksum=" << oneDnn.checksum << '\n';
 
         samples.push_back(std::move(scalar));
+        samples.push_back(std::move(avx2));
+        samples.push_back(std::move(avx512Direct));
         samples.push_back(std::move(avx512));
         samples.push_back(std::move(oneDnn));
     }

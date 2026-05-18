@@ -35,5 +35,9 @@ namespace us4::runtime::backends::cpu_avx
     [[nodiscard]] us4::core::Tensor BlockedMatMul(const us4::core::Tensor& left,
                                                   const us4::core::Tensor& right,
                                                   const BlockedMatMulPlan& plan);
+    [[nodiscard]] bool HostSupportsAvx2MatMul() noexcept;
+    [[nodiscard]] bool HostSupportsAvx512MatMul() noexcept;
+    [[nodiscard]] bool UseAvx2MatMulKernel(const BlockedMatMulPlan& plan) noexcept;
+    [[nodiscard]] bool UseAvx512MatMulKernel(const BlockedMatMulPlan& plan) noexcept;
 
 } // namespace us4::runtime::backends::cpu_avx

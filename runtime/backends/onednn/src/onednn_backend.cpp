@@ -21,8 +21,13 @@ namespace us4::runtime::backends::onednn
 
         const cpu_avx::CpuKernelProfile fallbackProfile =
             cpu_avx::BuildKernelProfile(cpu_avx::DefaultReferenceCapabilities());
-        const cpu_avx::CpuKernelProfile& selectedProfile =
-            profile != nullptr ? *profile : fallbackProfile;
+        cpu_avx::CpuKernelProfile selectedProfile = profile != nullptr ? *profile : fallbackProfile;
+
+        if (selectedProfile.level == cpu_avx::CpuInstructionSetLevel::kAvx512 &&
+            !cpu_avx::HostSupportsAvx512MatMul())
+        {
+            selectedProfile = fallbackProfile;
+        }
 
         return BuildOneDnnMatMulPlan(
             {
@@ -61,8 +66,13 @@ namespace us4::runtime::backends::onednn
 
         const cpu_avx::CpuKernelProfile fallbackProfile =
             cpu_avx::BuildKernelProfile(cpu_avx::DefaultReferenceCapabilities());
-        const cpu_avx::CpuKernelProfile& selectedProfile =
-            profile != nullptr ? *profile : fallbackProfile;
+        cpu_avx::CpuKernelProfile selectedProfile = profile != nullptr ? *profile : fallbackProfile;
+
+        if (selectedProfile.level == cpu_avx::CpuInstructionSetLevel::kAvx512 &&
+            !cpu_avx::HostSupportsAvx512MatMul())
+        {
+            selectedProfile = fallbackProfile;
+        }
 
         result.blockedPlan = cpu_avx::MakeReferenceMatMulPlan(left.Dim(0), left.Dim(1),
                                                               right.Dim(1), &selectedProfile);

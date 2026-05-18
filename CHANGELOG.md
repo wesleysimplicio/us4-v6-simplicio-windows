@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.55] - 2026-05-18
+
+### Added
+
+- explicit `AVX2` and guarded `AVX-512` matmul kernels for the CPU hot path, with benchmark evidence that records unavailable `AVX-512` variants honestly on hosts that cannot execute that ISA
+
+### Changed
+
+- taught the CPU block GEMM benchmark, oneDNN planning, and Sprint 04 benchmark notes to distinguish validated `AVX2` speedups from pending `AVX-512` host evidence
+
 ## [0.1.54] - 2026-05-18
 
 ### Changed

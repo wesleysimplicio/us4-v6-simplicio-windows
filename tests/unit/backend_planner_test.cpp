@@ -1,6 +1,8 @@
 #include "runtime/core/tensor.h"
 #include "us4/runtime/adapters/adapter_contracts.h"
 #include "us4/runtime/backends/backend_selector.h"
+#include "us4/runtime/backends/cpu_avx/avx2_matmul.h"
+#include "us4/runtime/backends/cpu_avx/avx512_matmul.h"
 #include "us4/runtime/backends/cpu_avx/kernel_profile.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/backends/directml/dml_device.h"
@@ -887,6 +889,80 @@ namespace us4::runtime::tests
             for (std::size_t index = 0; index < result.output.ElementCount(); ++index)
             {
                 EXPECT_NEAR(result.output[index], scalarOutput[index], 1e-3F);
+            }
+        }
+
+        TEST(BackendPlannerTest, Avx2BlockedMatMulMatchesScalarReference)
+        {
+            if (!backends::cpu_avx::HostSupportsAvx2MatMul())
+            {
+                GTEST_SKIP() << "Host CPU does not expose AVX2.";
+            }
+
+            us4::core::Tensor left({5U, 19U});
+            us4::core::Tensor right({19U, 13U});
+            for (std::size_t index = 0; index < left.ElementCount(); ++index)
+            {
+                left[index] = static_cast<float>((index % 11U) - 5U) * 0.125F;
+            }
+            for (std::size_t index = 0; index < right.ElementCount(); ++index)
+            {
+                right[index] = static_cast<float>((index % 7U) - 3U) * 0.25F;
+            }
+
+            const auto profile = backends::cpu_avx::BuildKernelProfile({
+                .avx2 = true,
+                .f16c = true,
+                .l2BytesPerCore = 2048U * 1024U,
+                .hardwareThreadCount = 8U,
+            });
+            const auto plan = backends::cpu_avx::MakeReferenceMatMulPlan(left.Dim(0), left.Dim(1),
+                                                                         right.Dim(1), &profile);
+            const auto reference = backends::cpu_avx::ScalarMatMul(left, right);
+            const auto accelerated = backends::cpu_avx::Avx2BlockedMatMul(left, right, plan);
+
+            ASSERT_EQ(reference.ElementCount(), accelerated.ElementCount());
+            for (std::size_t index = 0; index < reference.ElementCount(); ++index)
+            {
+                EXPECT_NEAR(reference[index], accelerated[index], 1e-3F);
+            }
+        }
+
+        TEST(BackendPlannerTest, Avx512BlockedMatMulMatchesScalarReference)
+        {
+            if (!backends::cpu_avx::HostSupportsAvx512MatMul())
+            {
+                GTEST_SKIP() << "Host CPU does not expose AVX-512.";
+            }
+
+            us4::core::Tensor left({7U, 21U});
+            us4::core::Tensor right({21U, 17U});
+            for (std::size_t index = 0; index < left.ElementCount(); ++index)
+            {
+                left[index] = static_cast<float>((index % 13U) - 6U) * 0.0625F;
+            }
+            for (std::size_t index = 0; index < right.ElementCount(); ++index)
+            {
+                right[index] = static_cast<float>((index % 9U) - 4U) * 0.1875F;
+            }
+
+            const auto profile = backends::cpu_avx::BuildKernelProfile({
+                .avx2 = true,
+                .avx512f = true,
+                .avx512Vnni = true,
+                .f16c = true,
+                .l2BytesPerCore = 2048U * 1024U,
+                .hardwareThreadCount = 8U,
+            });
+            const auto plan = backends::cpu_avx::MakeReferenceMatMulPlan(left.Dim(0), left.Dim(1),
+                                                                         right.Dim(1), &profile);
+            const auto reference = backends::cpu_avx::ScalarMatMul(left, right);
+            const auto accelerated = backends::cpu_avx::Avx512BlockedMatMul(left, right, plan);
+
+            ASSERT_EQ(reference.ElementCount(), accelerated.ElementCount());
+            for (std::size_t index = 0; index < reference.ElementCount(); ++index)
+            {
+                EXPECT_NEAR(reference[index], accelerated[index], 1e-3F);
             }
         }
 

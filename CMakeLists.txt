@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.54
+    VERSION 0.1.55
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
