@@ -1,4 +1,5 @@
 add_library(us4_runtime_benchmark_registry
+  src/bench_csv_writer.cpp
   src/benchmark_registry.cpp
 )
 

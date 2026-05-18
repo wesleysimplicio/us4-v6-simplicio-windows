@@ -1,20 +1,17 @@
 {
-  "name": "@wesleysimplicio/llm-project-mapper",
-  "version": "0.1.59",
+  "name": "@wesleysimplicio/agentic-starter",
+  "version": "0.1.60",
   "description": "AI-friendly project scaffold with AGENTS.md ecosystem (Claude Code, Codex, Copilot, Cursor, Aider, Hermes, OpenClaw). Specs as code, atomic tasks, automated Definition of Done, reusable skills, multi-agent ready.",
   "type": "commonjs",
   "bin": {
-    "agentic-starter": "bin/cli.js",
-    "llm-project-mapper": "bin/cli.js"
+    "agentic-starter": "bin/cli.js"
   },
   "files": [
-    "assets/",
     "bin/",
     "AGENTS.md",
     "CLAUDE.md",
     "INIT.md",
     "_BOOTSTRAP.md",
-    ".llm-project-mapper.json",
     "README.md",
     "README.pt-BR.md",
     "INSTALL.md",
@@ -61,13 +58,13 @@
     "url": "https://github.com/wesleysimplicio"
   },
   "license": "MIT",
-  "homepage": "https://github.com/wesleysimplicio/llm-project-mapper#readme",
+  "homepage": "https://github.com/wesleysimplicio/agentic-starter#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wesleysimplicio/llm-project-mapper.git"
+    "url": "git+https://github.com/wesleysimplicio/agentic-starter.git"
   },
   "bugs": {
-    "url": "https://github.com/wesleysimplicio/llm-project-mapper/issues"
+    "url": "https://github.com/wesleysimplicio/agentic-starter/issues"
   },
   "publishConfig": {
     "access": "public"

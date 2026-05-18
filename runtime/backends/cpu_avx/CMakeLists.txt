@@ -2,6 +2,7 @@ add_subdirectory(../onednn ${CMAKE_CURRENT_BINARY_DIR}/onednn)
 
 add_library(
     us4_runtime_backends_cpu_avx
+    src/amx_dispatcher.cpp
     src/avx_attention.cpp
     src/avx2_matmul.cpp
     src/avx512_matmul.cpp
