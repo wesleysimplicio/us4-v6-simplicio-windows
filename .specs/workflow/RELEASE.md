@@ -143,6 +143,7 @@ Hoje o repo ja inclui:
 - `scripts/generate-checksums.ps1`
 - `scripts/post-publish-smoke.ps1`
 - `scripts/release-dry-run.ps1`
+  - valida `vX.Y.Z` vs `package.json`, empacota artefatos locais, renderiza manifests/notas e pode expor readiness dev-only de MSIX sem esconder blockers externos de producao
 - `scripts/validate-publish-layout.ps1`
 
 O que ainda falta para fechar distribuicao:

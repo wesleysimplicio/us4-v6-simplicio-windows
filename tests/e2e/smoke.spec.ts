@@ -1682,6 +1682,12 @@ test.describe('us4-cli smoke', () => {
             execution: string;
             status: string;
             version: string;
+            tag: string;
+            dev_msix_requested: boolean;
+            dev_msix_preflight: {
+                execution: string;
+                status: string;
+            };
             artifact_names: string[];
             issue_codes: string[];
             steps: Array<{
@@ -1693,10 +1699,16 @@ test.describe('us4-cli smoke', () => {
         expect(payload.execution).toBe('release-dry-run');
         expect(payload.status).toBe('ready');
         expect(payload.version).toBe(packageVersion);
+        expect(payload.tag).toBe(`v${packageVersion}`);
+        expect(payload.dev_msix_requested).toBeFalsy();
+        expect(payload.dev_msix_preflight.execution).toBe('dev-msix-smoke');
+        expect(['ready', 'blocked']).toContain(payload.dev_msix_preflight.status);
         expect(payload.artifact_names).toContain(`us4-v6-windows-${packageVersion}-portable.zip`);
         expect(payload.artifact_names).toContain('SHA256SUMS.txt');
         expect(payload.issue_codes).toHaveLength(0);
         expect(payload.steps.some((step) => step.name === 'preflight' &&
+                                            step.status === 'passed')).toBeTruthy();
+        expect(payload.steps.some((step) => step.name === 'validate-release-tag' &&
                                             step.status === 'passed')).toBeTruthy();
         expect(payload.steps.some((step) => step.name === 'build-portable-zip' &&
                                             step.status === 'passed')).toBeTruthy();
@@ -1715,6 +1727,60 @@ test.describe('us4-cli smoke', () => {
         expect(payload.steps.some((step) => step.name === 'build-msix' &&
                                             (step.status === 'passed' || step.status === 'skipped'))).toBeTruthy();
         expect(payload.steps.some((step) => step.status === 'failed')).toBeFalsy();
+    });
+
+    test('blocks the local release dry-run when the release tag does not match the version', async ({}, testInfo) => {
+        const outputDir = testInfo.outputPath('release-dry-run-tag-mismatch-dist');
+        const manifestDir = testInfo.outputPath('release-dry-run-tag-mismatch-winget');
+        const workingDir = testInfo.outputPath('release-dry-run-tag-mismatch-working');
+        const cliBuildDir = path.resolve(process.cwd(), 'build');
+        const releaseDryRunScriptPath = path.resolve(process.cwd(), 'scripts', 'release-dry-run.ps1');
+
+        mkdirSync(outputDir, {recursive : true});
+        mkdirSync(manifestDir, {recursive : true});
+        mkdirSync(workingDir, {recursive : true});
+
+        const result = await runPowerShell([
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            releaseDryRunScriptPath,
+            '-BuildDir',
+            cliBuildDir,
+            '-OutputDir',
+            outputDir,
+            '-ManifestDir',
+            manifestDir,
+            '-WorkingDir',
+            workingDir,
+            '-Version',
+            packageVersion,
+            '-Tag',
+            'v0.0.0',
+            '-Format',
+            'json',
+        ]);
+        await attachProcessOutput(testInfo, 'release-dry-run-tag-mismatch', result.stdout, result.stderr);
+
+        expect(result.exitCode).not.toBe(0);
+        const payload = JSON.parse(result.stdout) as
+        {
+            execution: string;
+            status: string;
+            issue_codes: string[];
+            steps: Array<{
+                name: string;
+                status: string;
+                detail: string;
+            }>;
+        };
+        expect(payload.execution).toBe('release-dry-run');
+        expect(payload.status).toBe('blocked');
+        expect(payload.issue_codes).toContain('validate-release-tag:Release tag validation failed.');
+        expect(payload.steps.some((step) => step.name === 'validate-release-tag' &&
+                                            step.status === 'failed' &&
+                                            step.detail === 'Release tag validation failed.')).toBeTruthy();
     });
 
     test('keeps release dry-run manifests ephemeral when no manifest directory is provided', async ({}, testInfo) => {

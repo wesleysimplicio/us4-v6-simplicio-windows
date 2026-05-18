@@ -7,8 +7,10 @@ param(
     [string]$TestResultsDir = "test-results",
     [string]$Format = "json",
     [string]$OutputPath = "",
+    [string]$DevCertificatePassword = "",
     [switch]$RequireEvidence,
-    [switch]$IncludeReleaseDryRun
+    [switch]$IncludeReleaseDryRun,
+    [switch]$IncludeDevMsixSmoke
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,6 +70,8 @@ if ($IncludeReleaseDryRun) {
         -BuildDir $resolvedBuildDir `
         -OutputDir $resolvedOutputDir `
         -ManifestDir $resolvedManifestDir `
+        -DevCertificatePassword $DevCertificatePassword `
+        -IncludeDevMsixSmoke:$IncludeDevMsixSmoke `
         -Format json) | ConvertFrom-Json
 }
 
@@ -195,6 +199,7 @@ if ($Format -eq "json") {
     [void]$lines.Add("- Dev MSIX preflight: $($payload.release.dev_msix_preflight.status)")
     if ($IncludeReleaseDryRun -and $null -ne $payload.release.dry_run) {
         [void]$lines.Add("- Dry-run status: $($payload.release.dry_run.status)")
+        [void]$lines.Add("- Dry-run dev MSIX requested: $($payload.release.dry_run.dev_msix_requested)")
     }
     [void]$lines.Add("")
     [void]$lines.Add("## Evidence")

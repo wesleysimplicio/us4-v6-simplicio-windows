@@ -36,7 +36,7 @@ Os scripts deste repositorio cobrem dois cenarios:
 - `render-project-status.ps1`
   - consolida planejamento, preflight de release, evidencias Playwright e blockers externos em um snapshot unico de projeto
 - `release-dry-run.ps1`
-  - executa o fluxo local completo de release em modo encadeado, gera artefatos, manifests e notas e retorna um resumo estruturado pronto para evidencia
+  - executa o fluxo local completo de release em modo encadeado, valida a tag/versao esperada, gera artefatos, manifests e notas e retorna um resumo estruturado pronto para evidencia
 - `render-planning-status.ps1`
   - consolida sprints e tasks versionadas em JSON ou Markdown, inclusive para gerar `.specs/sprints/STATUS.md` a partir dos checkboxes reais dos `SPRINT.md`
 - `render-release-manifest.ps1`

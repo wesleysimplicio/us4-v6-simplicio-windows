@@ -4,6 +4,13 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.35] - 2026-05-18
+
+### Changed
+
+- `release-dry-run.ps1` now blocks on a mismatched `vX.Y.Z` tag before reporting local release readiness
+- `release-dry-run.ps1` and `render-project-status.ps1` now expose dev-only MSIX smoke intent and preflight more explicitly in their structured payloads
+
 ## [0.1.34] - 2026-05-17
 
 ### Changed
