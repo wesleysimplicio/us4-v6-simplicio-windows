@@ -13,7 +13,7 @@ Reference master spec: `../../US4-V6-Windows-Edition.md`.
 ## Status snapshot (2026-05-18)
 
 - Planning files currently define `12` sprints and `88` tasks.
-- Versioned checkboxes currently mark `63` tasks as done and `25` as still open.
+- Versioned checkboxes currently mark `65` tasks as done and `23` as still open.
 - The repo implementation and the versioned sprint checkboxes are now aligned for the tasks already evidenced by unit, E2E, regression and correctness gates.
 - The generated companion snapshot lives in `STATUS.md` and can be refreshed via `scripts/render-planning-status.ps1`.
 

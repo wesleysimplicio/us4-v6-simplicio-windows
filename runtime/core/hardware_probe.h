@@ -33,6 +33,23 @@ namespace us4::core
             std::vector<us4::runtime::telemetry::TelemetryEvent> events;
         };
 
+        struct KvTelemetryPreview
+        {
+            std::size_t segmentCount = 0;
+            std::size_t deviceHits = 0;
+            std::size_t hostHits = 0;
+            std::size_t storageHits = 0;
+            std::size_t summaryHits = 0;
+            std::size_t evictionCount = 0;
+            std::size_t restoreCount = 0;
+            std::size_t summarizeCount = 0;
+            float deviceHitRate = 0.0F;
+            float hostHitRate = 0.0F;
+            float storageHitRate = 0.0F;
+            float summaryHitRate = 0.0F;
+            std::vector<us4::runtime::telemetry::TelemetryEvent> events;
+        };
+
         std::string osName;
         std::string cpuName;
         std::string gpuName;
@@ -44,6 +61,7 @@ namespace us4::core
         std::vector<std::string> fallbackBackends;
         std::vector<ProbeAdvisory> advisories;
         MoeTelemetryPreview moeTelemetry;
+        KvTelemetryPreview kvTelemetry;
 
         [[nodiscard]] bool HasAccelerator() const;
         [[nodiscard]] bool IsDegraded() const;

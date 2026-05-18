@@ -68,6 +68,47 @@ namespace us4::runtime::adapters
         bool reachedEos = false;
     };
 
+    enum class KvCacheTier
+    {
+        kDevice,
+        kHost,
+        kStorage,
+        kSummary,
+    };
+
+    struct KvCacheEntry
+    {
+        std::string sequenceId;
+        std::size_t tokenCount = 0;
+        std::size_t residentBytes = 0;
+        KvCacheTier tier = KvCacheTier::kHost;
+        bool pinned = false;
+        std::size_t accessCount = 0;
+        std::size_t summaryTokenCount = 0;
+    };
+
+    struct KvHookSnapshot
+    {
+        std::size_t appendCount = 0;
+        std::size_t lookupCount = 0;
+        std::size_t evictCount = 0;
+        std::size_t summarizeCount = 0;
+        std::size_t segmentCount = 0;
+        std::size_t pinnedSegmentCount = 0;
+        std::size_t residentBytes = 0;
+        std::size_t deviceBytes = 0;
+        std::size_t hostBytes = 0;
+        std::size_t storageBytes = 0;
+        std::size_t summaryBytes = 0;
+        std::size_t deviceHitCount = 0;
+        std::size_t hostHitCount = 0;
+        std::size_t storageHitCount = 0;
+        std::size_t summaryHitCount = 0;
+        std::size_t evictionPagerCount = 0;
+        std::size_t restoreCount = 0;
+        std::size_t pagerSummarizeCount = 0;
+    };
+
     struct AdapterHealth
     {
         AdapterLifecycle lifecycle = AdapterLifecycle::kDetached;

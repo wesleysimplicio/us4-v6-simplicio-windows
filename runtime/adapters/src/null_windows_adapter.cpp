@@ -1,4 +1,5 @@
 #include "us4/runtime/adapters/i_us4_windows_adapter.h"
+#include "us4/runtime/kv/kv_pager.h"
 
 #include <cstdint>
 #include <optional>
@@ -9,10 +10,79 @@ namespace us4::runtime::adapters
 
     namespace
     {
+        kv::KvTier ToKvTier(const KvCacheTier tier)
+        {
+            switch (tier)
+            {
+            case KvCacheTier::kDevice:
+                return kv::KvTier::kDevice;
+            case KvCacheTier::kHost:
+                return kv::KvTier::kHost;
+            case KvCacheTier::kStorage:
+                return kv::KvTier::kStorage;
+            case KvCacheTier::kSummary:
+                return kv::KvTier::kSummary;
+            }
+
+            return kv::KvTier::kHost;
+        }
+
+        KvCacheTier ToKvCacheTier(const kv::KvTier tier)
+        {
+            switch (tier)
+            {
+            case kv::KvTier::kDevice:
+                return KvCacheTier::kDevice;
+            case kv::KvTier::kHost:
+                return KvCacheTier::kHost;
+            case kv::KvTier::kStorage:
+                return KvCacheTier::kStorage;
+            case kv::KvTier::kSummary:
+                return KvCacheTier::kSummary;
+            }
+
+            return KvCacheTier::kHost;
+        }
+
+        KvCacheEntry ToKvCacheEntry(const kv::KvSegment& segment)
+        {
+            return KvCacheEntry{
+                .sequenceId = segment.sequenceId,
+                .tokenCount = segment.tokenCount,
+                .residentBytes = segment.residentBytes,
+                .tier = ToKvCacheTier(segment.tier),
+                .pinned = segment.pinned,
+                .accessCount = segment.accessCount,
+                .summaryTokenCount = segment.summaryTokenCount,
+            };
+        }
+
+        void CopyPagerStats(const kv::KvPagerStats& stats, KvHookSnapshot& snapshot)
+        {
+            snapshot.segmentCount = stats.segmentCount;
+            snapshot.pinnedSegmentCount = stats.pinnedSegmentCount;
+            snapshot.residentBytes = stats.residentBytes;
+            snapshot.deviceBytes = stats.deviceBytes;
+            snapshot.hostBytes = stats.hostBytes;
+            snapshot.storageBytes = stats.storageBytes;
+            snapshot.summaryBytes = stats.summaryBytes;
+            snapshot.deviceHitCount = stats.deviceHitCount;
+            snapshot.hostHitCount = stats.hostHitCount;
+            snapshot.storageHitCount = stats.storageHitCount;
+            snapshot.summaryHitCount = stats.summaryHitCount;
+            snapshot.evictionPagerCount = stats.evictionCount;
+            snapshot.restoreCount = stats.restoreCount;
+            snapshot.pagerSummarizeCount = stats.summarizeCount;
+        }
 
         class NullWindowsAdapter final : public IUS4WindowsAdapter
         {
           public:
+            NullWindowsAdapter()
+            {
+                ResetKvCache();
+            }
+
             [[nodiscard]] AdapterDescriptor Describe() const override
             {
                 return AdapterDescriptor{
@@ -145,6 +215,81 @@ namespace us4::runtime::adapters
                 return chunk;
             }
 
+            [[nodiscard]] bool AppendKvCache(const std::string& sequenceId,
+                                             const std::size_t appendedTokens,
+                                             const std::size_t appendedBytes,
+                                             const KvCacheTier preferredTier,
+                                             const bool pinned) override
+            {
+                const bool appended =
+                    kvPager_.Append(sequenceId, appendedTokens, appendedBytes,
+                                    ToKvTier(preferredTier), pinned);
+                if (appended)
+                {
+                    kvHooks_.appendCount += 1U;
+                    CopyPagerStats(kvPager_.Stats(), kvHooks_);
+                }
+                return appended;
+            }
+
+            [[nodiscard]] std::optional<KvCacheEntry>
+            LookupKvCache(const std::string& sequenceId) override
+            {
+                const auto segment = kvPager_.Touch(sequenceId);
+                if (segment.has_value())
+                {
+                    kvHooks_.lookupCount += 1U;
+                    CopyPagerStats(kvPager_.Stats(), kvHooks_);
+                    return ToKvCacheEntry(*segment);
+                }
+                return std::nullopt;
+            }
+
+            [[nodiscard]] bool EvictKvCache(const std::string& sequenceId,
+                                            const KvCacheTier targetTier) override
+            {
+                const bool evicted = kvPager_.Evict(sequenceId, ToKvTier(targetTier));
+                if (evicted)
+                {
+                    kvHooks_.evictCount += 1U;
+                    CopyPagerStats(kvPager_.Stats(), kvHooks_);
+                }
+                return evicted;
+            }
+
+            [[nodiscard]] bool SummarizeKvCache(const std::string& sequenceId,
+                                                const std::size_t retainedTokens,
+                                                const std::size_t retainedBytes) override
+            {
+                const bool summarized =
+                    kvPager_.Summarize(sequenceId, retainedTokens, retainedBytes);
+                if (summarized)
+                {
+                    kvHooks_.summarizeCount += 1U;
+                    CopyPagerStats(kvPager_.Stats(), kvHooks_);
+                }
+                return summarized;
+            }
+
+            [[nodiscard]] KvHookSnapshot KvHooks() const override
+            {
+                KvHookSnapshot snapshot = kvHooks_;
+                CopyPagerStats(kvPager_.Stats(), snapshot);
+                return snapshot;
+            }
+
+            void ResetKvCache() override
+            {
+                kvPager_ = kv::KvPager{};
+                kvPager_.ConfigureBudget(kv::KvPagerBudget{
+                    .deviceBytes = 0U,
+                    .hostBytes = 4096U,
+                    .storageBytes = 8192U,
+                    .summaryBytes = 1024U,
+                });
+                kvHooks_ = KvHookSnapshot{};
+            }
+
             [[nodiscard]] GenerationFrame LastGenerationFrame() const override
             {
                 return lastFrame_;
@@ -154,6 +299,7 @@ namespace us4::runtime::adapters
             {
                 binding_.reset();
                 modelPath_.clear();
+                ResetKvCache();
                 lastPrefillTokens_ = 0;
                 lastFrame_ = GenerationFrame{};
                 lifecycle_ = AdapterLifecycle::kDetached;
@@ -163,6 +309,8 @@ namespace us4::runtime::adapters
           private:
             std::optional<RuntimeBinding> binding_;
             std::string modelPath_;
+            kv::KvPager kvPager_;
+            KvHookSnapshot kvHooks_;
             std::size_t lastPrefillTokens_ = 0;
             GenerationFrame lastFrame_;
             AdapterLifecycle lifecycle_ = AdapterLifecycle::kDetached;

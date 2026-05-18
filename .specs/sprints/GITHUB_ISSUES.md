@@ -2,7 +2,7 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **63** (tasks com checkbox versionado marcado como concluÃ­do).
+> Fechados: **65** (tasks com checkbox versionado marcado como concluÃ­do).
 
 ## Sprint Epics
 
@@ -13,7 +13,7 @@
 | 03 | [#3](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/3) | CUDA + DirectML Skeleton | in_progress | 3/7 |
 | 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | todo | 0/7 |
 | 05 | [#5](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/5) | BitNet + Ternary Adapters | in_progress | 5/7 |
-| 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | in_progress | 5/7 |
+| 06 | [#6](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/6) | KV Memory Architecture | done | 7/7 |
 | 07 | [#7](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/7) | Llama Adapter | in_progress | 3/6 |
 | 08 | [#8](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/8) | MoE Foundation â€” DeepSeek + Kimi | in_progress | 4/6 |
 | 09 | [#9](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/9) | MoE Advanced — MiniMax + GLM, SP-MoE | done | 6/6 |
@@ -141,3 +141,4 @@
 - Cada **task** tem AC mensurÃ¡vel + DoD herdado do sprint.
 - **Status real do cÃ³digo** vs **checkbox versionado**: o repo jÃ¡ implementa partes de muitas tasks anteriores ao sprint atual; mantÃ©m-se conservador no checkbox atÃ© evidÃªncia (test + correctness diff + E2E).
 - AtualizaÃ§Ã£o de status: edite o checkbox em `.specs/sprints/sprint-XX/SPRINT.md` e rode `scripts/render-planning-status.ps1` para regenerar `STATUS.md`. Issues no GitHub fecham via PR (Conventional Commits) ou manualmente quando DoD verde.
+

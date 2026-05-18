@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.46] - 2026-05-18
+
+### Added
+
+- adapter-level KV hooks on `IUS4WindowsAdapter`, wired through the dense and null adapter scaffolds with pager-backed append, lookup, evict and summarize operations
+- KV telemetry preview in `probe`, plus per-tier hit-rate reporting in CPU scalar `run` text/JSON surfaces
+
+### Changed
+
+- completed Sprint 06 in the versioned planning files and aligned the local evidence with adapter hook + KV telemetry coverage across unit, correctness and Playwright smoke flows
+
 ## [0.1.45] - 2026-05-18
 
 ### Changed

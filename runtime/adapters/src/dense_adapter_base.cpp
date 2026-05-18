@@ -38,9 +38,77 @@ namespace us4::runtime::adapters
             }
             return std::min(requested, config.maxContextTokens);
         }
+
+        kv::KvTier ToKvTier(const KvCacheTier tier)
+        {
+            switch (tier)
+            {
+            case KvCacheTier::kDevice:
+                return kv::KvTier::kDevice;
+            case KvCacheTier::kHost:
+                return kv::KvTier::kHost;
+            case KvCacheTier::kStorage:
+                return kv::KvTier::kStorage;
+            case KvCacheTier::kSummary:
+                return kv::KvTier::kSummary;
+            }
+
+            return kv::KvTier::kHost;
+        }
+
+        KvCacheTier ToKvCacheTier(const kv::KvTier tier)
+        {
+            switch (tier)
+            {
+            case kv::KvTier::kDevice:
+                return KvCacheTier::kDevice;
+            case kv::KvTier::kHost:
+                return KvCacheTier::kHost;
+            case kv::KvTier::kStorage:
+                return KvCacheTier::kStorage;
+            case kv::KvTier::kSummary:
+                return KvCacheTier::kSummary;
+            }
+
+            return KvCacheTier::kHost;
+        }
+
+        KvCacheEntry ToKvCacheEntry(const kv::KvSegment& segment)
+        {
+            return KvCacheEntry{
+                .sequenceId = segment.sequenceId,
+                .tokenCount = segment.tokenCount,
+                .residentBytes = segment.residentBytes,
+                .tier = ToKvCacheTier(segment.tier),
+                .pinned = segment.pinned,
+                .accessCount = segment.accessCount,
+                .summaryTokenCount = segment.summaryTokenCount,
+            };
+        }
+
+        void CopyPagerStats(const kv::KvPagerStats& stats, KvHookSnapshot& snapshot)
+        {
+            snapshot.segmentCount = stats.segmentCount;
+            snapshot.pinnedSegmentCount = stats.pinnedSegmentCount;
+            snapshot.residentBytes = stats.residentBytes;
+            snapshot.deviceBytes = stats.deviceBytes;
+            snapshot.hostBytes = stats.hostBytes;
+            snapshot.storageBytes = stats.storageBytes;
+            snapshot.summaryBytes = stats.summaryBytes;
+            snapshot.deviceHitCount = stats.deviceHitCount;
+            snapshot.hostHitCount = stats.hostHitCount;
+            snapshot.storageHitCount = stats.storageHitCount;
+            snapshot.summaryHitCount = stats.summaryHitCount;
+            snapshot.evictionPagerCount = stats.evictionCount;
+            snapshot.restoreCount = stats.restoreCount;
+            snapshot.pagerSummarizeCount = stats.summarizeCount;
+        }
     } // namespace
 
-    DenseAdapterBase::DenseAdapterBase(DenseAdapterConfig config) : config_(std::move(config)) {}
+    DenseAdapterBase::DenseAdapterBase(DenseAdapterConfig config) : config_(std::move(config))
+    {
+        ConfigureKvPagerBudget();
+    }
 
     AdapterDescriptor DenseAdapterBase::Describe() const
     {
@@ -149,6 +217,7 @@ namespace us4::runtime::adapters
         }
 
         binding_ = std::move(binding);
+        ConfigureKvPagerBudget();
         lifecycle_ =
             loadedModel_.has_value() ? AdapterLifecycle::kModelLoaded : AdapterLifecycle::kBound;
         status_ = backends::RuntimeStatus::kReady;
@@ -252,6 +321,73 @@ namespace us4::runtime::adapters
         return chunk;
     }
 
+    bool DenseAdapterBase::AppendKvCache(const std::string& sequenceId,
+                                         const std::size_t appendedTokens,
+                                         const std::size_t appendedBytes,
+                                         const KvCacheTier preferredTier, const bool pinned)
+    {
+        const bool appended =
+            kvPager_.Append(sequenceId, appendedTokens, appendedBytes, ToKvTier(preferredTier),
+                            pinned);
+        if (appended)
+        {
+            kvHooks_.appendCount += 1U;
+            CopyPagerStats(kvPager_.Stats(), kvHooks_);
+        }
+        return appended;
+    }
+
+    std::optional<KvCacheEntry> DenseAdapterBase::LookupKvCache(const std::string& sequenceId)
+    {
+        const auto segment = kvPager_.Touch(sequenceId);
+        if (segment.has_value())
+        {
+            kvHooks_.lookupCount += 1U;
+            CopyPagerStats(kvPager_.Stats(), kvHooks_);
+            return ToKvCacheEntry(*segment);
+        }
+        return std::nullopt;
+    }
+
+    bool DenseAdapterBase::EvictKvCache(const std::string& sequenceId,
+                                        const KvCacheTier targetTier)
+    {
+        const bool evicted = kvPager_.Evict(sequenceId, ToKvTier(targetTier));
+        if (evicted)
+        {
+            kvHooks_.evictCount += 1U;
+            CopyPagerStats(kvPager_.Stats(), kvHooks_);
+        }
+        return evicted;
+    }
+
+    bool DenseAdapterBase::SummarizeKvCache(const std::string& sequenceId,
+                                            const std::size_t retainedTokens,
+                                            const std::size_t retainedBytes)
+    {
+        const bool summarized = kvPager_.Summarize(sequenceId, retainedTokens, retainedBytes);
+        if (summarized)
+        {
+            kvHooks_.summarizeCount += 1U;
+            CopyPagerStats(kvPager_.Stats(), kvHooks_);
+        }
+        return summarized;
+    }
+
+    KvHookSnapshot DenseAdapterBase::KvHooks() const
+    {
+        KvHookSnapshot snapshot = kvHooks_;
+        CopyPagerStats(kvPager_.Stats(), snapshot);
+        return snapshot;
+    }
+
+    void DenseAdapterBase::ResetKvCache()
+    {
+        kvPager_ = kv::KvPager{};
+        kvHooks_ = KvHookSnapshot{};
+        ConfigureKvPagerBudget();
+    }
+
     GenerationFrame DenseAdapterBase::LastGenerationFrame() const
     {
         return lastFrame_;
@@ -261,6 +397,7 @@ namespace us4::runtime::adapters
     {
         binding_.reset();
         loadedModel_.reset();
+        ResetKvCache();
         lastPrefillTokens_ = 0;
         lastFrame_ = GenerationFrame{};
         lifecycle_ = AdapterLifecycle::kDetached;
@@ -326,6 +463,28 @@ namespace us4::runtime::adapters
         }
         return std::max<std::size_t>(baseEstimate,
                                      loadedModel_.has_value() ? loadedModel_->fileBytes / 2U : 0U);
+    }
+
+    void DenseAdapterBase::ConfigureKvPagerBudget()
+    {
+        const std::size_t hostBytes =
+            std::max<std::size_t>(config_.hostBytesPerToken * 16U, config_.kvBytesPerToken * 16U);
+        const bool prefersDevice =
+            binding_.has_value() && binding_->backend.kind != backends::BackendKind::kCpu;
+        const std::size_t deviceBytes =
+            prefersDevice ? std::max<std::size_t>(config_.deviceBytesPerToken * 16U,
+                                                  config_.kvBytesPerToken * 8U)
+                          : 0U;
+        const std::size_t storageBytes =
+            std::max<std::size_t>(hostBytes * 2U, config_.kvBytesPerToken * 32U);
+        const std::size_t summaryBytes =
+            std::max<std::size_t>(config_.kvBytesPerToken * 8U, sizeof(std::int32_t) * 16U);
+        kvPager_.ConfigureBudget(kv::KvPagerBudget{
+            .deviceBytes = deviceBytes,
+            .hostBytes = hostBytes,
+            .storageBytes = storageBytes,
+            .summaryBytes = summaryBytes,
+        });
     }
 
 } // namespace us4::runtime::adapters

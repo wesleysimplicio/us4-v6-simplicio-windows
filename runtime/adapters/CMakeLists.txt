@@ -22,6 +22,7 @@ add_library(us4_runtime_adapters
 target_include_directories(us4_runtime_adapters
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/runtime/kv/include
 )
 
 target_link_libraries(us4_runtime_adapters

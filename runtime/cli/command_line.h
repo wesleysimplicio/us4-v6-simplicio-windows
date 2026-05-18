@@ -24,6 +24,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -105,6 +106,13 @@ namespace us4::cli
         return escaped;
     }
 
+    inline std::string FormatPercent(const float ratio)
+    {
+        std::ostringstream output;
+        output << std::fixed << std::setprecision(2) << (ratio * 100.0F);
+        return output.str();
+    }
+
     inline std::string RenderProbeJson(const us4::core::ProbeSummary& summary)
     {
         std::ostringstream json;
@@ -140,6 +148,21 @@ namespace us4::cli
         json << "    \"reload_count\": " << summary.moeTelemetry.reloadCount << ",\n";
         json << "    \"router_entropy\": " << summary.moeTelemetry.routerEntropy << ",\n";
         json << "    \"telemetry_events\": " << summary.moeTelemetry.events.size() << "\n";
+        json << "  },\n";
+        json << "  \"kv\": {\n";
+        json << "    \"segment_count\": " << summary.kvTelemetry.segmentCount << ",\n";
+        json << "    \"device_hit_rate_pct\": " << (summary.kvTelemetry.deviceHitRate * 100.0F)
+             << ",\n";
+        json << "    \"host_hit_rate_pct\": " << (summary.kvTelemetry.hostHitRate * 100.0F)
+             << ",\n";
+        json << "    \"storage_hit_rate_pct\": " << (summary.kvTelemetry.storageHitRate * 100.0F)
+             << ",\n";
+        json << "    \"summary_hit_rate_pct\": " << (summary.kvTelemetry.summaryHitRate * 100.0F)
+             << ",\n";
+        json << "    \"eviction_count\": " << summary.kvTelemetry.evictionCount << ",\n";
+        json << "    \"restore_count\": " << summary.kvTelemetry.restoreCount << ",\n";
+        json << "    \"summarize_count\": " << summary.kvTelemetry.summarizeCount << ",\n";
+        json << "    \"telemetry_events\": " << summary.kvTelemetry.events.size() << "\n";
         json << "  },\n";
         json << "  \"advisories\": [\n";
         for (std::size_t index = 0; index < summary.advisories.size(); ++index)
@@ -266,6 +289,14 @@ namespace us4::cli
         json << "    \"segment_count\": " << runResult.report.kvStats.segmentCount << ",\n";
         json << "    \"pinned_segment_count\": " << runResult.report.kvStats.pinnedSegmentCount
              << ",\n";
+        json << "    \"device_hit_rate_pct\": "
+             << (runResult.report.kvTierTelemetry.deviceHitRate * 100.0F) << ",\n";
+        json << "    \"host_hit_rate_pct\": "
+             << (runResult.report.kvTierTelemetry.hostHitRate * 100.0F) << ",\n";
+        json << "    \"storage_hit_rate_pct\": "
+             << (runResult.report.kvTierTelemetry.storageHitRate * 100.0F) << ",\n";
+        json << "    \"summary_hit_rate_pct\": "
+             << (runResult.report.kvTierTelemetry.summaryHitRate * 100.0F) << ",\n";
         json << "    \"host_bytes\": " << runResult.report.kvStats.hostBytes << ",\n";
         json << "    \"storage_bytes\": " << runResult.report.kvStats.storageBytes << ",\n";
         json << "    \"summary_bytes\": " << runResult.report.kvStats.summaryBytes << ",\n";
@@ -1284,6 +1315,14 @@ namespace us4::cli
             output << "kv.segment_count: " << runResult.report.kvStats.segmentCount << '\n';
             output << "kv.pinned_segment_count: " << runResult.report.kvStats.pinnedSegmentCount
                    << '\n';
+            output << "kv.device_hit_rate_pct: "
+                   << FormatPercent(runResult.report.kvTierTelemetry.deviceHitRate) << '\n';
+            output << "kv.host_hit_rate_pct: "
+                   << FormatPercent(runResult.report.kvTierTelemetry.hostHitRate) << '\n';
+            output << "kv.storage_hit_rate_pct: "
+                   << FormatPercent(runResult.report.kvTierTelemetry.storageHitRate) << '\n';
+            output << "kv.summary_hit_rate_pct: "
+                   << FormatPercent(runResult.report.kvTierTelemetry.summaryHitRate) << '\n';
             output << "kv.host_bytes: " << runResult.report.kvStats.hostBytes << '\n';
             output << "kv.storage_bytes: " << runResult.report.kvStats.storageBytes << '\n';
             output << "kv.summary_bytes: " << runResult.report.kvStats.summaryBytes << '\n';

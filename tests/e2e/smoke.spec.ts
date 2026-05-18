@@ -210,6 +210,9 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('eviction_count:');
         expect(stdout).toContain('cold_offload_count:');
         expect(stdout).toContain('reload_count:');
+        expect(stdout).toContain('kv.preview:');
+        expect(stdout).toContain('device_hit_rate_pct:');
+        expect(stdout).toContain('summary_hit_rate_pct:');
     });
 
     test('exports probe as json', async ({}, testInfo) => {
@@ -239,6 +242,13 @@ test.describe('us4-cli smoke', () => {
                 reload_count: number;
                 telemetry_events: number;
             };
+            kv: {
+                device_hit_rate_pct: number;
+                host_hit_rate_pct: number;
+                storage_hit_rate_pct: number;
+                summary_hit_rate_pct: number;
+                telemetry_events: number;
+            };
         };
         expect(payload.execution).toBe('probe');
         expect(payload.cpu).toBe('Playwright Json CPU');
@@ -249,6 +259,11 @@ test.describe('us4-cli smoke', () => {
         expect(payload.moe.cold_offload_count).toBeGreaterThan(0);
         expect(payload.moe.reload_count).toBeGreaterThan(0);
         expect(payload.moe.telemetry_events).toBe(7);
+        expect(payload.kv.device_hit_rate_pct).toBeGreaterThan(0);
+        expect(payload.kv.host_hit_rate_pct).toBeGreaterThan(0);
+        expect(payload.kv.storage_hit_rate_pct).toBeGreaterThan(0);
+        expect(payload.kv.summary_hit_rate_pct).toBeGreaterThan(0);
+        expect(payload.kv.telemetry_events).toBe(7);
     });
 
     test('reports nano mode for low-memory cpu-only hosts', async ({}, testInfo) => {
@@ -298,6 +313,7 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('mode: CPU_ONLY');
         expect(stdout).toContain('run_status: completed');
         expect(stdout).toContain('generated_tokens:');
+        expect(stdout).toContain('kv.host_hit_rate_pct:');
         expect(stdout).toContain('speculative.acceptance_rate_pct:');
         expect(stdout).toContain('speculative.step_1.delta_pct:');
     });
@@ -332,6 +348,12 @@ test.describe('us4-cli smoke', () => {
             backend: string;
             generated_text: string;
             generated_tokens: number[];
+            kv: {
+                device_hit_rate_pct: number;
+                host_hit_rate_pct: number;
+                storage_hit_rate_pct: number;
+                summary_hit_rate_pct: number;
+            };
             speculative: {
                 active: boolean;
                 decoder: string;
@@ -345,6 +367,7 @@ test.describe('us4-cli smoke', () => {
         expect(payload.backend).toBe('cpu-avx2');
         expect(Array.isArray(payload.generated_tokens)).toBeTruthy();
         expect(typeof payload.generated_text).toBe('string');
+        expect(payload.kv.host_hit_rate_pct).toBeGreaterThan(0);
         expect(payload.speculative.active).toBeTruthy();
         expect(payload.speculative.decoder).toBe('peagle');
         expect(payload.speculative.acceptance_rate_pct).toBeGreaterThan(0);
@@ -2346,8 +2369,8 @@ test.describe('us4-cli smoke', () => {
         };
         expect(payload.sprint_count).toBe(12);
         expect(payload.total_tasks).toBe(88);
-        expect(payload.done_tasks).toBe(63);
-        expect(payload.remaining_tasks).toBe(25);
+        expect(payload.done_tasks).toBe(65);
+        expect(payload.remaining_tasks).toBe(23);
         expect(payload.sprints.some((entry) => entry.sprint === 'sprint-02' &&
                                                entry.status === 'done' &&
                                                entry.done_tasks === 9 &&
@@ -2387,9 +2410,10 @@ test.describe('us4-cli smoke', () => {
         expect(content).toContain('Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.');
         expect(content).toContain('- Sprints: 12');
         expect(content).toContain('- Total tasks: 88');
-        expect(content).toContain('- Done tasks: 63');
-        expect(content).toContain('- Remaining tasks: 25');
+        expect(content).toContain('- Done tasks: 65');
+        expect(content).toContain('- Remaining tasks: 23');
         expect(content).toContain('| sprint-02 | done | 9 | 0 | 9 |');
+        expect(content).toContain('| sprint-06 | done | 7 | 0 | 7 |');
         expect(content).toContain('| sprint-09 | done | 6 | 0 | 6 |');
         expect(content).toContain('| sprint-12 | in_progress | 6 | 2 | 8 |');
     });

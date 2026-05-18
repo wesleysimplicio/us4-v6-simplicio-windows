@@ -108,30 +108,37 @@ namespace us4::core
             return KvTier::kHost;
         }
 
-        us4::runtime::kv::KvPagerBudget BuildKvBudget(const RuntimePlan& plan)
-        {
-            const std::size_t hostBudget =
-                std::max<std::size_t>(plan.residency.expectedHostBytes, 32ULL * 1024ULL);
-            const std::size_t deviceBudget =
-                std::max<std::size_t>(plan.residency.expectedDeviceBytes, 16ULL * 1024ULL);
-            const std::size_t storageBudget =
-                std::max<std::size_t>(hostBudget * 2U, 64ULL * 1024ULL);
-            const std::size_t summaryBudget =
-                std::max<std::size_t>(plan.residency.kvBytesPerToken * 16U, 4ULL * 1024ULL);
-
-            return us4::runtime::kv::KvPagerBudget{
-                .deviceBytes = deviceBudget,
-                .hostBytes = hostBudget,
-                .storageBytes = storageBudget,
-                .summaryBytes = summaryBudget,
-            };
-        }
-
         std::string FormatPercentValue(const float rate)
         {
             std::ostringstream output;
             output << std::fixed << std::setprecision(2) << (rate * 100.0F);
             return output.str();
+        }
+
+        float SafeRate(const std::size_t hits, const std::size_t totalHits)
+        {
+            if (totalHits == 0U)
+            {
+                return 0.0F;
+            }
+            return static_cast<float>(hits) / static_cast<float>(totalHits);
+        }
+
+        us4::runtime::adapters::KvCacheTier ToAdapterKvTier(const us4::runtime::kv::KvTier tier)
+        {
+            switch (tier)
+            {
+            case us4::runtime::kv::KvTier::kDevice:
+                return us4::runtime::adapters::KvCacheTier::kDevice;
+            case us4::runtime::kv::KvTier::kHost:
+                return us4::runtime::adapters::KvCacheTier::kHost;
+            case us4::runtime::kv::KvTier::kStorage:
+                return us4::runtime::adapters::KvCacheTier::kStorage;
+            case us4::runtime::kv::KvTier::kSummary:
+                return us4::runtime::adapters::KvCacheTier::kSummary;
+            }
+
+            return us4::runtime::adapters::KvCacheTier::kHost;
         }
 
         us4::runtime::backends::TokenChunk SliceTokenChunk(
@@ -600,18 +607,18 @@ namespace us4::core
         });
         const auto prefixHit = prefixCache.TryGet(prefixKey);
 
-        us4::runtime::kv::KvPager pager;
-        pager.ConfigureBudget(BuildKvBudget(plan));
         const us4::runtime::kv::KvTier preferredTier = PreferredTierForPlan(plan);
-        static_cast<void>(pager.Append(
+        adapter->ResetKvCache();
+        static_cast<void>(adapter->AppendKvCache(
             sequenceId, prefill.tokens.size(),
             plan.residency.kvBytesPerToken * std::max<std::size_t>(prefill.tokens.size(), 1U),
-            preferredTier, plan.mode != us4::runtime::backends::RuntimeMode::kNano));
-        static_cast<void>(pager.Touch(sequenceId));
-        static_cast<void>(pager.Append(
+            ToAdapterKvTier(preferredTier),
+            plan.mode != us4::runtime::backends::RuntimeMode::kNano));
+        static_cast<void>(adapter->LookupKvCache(sequenceId));
+        static_cast<void>(adapter->AppendKvCache(
             sequenceId, generated.tokens.size(),
             plan.residency.kvBytesPerToken * std::max<std::size_t>(generated.tokens.size(), 1U),
-            preferredTier));
+            ToAdapterKvTier(preferredTier)));
 
         if (plan.mode == us4::runtime::backends::RuntimeMode::kMicro ||
             plan.mode == us4::runtime::backends::RuntimeMode::kNano)
@@ -621,12 +628,39 @@ namespace us4::core
                                     .headTokens = kSummaryHeadTokens,
                                     .tailTokens = kSummaryTailTokens,
                                 });
-            static_cast<void>(
-                pager.Summarize(sequenceId, summary.retainedTokens.size(), summary.estimatedBytes));
+            static_cast<void>(adapter->SummarizeKvCache(sequenceId, summary.retainedTokens.size(),
+                                                        summary.estimatedBytes));
+            static_cast<void>(adapter->LookupKvCache(sequenceId));
         }
-        static_cast<void>(pager.Rebalance());
-
-        const us4::runtime::kv::KvPagerStats kvStats = pager.Stats();
+        const auto kvHooks = adapter->KvHooks();
+        const us4::runtime::kv::KvPagerStats kvStats{
+            .segmentCount = kvHooks.segmentCount,
+            .pinnedSegmentCount = kvHooks.pinnedSegmentCount,
+            .residentBytes = kvHooks.residentBytes,
+            .deviceBytes = kvHooks.deviceBytes,
+            .hostBytes = kvHooks.hostBytes,
+            .storageBytes = kvHooks.storageBytes,
+            .summaryBytes = kvHooks.summaryBytes,
+            .deviceHitCount = kvHooks.deviceHitCount,
+            .hostHitCount = kvHooks.hostHitCount,
+            .storageHitCount = kvHooks.storageHitCount,
+            .summaryHitCount = kvHooks.summaryHitCount,
+            .evictionCount = kvHooks.evictionPagerCount,
+            .restoreCount = kvHooks.restoreCount,
+            .summarizeCount = kvHooks.pagerSummarizeCount,
+        };
+        const std::size_t totalKvHits = kvStats.deviceHitCount + kvStats.hostHitCount +
+                                        kvStats.storageHitCount + kvStats.summaryHitCount;
+        KvTierTelemetryReport kvTierTelemetry{
+            .deviceHits = kvStats.deviceHitCount,
+            .hostHits = kvStats.hostHitCount,
+            .storageHits = kvStats.storageHitCount,
+            .summaryHits = kvStats.summaryHitCount,
+            .deviceHitRate = SafeRate(kvStats.deviceHitCount, totalKvHits),
+            .hostHitRate = SafeRate(kvStats.hostHitCount, totalKvHits),
+            .storageHitRate = SafeRate(kvStats.storageHitCount, totalKvHits),
+            .summaryHitRate = SafeRate(kvStats.summaryHitCount, totalKvHits),
+        };
 
         us4::runtime::telemetry::TelemetrySink telemetry;
         telemetry.Record({
@@ -646,6 +680,30 @@ namespace us4::core
             .value = std::to_string(kvStats.hostBytes),
             .category = "kv",
             .numericValue = static_cast<double>(kvStats.hostBytes),
+        });
+        telemetry.Record({
+            .name = "kv.device_hit_rate_pct",
+            .value = FormatPercentValue(kvTierTelemetry.deviceHitRate),
+            .category = "kv",
+            .numericValue = static_cast<double>(kvTierTelemetry.deviceHitRate * 100.0F),
+        });
+        telemetry.Record({
+            .name = "kv.host_hit_rate_pct",
+            .value = FormatPercentValue(kvTierTelemetry.hostHitRate),
+            .category = "kv",
+            .numericValue = static_cast<double>(kvTierTelemetry.hostHitRate * 100.0F),
+        });
+        telemetry.Record({
+            .name = "kv.storage_hit_rate_pct",
+            .value = FormatPercentValue(kvTierTelemetry.storageHitRate),
+            .category = "kv",
+            .numericValue = static_cast<double>(kvTierTelemetry.storageHitRate * 100.0F),
+        });
+        telemetry.Record({
+            .name = "kv.summary_hit_rate_pct",
+            .value = FormatPercentValue(kvTierTelemetry.summaryHitRate),
+            .category = "kv",
+            .numericValue = static_cast<double>(kvTierTelemetry.summaryHitRate * 100.0F),
         });
 
         const auto speculativeTelemetry =
@@ -709,6 +767,7 @@ namespace us4::core
         result.report.scalarAttentionChecksum = Checksum(attention);
         result.report.generatedText = RenderGeneratedText(generated.tokens);
         result.report.kvStats = kvStats;
+        result.report.kvTierTelemetry = kvTierTelemetry;
         result.report.prefixCacheEntries = prefixCache.Size();
         result.report.prefixCacheWarmEntries = prefixCache.WarmEntryCount();
         result.report.telemetryEventCount = telemetry.Snapshot().size();

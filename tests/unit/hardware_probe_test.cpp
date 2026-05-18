@@ -167,6 +167,31 @@ namespace us4::core
                                     { return event.name == "moe.reload_count"; }));
         }
 
+        TEST(HardwareProbeTest, ProbeIncludesKvTelemetryPreview)
+        {
+            ClearProbeEnv();
+
+            const ProbeSummary summary = ProbeHardware();
+
+            EXPECT_GT(summary.kvTelemetry.segmentCount, 0U);
+            EXPECT_GT(summary.kvTelemetry.deviceHits, 0U);
+            EXPECT_GT(summary.kvTelemetry.hostHits, 0U);
+            EXPECT_GT(summary.kvTelemetry.storageHits, 0U);
+            EXPECT_GT(summary.kvTelemetry.summaryHits, 0U);
+            EXPECT_GT(summary.kvTelemetry.evictionCount, 0U);
+            EXPECT_GT(summary.kvTelemetry.restoreCount, 0U);
+            EXPECT_GT(summary.kvTelemetry.summarizeCount, 0U);
+            EXPECT_EQ(summary.kvTelemetry.events.size(), 7U);
+            EXPECT_TRUE(std::any_of(summary.kvTelemetry.events.begin(),
+                                    summary.kvTelemetry.events.end(),
+                                    [](const auto& event)
+                                    { return event.name == "kv.device_hit_rate_pct"; }));
+            EXPECT_TRUE(std::any_of(summary.kvTelemetry.events.begin(),
+                                    summary.kvTelemetry.events.end(),
+                                    [](const auto& event)
+                                    { return event.name == "kv.summary_hit_rate_pct"; }));
+        }
+
         TEST(HardwareProbeTest, RuntimeContextBuildsPlanForKnownModel)
         {
             us4::runtime::backends::HardwareCapabilities capabilities{};
@@ -531,6 +556,47 @@ namespace us4::core
             EXPECT_EQ(gemmaTokens.size(), prompt.size());
         }
 
+        TEST(HardwareProbeTest, ScalarAdaptersExposeKvHooksForQwenAndGemma)
+        {
+            using us4::runtime::adapters::KvCacheTier;
+
+            auto qwenAdapter = us4::runtime::adapters::CreateQwenScalarAdapter();
+            auto gemmaAdapter = us4::runtime::adapters::CreateGemmaScalarAdapter();
+
+            us4::runtime::adapters::RuntimeBinding qwenBinding{};
+            qwenBinding.backend.name = "cpu-avx2";
+            qwenBinding.backend.kind = us4::runtime::backends::BackendKind::kCpu;
+            qwenBinding.modelId = "qwen-0.5b";
+            qwenBinding.profileId = "cpu-only";
+
+            us4::runtime::adapters::RuntimeBinding gemmaBinding = qwenBinding;
+            gemmaBinding.modelId = "gemma-2b";
+
+            ASSERT_TRUE(qwenAdapter->Attach(qwenBinding));
+            ASSERT_TRUE(gemmaAdapter->Attach(gemmaBinding));
+            ASSERT_TRUE(qwenAdapter->LoadModel("builtin://qwen-0.5b"));
+            ASSERT_TRUE(gemmaAdapter->LoadModel("builtin://gemma-2b"));
+
+            ASSERT_TRUE(qwenAdapter->AppendKvCache("qwen-seq", 8U, 2048U, KvCacheTier::kHost));
+            ASSERT_TRUE(gemmaAdapter->AppendKvCache("gemma-seq", 8U, 2048U, KvCacheTier::kHost));
+            EXPECT_TRUE(qwenAdapter->LookupKvCache("qwen-seq").has_value());
+            EXPECT_TRUE(gemmaAdapter->LookupKvCache("gemma-seq").has_value());
+            EXPECT_TRUE(qwenAdapter->SummarizeKvCache("qwen-seq", 4U, 128U));
+            EXPECT_TRUE(gemmaAdapter->EvictKvCache("gemma-seq", KvCacheTier::kStorage));
+
+            const auto qwenHooks = qwenAdapter->KvHooks();
+            const auto gemmaHooks = gemmaAdapter->KvHooks();
+
+            EXPECT_EQ(qwenHooks.appendCount, 1U);
+            EXPECT_EQ(qwenHooks.lookupCount, 1U);
+            EXPECT_EQ(qwenHooks.summarizeCount, 1U);
+            EXPECT_EQ(qwenHooks.summaryHitCount, 0U);
+            EXPECT_EQ(gemmaHooks.appendCount, 1U);
+            EXPECT_EQ(gemmaHooks.lookupCount, 1U);
+            EXPECT_EQ(gemmaHooks.evictCount, 1U);
+            EXPECT_GT(gemmaHooks.storageBytes, 0U);
+        }
+
         TEST(HardwareProbeTest, ExecuteCpuScalarRunReturnsCompletedReport)
         {
             us4::runtime::backends::HardwareCapabilities capabilities{};
@@ -554,8 +620,9 @@ namespace us4::core
             EXPECT_GT(runResult.report.scalarMatMulChecksum, 0.0);
             EXPECT_GT(runResult.report.scalarAttentionChecksum, 0.0);
             EXPECT_EQ(runResult.report.kvStats.segmentCount, 1U);
+            EXPECT_GT(runResult.report.kvTierTelemetry.hostHitRate, 0.0F);
             EXPECT_EQ(runResult.report.prefixCacheWarmEntries, 1U);
-            EXPECT_GE(runResult.report.telemetryEventCount, 3U);
+            EXPECT_GE(runResult.report.telemetryEventCount, 7U);
             EXPECT_TRUE(runResult.report.speculativeTelemetry.active);
             EXPECT_EQ(runResult.report.speculativeTelemetry.decoder, "peagle");
             EXPECT_GT(runResult.report.speculativeTelemetry.acceptanceRate, 0.0F);
@@ -747,7 +814,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.45"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.46"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -790,6 +857,7 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("execution: cpu-scalar"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("generated_tokens:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("kv.segment_count: 1"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("kv.host_hit_rate_pct:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("prefix_cache.entries: 1"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("speculative.acceptance_rate_pct:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("speculative.step_1.delta_pct:"), std::string::npos);
@@ -820,6 +888,8 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"status\": \"completed\""), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"backend\": \"cpu-avx2\""), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"generated_tokens\": ["), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"device_hit_rate_pct\": "), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"summary_hit_rate_pct\": "), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"speculative\": {"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"acceptance_rate_pct\": "), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"token_acceptance_trace\": ["),
@@ -1071,6 +1141,8 @@ namespace us4::core
             EXPECT_NE(output.stdoutText.find("\"hot_hit_rate_pct\": "), std::string::npos);
             EXPECT_NE(output.stdoutText.find("\"eviction_count\": "), std::string::npos);
             EXPECT_NE(output.stdoutText.find("\"reload_count\": "), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"kv\": {"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"summary_hit_rate_pct\": "), std::string::npos);
 
             ClearProbeEnv();
         }

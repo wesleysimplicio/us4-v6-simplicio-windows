@@ -2,6 +2,7 @@
 
 #include "us4/runtime/adapters/i_us4_windows_adapter.h"
 #include "us4/runtime/adapters/model_loader.h"
+#include "us4/runtime/kv/kv_pager.h"
 
 #include <cstdint>
 #include <string>
@@ -55,6 +56,19 @@ namespace us4::runtime::adapters
         [[nodiscard]] backends::TokenChunk Prefill(const std::string& prompt) override;
         [[nodiscard]] backends::TokenChunk
         Generate(const backends::SessionRequest& request) override;
+        [[nodiscard]] bool AppendKvCache(const std::string& sequenceId, std::size_t appendedTokens,
+                                         std::size_t appendedBytes,
+                                         KvCacheTier preferredTier,
+                                         bool pinned = false) override;
+        [[nodiscard]] std::optional<KvCacheEntry>
+        LookupKvCache(const std::string& sequenceId) override;
+        [[nodiscard]] bool EvictKvCache(const std::string& sequenceId,
+                                        KvCacheTier targetTier) override;
+        [[nodiscard]] bool SummarizeKvCache(const std::string& sequenceId,
+                                            std::size_t retainedTokens,
+                                            std::size_t retainedBytes) override;
+        [[nodiscard]] KvHookSnapshot KvHooks() const override;
+        void ResetKvCache() override;
         [[nodiscard]] GenerationFrame LastGenerationFrame() const override;
         void Reset() override;
 
@@ -70,11 +84,14 @@ namespace us4::runtime::adapters
         EstimateHostBytes(const backends::SessionRequest& request) const;
         [[nodiscard]] virtual std::size_t
         EstimateDeviceBytes(const backends::SessionRequest& request) const;
+        void ConfigureKvPagerBudget();
 
       private:
         DenseAdapterConfig config_;
         std::optional<RuntimeBinding> binding_;
         std::optional<ModelAssetDescriptor> loadedModel_;
+        kv::KvPager kvPager_;
+        KvHookSnapshot kvHooks_;
         std::size_t lastPrefillTokens_ = 0;
         GenerationFrame lastFrame_{};
         AdapterLifecycle lifecycle_ = AdapterLifecycle::kDetached;

@@ -4,6 +4,8 @@
 #include "runtime/core/runtime_mode.h"
 #include "us4/runtime/backends/backend_selector.h"
 #include "us4/runtime/backends/hardware_probe.h"
+#include "us4/runtime/kv/kv_pager.h"
+#include "us4/runtime/kv/summarizer.h"
 #include "us4/runtime/moe/expert_pager.h"
 #include "us4/runtime/moe/expert_router.h"
 
@@ -22,6 +24,15 @@ namespace us4::core
             std::ostringstream output;
             output << std::fixed << std::setprecision(2) << (ratio * 100.0F);
             return output.str();
+        }
+
+        float SafeRate(const std::size_t hits, const std::size_t totalHits)
+        {
+            if (totalHits == 0U)
+            {
+                return 0.0F;
+            }
+            return static_cast<float>(hits) / static_cast<float>(totalHits);
         }
 
         ProbeSummary::MoeTelemetryPreview BuildMoeTelemetryPreview()
@@ -154,6 +165,104 @@ namespace us4::core
             return preview;
         }
 
+        ProbeSummary::KvTelemetryPreview BuildKvTelemetryPreview()
+        {
+            ProbeSummary::KvTelemetryPreview preview{};
+
+            us4::runtime::kv::KvPager pager;
+            pager.ConfigureBudget(us4::runtime::kv::KvPagerBudget{
+                .deviceBytes = 128U,
+                .hostBytes = 256U,
+                .storageBytes = 96U,
+                .summaryBytes = 32U,
+            });
+
+            static_cast<void>(pager.Append("probe-device", 12U, 64U,
+                                           us4::runtime::kv::KvTier::kDevice, true));
+            static_cast<void>(pager.Append("probe-host", 16U, 64U, us4::runtime::kv::KvTier::kHost));
+            static_cast<void>(
+                pager.Append("probe-storage", 24U, 64U, us4::runtime::kv::KvTier::kHost));
+            static_cast<void>(pager.Append("probe-summary", 24U, 64U, us4::runtime::kv::KvTier::kHost));
+
+            static_cast<void>(pager.Touch("probe-device"));
+            static_cast<void>(pager.Touch("probe-host"));
+            static_cast<void>(pager.Evict("probe-storage", us4::runtime::kv::KvTier::kStorage));
+            static_cast<void>(pager.Touch("probe-storage"));
+            const auto summary =
+                us4::runtime::kv::Summarizer::Compact({1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+                                                      us4::runtime::kv::SummaryWindow{
+                                                          .headTokens = 3U,
+                                                          .tailTokens = 2U,
+                                                      });
+            static_cast<void>(
+                pager.Summarize("probe-summary", summary.retainedTokens.size(), summary.estimatedBytes));
+            static_cast<void>(pager.Touch("probe-summary"));
+            static_cast<void>(pager.Restore("probe-storage", us4::runtime::kv::KvTier::kHost));
+
+            const auto stats = pager.Stats();
+            const std::size_t totalHits =
+                stats.deviceHitCount + stats.hostHitCount + stats.storageHitCount +
+                stats.summaryHitCount;
+            preview.segmentCount = stats.segmentCount;
+            preview.deviceHits = stats.deviceHitCount;
+            preview.hostHits = stats.hostHitCount;
+            preview.storageHits = stats.storageHitCount;
+            preview.summaryHits = stats.summaryHitCount;
+            preview.evictionCount = stats.evictionCount;
+            preview.restoreCount = stats.restoreCount;
+            preview.summarizeCount = stats.summarizeCount;
+            preview.deviceHitRate = SafeRate(stats.deviceHitCount, totalHits);
+            preview.hostHitRate = SafeRate(stats.hostHitCount, totalHits);
+            preview.storageHitRate = SafeRate(stats.storageHitCount, totalHits);
+            preview.summaryHitRate = SafeRate(stats.summaryHitCount, totalHits);
+
+            us4::runtime::telemetry::TelemetrySink telemetry;
+            telemetry.Record({
+                .name = "kv.device_hit_rate_pct",
+                .value = FormatPercent(preview.deviceHitRate),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.deviceHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "kv.host_hit_rate_pct",
+                .value = FormatPercent(preview.hostHitRate),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.hostHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "kv.storage_hit_rate_pct",
+                .value = FormatPercent(preview.storageHitRate),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.storageHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "kv.summary_hit_rate_pct",
+                .value = FormatPercent(preview.summaryHitRate),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.summaryHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "kv.eviction_count",
+                .value = std::to_string(preview.evictionCount),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.evictionCount),
+            });
+            telemetry.Record({
+                .name = "kv.restore_count",
+                .value = std::to_string(preview.restoreCount),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.restoreCount),
+            });
+            telemetry.Record({
+                .name = "kv.summarize_count",
+                .value = std::to_string(preview.summarizeCount),
+                .category = "kv",
+                .numericValue = static_cast<double>(preview.summarizeCount),
+            });
+            preview.events = telemetry.Snapshot();
+            return preview;
+        }
+
         std::vector<ProbeAdvisory> BuildAdvisories(const ProbeSummary& summary)
         {
             std::vector<ProbeAdvisory> advisories;
@@ -253,6 +362,7 @@ namespace us4::core
         }
         summary.advisories = BuildAdvisories(summary);
         summary.moeTelemetry = BuildMoeTelemetryPreview();
+        summary.kvTelemetry = BuildKvTelemetryPreview();
         return summary;
     }
 
@@ -326,6 +436,24 @@ namespace us4::core
             output << "  reload_count: " << summary.moeTelemetry.reloadCount << '\n';
             output << "  router_entropy: " << summary.moeTelemetry.routerEntropy << '\n';
             output << "  telemetry_events: " << summary.moeTelemetry.events.size() << '\n';
+        }
+
+        if (summary.kvTelemetry.segmentCount > 0U)
+        {
+            output << "kv.preview:\n";
+            output << "  segment_count: " << summary.kvTelemetry.segmentCount << '\n';
+            output << "  device_hit_rate_pct: " << FormatPercent(summary.kvTelemetry.deviceHitRate)
+                   << '\n';
+            output << "  host_hit_rate_pct: " << FormatPercent(summary.kvTelemetry.hostHitRate)
+                   << '\n';
+            output << "  storage_hit_rate_pct: " << FormatPercent(summary.kvTelemetry.storageHitRate)
+                   << '\n';
+            output << "  summary_hit_rate_pct: " << FormatPercent(summary.kvTelemetry.summaryHitRate)
+                   << '\n';
+            output << "  eviction_count: " << summary.kvTelemetry.evictionCount << '\n';
+            output << "  restore_count: " << summary.kvTelemetry.restoreCount << '\n';
+            output << "  summarize_count: " << summary.kvTelemetry.summarizeCount << '\n';
+            output << "  telemetry_events: " << summary.kvTelemetry.events.size() << '\n';
         }
 
         output << "next: " << BuildLaunchHint(summary) << '\n';

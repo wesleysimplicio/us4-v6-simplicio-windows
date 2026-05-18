@@ -70,6 +70,18 @@ namespace us4::core
         std::size_t videoEntries = 0;
     };
 
+    struct KvTierTelemetryReport
+    {
+        std::size_t deviceHits = 0;
+        std::size_t hostHits = 0;
+        std::size_t storageHits = 0;
+        std::size_t summaryHits = 0;
+        float deviceHitRate = 0.0F;
+        float hostHitRate = 0.0F;
+        float storageHitRate = 0.0F;
+        float summaryHitRate = 0.0F;
+    };
+
     struct CpuScalarRunReport
     {
         std::string modelPath;
@@ -82,6 +94,7 @@ namespace us4::core
         double scalarAttentionChecksum = 0.0;
         std::string generatedText;
         us4::runtime::kv::KvPagerStats kvStats;
+        KvTierTelemetryReport kvTierTelemetry;
         std::size_t prefixCacheEntries = 0;
         std::size_t prefixCacheWarmEntries = 0;
         std::size_t telemetryEventCount = 0;
