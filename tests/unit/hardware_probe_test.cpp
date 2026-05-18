@@ -279,6 +279,14 @@ namespace us4::core
                                                benchmark.modelId == "gemma-2b" &&
                                                benchmark.touchesCli;
                                     }));
+            EXPECT_TRUE(std::any_of(cpuCases.begin(), cpuCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "moe_kimi_cpu_only" &&
+                                               benchmark.adapterId == "moe-kimi" &&
+                                               benchmark.modelId == "kimi-k2" &&
+                                               benchmark.participatesInCorrectnessGate;
+                                    }));
         }
 
         TEST(HardwareProbeTest, BenchmarkRegistryKeepsCrossBackendCorrectnessVisibleToCpuQueries)
@@ -646,6 +654,7 @@ namespace us4::core
 
             ASSERT_TRUE(runResult.ok);
             EXPECT_GT(runResult.report.moeRouteCount, 0U);
+            EXPECT_GT(runResult.report.moeLoadBalanceLoss, 0.0F);
             EXPECT_GT(runResult.report.moePrefetchTelemetry.predictionCount, 0U);
             EXPECT_GT(runResult.report.moePrefetchTelemetry.hitRatio, 0.0F);
             EXPECT_FALSE(runResult.report.moePrefetchTelemetry.predictedExperts.empty());
@@ -814,7 +823,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.46"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.47"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)

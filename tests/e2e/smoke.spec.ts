@@ -426,6 +426,7 @@ test.describe('us4-cli smoke', () => {
         {
             moe: {
                 route_count: number;
+                load_balance_loss: number;
                 prefetch: {
                     prediction_count: number;
                     hit_ratio_pct: number;
@@ -438,11 +439,53 @@ test.describe('us4-cli smoke', () => {
             };
         };
         expect(payload.moe.route_count).toBeGreaterThan(0);
+        expect(payload.moe.load_balance_loss).toBeGreaterThan(0);
         expect(payload.moe.prefetch.prediction_count).toBeGreaterThan(0);
         expect(payload.moe.prefetch.hit_ratio_pct).toBeGreaterThan(0);
         expect(Array.isArray(payload.moe.prefetch.predicted_experts)).toBeTruthy();
         expect(payload.moe.sparsity_cache.entry_count).toBeGreaterThan(0);
         expect(payload.moe.sparsity_cache.hit_ratio_pct).toBeGreaterThan(0);
+    });
+
+    test('runs the Kimi MoE cpu path with load-balance telemetry', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'kimi-k2', '--prompt', 'kimi moe telemetry from playwright',
+                '--backend', 'cpu', '--max-tokens', '5', '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-kimi-moe-telemetry-json', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as
+        {
+            family: string;
+            supports_moe: boolean;
+            moe: {
+                route_count: number;
+                load_balance_loss: number;
+                prefetch: {
+                    hit_ratio_pct: number;
+                };
+            };
+        };
+        expect(payload.family).toBe('kimi');
+        expect(payload.supports_moe).toBeTruthy();
+        expect(payload.moe.route_count).toBeGreaterThan(0);
+        expect(payload.moe.load_balance_loss).toBeGreaterThan(0);
+        expect(payload.moe.prefetch.hit_ratio_pct).toBeGreaterThan(0);
     });
 
     test('shows MiniMax multimodal cache telemetry in text mode', async ({}, testInfo) => {
@@ -2369,8 +2412,8 @@ test.describe('us4-cli smoke', () => {
         };
         expect(payload.sprint_count).toBe(12);
         expect(payload.total_tasks).toBe(88);
-        expect(payload.done_tasks).toBe(65);
-        expect(payload.remaining_tasks).toBe(23);
+        expect(payload.done_tasks).toBe(66);
+        expect(payload.remaining_tasks).toBe(22);
         expect(payload.sprints.some((entry) => entry.sprint === 'sprint-02' &&
                                                entry.status === 'done' &&
                                                entry.done_tasks === 9 &&
@@ -2410,8 +2453,8 @@ test.describe('us4-cli smoke', () => {
         expect(content).toContain('Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.');
         expect(content).toContain('- Sprints: 12');
         expect(content).toContain('- Total tasks: 88');
-        expect(content).toContain('- Done tasks: 65');
-        expect(content).toContain('- Remaining tasks: 23');
+        expect(content).toContain('- Done tasks: 66');
+        expect(content).toContain('- Remaining tasks: 22');
         expect(content).toContain('| sprint-02 | done | 9 | 0 | 9 |');
         expect(content).toContain('| sprint-06 | done | 7 | 0 | 7 |');
         expect(content).toContain('| sprint-09 | done | 6 | 0 | 6 |');

@@ -774,6 +774,7 @@ namespace us4::core
         result.report.moeRouteCount = moeStats.deviceRouteCount + moeStats.hostRouteCount;
         result.report.moeHostRouteCount = moeStats.hostRouteCount;
         result.report.moeRouterEntropy = moeStats.entropy;
+        result.report.moeLoadBalanceLoss = moeStats.loadBalanceLoss;
         result.report.moeHotExperts = expertPagerStats.hotExperts;
         result.report.moeWarmExperts = expertPagerStats.warmExperts;
         result.report.moeColdExperts = expertPagerStats.coldExperts;

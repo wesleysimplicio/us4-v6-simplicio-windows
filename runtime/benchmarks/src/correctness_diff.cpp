@@ -143,6 +143,17 @@ namespace
         return RunScalarAttention(32U, 64U);
     }
 
+    ScalarBenchmarkResult RunKimiMoeBaseline()
+    {
+        const ScalarBenchmarkResult matmul = RunScalarMatmul(96U, 96U, 128U);
+        const ScalarBenchmarkResult attention = RunScalarAttention(48U, 64U);
+        return ScalarBenchmarkResult{
+            .elapsedMs = matmul.elapsedMs + attention.elapsedMs,
+            .checksum = matmul.checksum + attention.checksum,
+            .operations = matmul.operations + attention.operations,
+        };
+    }
+
     std::string RenderReport(const std::vector<std::string>& lines)
     {
         std::ostringstream report;
@@ -175,6 +186,7 @@ int main()
         {"dense_baseline_llama_cpu_only", -145117.517121, 1e-3, &RunDenseBaseline},
         {"dense_baseline_bitnet_cpu_only", -145117.517121, 1e-3, &RunDenseBaseline},
         {"dense_baseline_ternary_cpu_only", -145117.517121, 1e-3, &RunDenseBaseline},
+        {"moe_kimi_cpu_only", -145117.517121, 1e-3, &RunKimiMoeBaseline},
     };
 
     bool failed = false;

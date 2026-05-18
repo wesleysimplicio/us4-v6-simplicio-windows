@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.47] - 2026-05-18
+
+### Added
+
+- Kimi MoE CPU benchmark and correctness gate coverage, including a dedicated `moe_kimi_cpu_only` registry case
+- explicit MoE load-balance telemetry on the `run` text/JSON contract, plus a Kimi CLI smoke path that proves the adapter route end to end
+
+### Changed
+
+- completed Sprint 08 task `T08.4` in the versioned planning files and aligned the planning snapshot with the newly validated Kimi adapter evidence
+
 ## [0.1.46] - 2026-05-18
 
 ### Added

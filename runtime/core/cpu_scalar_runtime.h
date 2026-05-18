@@ -101,6 +101,7 @@ namespace us4::core
         std::size_t moeRouteCount = 0;
         std::size_t moeHostRouteCount = 0;
         float moeRouterEntropy = 0.0F;
+        float moeLoadBalanceLoss = 0.0F;
         std::size_t moeHotExperts = 0;
         std::size_t moeWarmExperts = 0;
         std::size_t moeColdExperts = 0;

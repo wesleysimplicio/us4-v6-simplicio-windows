@@ -108,6 +108,32 @@ namespace us4::runtime::tests
             EXPECT_EQ(plan.model.adapterId, "moe-deepseek");
             EXPECT_GT(runResult.report.moeRouteCount, 0U);
             EXPECT_GT(runResult.report.moeRouterEntropy, 0.0F);
+            EXPECT_GT(runResult.report.moeLoadBalanceLoss, 0.0F);
+            EXPECT_GT(runResult.report.telemetryEventCount, 3U);
+        }
+
+        TEST(MoeRuntimeTest, CpuScalarRunServesKimiMoeScaffold)
+        {
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.modelId = "kimi-k2";
+            request.mode = us4::runtime::backends::RuntimeMode::kCpuOnly;
+            request.preferredBackend = "cpu";
+            request.maxGenerationTokens = 4U;
+
+            const us4::core::RuntimePlan plan =
+                us4::core::RuntimeContext::BuildPlan(request, capabilities);
+            const auto runResult = us4::core::ExecuteCpuScalarRun(plan, "kimi moe check");
+
+            ASSERT_TRUE(runResult.ok);
+            EXPECT_EQ(plan.model.adapterId, "moe-kimi");
+            EXPECT_GT(runResult.report.moeRouteCount, 0U);
+            EXPECT_GT(runResult.report.moeRouterEntropy, 0.0F);
+            EXPECT_GT(runResult.report.moeLoadBalanceLoss, 0.0F);
+            EXPECT_GT(runResult.report.moePrefetchTelemetry.hitRatio, 0.0F);
             EXPECT_GT(runResult.report.telemetryEventCount, 3U);
         }
 

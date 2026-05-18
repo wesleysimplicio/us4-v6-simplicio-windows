@@ -15,7 +15,7 @@ DeepSeek + Kimi MoE. Expert pager VRAM->RAM->SSD. Top-k routing. Cold expert off
 - [x] T08.1 — `runtime/moe/Router` (top-k softmax, load balance loss)
 - [x] T08.2 — `runtime/moe/ExpertPager` (VRAM resident hot, RAM warm, SSD cold)
 - [x] T08.3 — `runtime/adapters/deepseek/DeepSeekMoEAdapter` (shared + routed experts)
-- [ ] T08.4 — `runtime/adapters/kimi/KimiMoEAdapter`
+- [x] T08.4 — `runtime/adapters/kimi/KimiMoEAdapter`
 - [ ] T08.5 — Loader MoE: lazy load expert por demanda (mmap shards)
 - [x] T08.6 — Telemetry: expert hit-rate, eviction count, router entropy
 

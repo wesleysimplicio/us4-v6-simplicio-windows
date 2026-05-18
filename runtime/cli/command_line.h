@@ -249,9 +249,11 @@ namespace us4::cli
         json << "  \"status\": \"completed\",\n";
         json << "  \"plan_execution\": \"cpu-scalar\",\n";
         json << "  \"model\": \"" << EscapeJson(plan.model.id) << "\",\n";
+        json << "  \"family\": \"" << EscapeJson(us4::core::ToString(plan.model.family)) << "\",\n";
         json << "  \"backend\": \"" << EscapeJson(plan.backend.name) << "\",\n";
         json << "  \"mode\": \"" << EscapeJson(us4::core::ToString(plan.mode)) << "\",\n";
         json << "  \"profile\": \"" << EscapeJson(plan.profile.id) << "\",\n";
+        json << "  \"supports_moe\": " << (plan.model.supportsMoE ? "true" : "false") << ",\n";
         json << "  \"prompt_chars\": " << prompt.size() << ",\n";
         json << "  \"prompt_tokens_estimate\": " << EstimatePromptTokens(prompt) << ",\n";
         json << "  \"model_path\": \"" << EscapeJson(runResult.report.modelPath) << "\",\n";
@@ -326,6 +328,7 @@ namespace us4::cli
         json << "    \"route_count\": " << runResult.report.moeRouteCount << ",\n";
         json << "    \"host_route_count\": " << runResult.report.moeHostRouteCount << ",\n";
         json << "    \"router_entropy\": " << runResult.report.moeRouterEntropy << ",\n";
+        json << "    \"load_balance_loss\": " << runResult.report.moeLoadBalanceLoss << ",\n";
         json << "    \"hot_experts\": " << runResult.report.moeHotExperts << ",\n";
         json << "    \"warm_experts\": " << runResult.report.moeWarmExperts << ",\n";
         json << "    \"cold_experts\": " << runResult.report.moeColdExperts << ",\n";
@@ -1347,6 +1350,7 @@ namespace us4::cli
             output << "moe.route_count: " << runResult.report.moeRouteCount << '\n';
             output << "moe.host_route_count: " << runResult.report.moeHostRouteCount << '\n';
             output << "moe.router_entropy: " << runResult.report.moeRouterEntropy << '\n';
+            output << "moe.load_balance_loss: " << runResult.report.moeLoadBalanceLoss << '\n';
             output << "moe.hot_experts: " << runResult.report.moeHotExperts << '\n';
             output << "moe.warm_experts: " << runResult.report.moeWarmExperts << '\n';
             output << "moe.cold_experts: " << runResult.report.moeColdExperts << '\n';
