@@ -10,6 +10,8 @@ namespace us4::runtime::backends
     class BackendSelector
     {
       public:
+        [[nodiscard]] static BackendDescriptor
+        SelectCpuFallback(const HardwareCapabilities& capabilities);
         [[nodiscard]] static BackendCatalog BuildCatalog(const HardwareCapabilities& capabilities);
         [[nodiscard]] static std::optional<BackendDescriptor>
         SelectPrimary(const SessionRequest& request, const HardwareCapabilities& capabilities);

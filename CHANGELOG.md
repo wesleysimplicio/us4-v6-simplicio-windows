@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.52] - 2026-05-18
+
+### Added
+- explicit CPU fallback selection coverage for AVX2, AVX-512 and AMX capability levels
+
+### Changed
+- `BackendSelector` now exposes a reusable CPU fallback descriptor builder so runtime planning and backend catalogs share the same cpuid-driven CPU backend choice
+- `RuntimeContext` now uses the cpuid-driven CPU fallback selector instead of hardcoding `cpu-avx2`
+
 ## [0.1.51] - 2026-05-18
 
 ### Added

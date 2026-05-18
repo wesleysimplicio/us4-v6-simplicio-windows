@@ -76,6 +76,31 @@ namespace us4::runtime::backends
             return capabilities.hasAvx512 ? 4096U : 2048U;
         }
 
+        BackendVendor InferCpuVendor(const HardwareCapabilities& capabilities)
+        {
+            std::string cpuName = capabilities.cpuName;
+            std::transform(cpuName.begin(), cpuName.end(), cpuName.begin(),
+                           [](unsigned char character)
+                           { return static_cast<char>(std::tolower(character)); });
+
+            if (cpuName.find("intel") != std::string::npos)
+            {
+                return BackendVendor::kIntel;
+            }
+            if (cpuName.find("amd") != std::string::npos ||
+                cpuName.find("ryzen") != std::string::npos ||
+                cpuName.find("epyc") != std::string::npos)
+            {
+                return BackendVendor::kAmd;
+            }
+            if (cpuName.find("qualcomm") != std::string::npos ||
+                cpuName.find("snapdragon") != std::string::npos)
+            {
+                return BackendVendor::kQualcomm;
+            }
+            return BackendVendor::kUnknown;
+        }
+
         BackendDescriptor MakeCpuBackend(const HardwareCapabilities& capabilities)
         {
             BackendDescriptor descriptor;
@@ -87,7 +112,7 @@ namespace us4::runtime::backends
                 capabilities.hasAmx ? "CPU (AMX)"
                                     : (capabilities.hasAvx512 ? "CPU (AVX-512)" : "CPU (AVX2)");
             descriptor.deviceClass = DeviceClass::kCpuOnly;
-            descriptor.vendor = BackendVendor::kIntel;
+            descriptor.vendor = InferCpuVendor(capabilities);
             descriptor.availability = BackendAvailability::kAvailable;
             descriptor.defaultPrecision =
                 capabilities.hasAmx ? PrecisionMode::kBf16 : PrecisionMode::kFp32;
@@ -238,6 +263,11 @@ namespace us4::runtime::backends
 
     } // namespace
 
+    BackendDescriptor BackendSelector::SelectCpuFallback(const HardwareCapabilities& capabilities)
+    {
+        return MakeCpuBackend(capabilities);
+    }
+
     BackendCatalog BackendSelector::BuildCatalog(const HardwareCapabilities& capabilities)
     {
         BackendCatalog catalog;
@@ -262,7 +292,7 @@ namespace us4::runtime::backends
             catalog.push_back(MakeWindowsMlBackend(capabilities));
         }
 
-        catalog.push_back(MakeCpuBackend(capabilities));
+        catalog.push_back(SelectCpuFallback(capabilities));
         SortCatalog(&catalog, nullptr);
         return catalog;
     }

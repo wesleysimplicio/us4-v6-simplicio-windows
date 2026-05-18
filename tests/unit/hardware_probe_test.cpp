@@ -193,6 +193,39 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ProbeSelectsAvx512CpuBackendWhenDetected)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_AVX512", "1");
+#endif
+
+            const ProbeSummary summary = ProbeHardware();
+
+            EXPECT_EQ(summary.selectedBackend, "cpu-avx512");
+            EXPECT_FALSE(summary.HasAccelerator());
+            EXPECT_NE(summary.mode, "NANO");
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ProbeSelectsAmxCpuBackendWhenDetected)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_AVX512", "1");
+            _putenv_s("US4_HAS_AMX", "1");
+#endif
+
+            const ProbeSummary summary = ProbeHardware();
+
+            EXPECT_EQ(summary.selectedBackend, "cpu-amx");
+            EXPECT_FALSE(summary.HasAccelerator());
+            EXPECT_NE(summary.mode, "NANO");
+
+            ClearProbeEnv();
+        }
+
         TEST(HardwareProbeTest, ProbeIncludesMoeTelemetryPreview)
         {
             ClearProbeEnv();
@@ -867,7 +900,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.51"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.52"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)

@@ -1,6 +1,6 @@
 ---
 sprint: sprint-04
-status: todo
+status: in_progress
 start: 2026-06-25
 end: 2026-07-08
 owner: us4-core
@@ -17,7 +17,7 @@ Caminhos quentes CPU: AVX2, AVX-512, AMX (Intel BF16/INT8). oneDNN para block GE
 - [ ] T04.3 — `runtime/backends/cpu_avx/avx_attention.cpp` (fused softmax-rescale)
 - [ ] T04.4 — `runtime/backends/cpu_avx/dequant_{int8,int4}.cpp` (group-wise scales)
 - [ ] T04.5 — `runtime/backends/onednn/OneDnnBackend` (block GEMM via primitives)
-- [ ] T04.6 — Auto-select AVX level via cpuid (AVX2 / AVX-512 / AMX)
+- [x] T04.6 — Auto-select AVX level via cpuid (AVX2 / AVX-512 / AMX)
 - [ ] T04.7 — Re-bench Qwen/Gemma CPU AVX vs scalar
 
 ## Test plan

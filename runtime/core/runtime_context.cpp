@@ -128,15 +128,7 @@ namespace us4::core
         }
         else
         {
-            plan.backend.kind = BackendKind::kCpu;
-            plan.backend.name = "cpu-avx2";
-            plan.backend.displayName = "CPU AVX2 Fallback";
-            plan.backend.deviceClass = DeviceClass::kCpuOnly;
-            plan.backend.vendor = BackendVendor::kMicrosoft;
-            plan.backend.defaultPrecision = PrecisionMode::kFp32;
-            plan.backend.supportsPagedKv = true;
-            plan.backend.supportsMoE = true;
-            plan.backend.budget = capabilities.budget;
+            plan.backend = BackendSelector::SelectCpuFallback(capabilities);
             plan.issues.push_back(
                 {"fallback-backend", "No primary accelerator matched; using CPU fallback.", true});
             plan.fallbacks.push_back(plan.backend);

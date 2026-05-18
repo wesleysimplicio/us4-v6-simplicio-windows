@@ -1,5 +1,6 @@
 #include "runtime/core/tensor.h"
 #include "us4/runtime/adapters/adapter_contracts.h"
+#include "us4/runtime/backends/backend_selector.h"
 #include "us4/runtime/backends/cpu_avx/kernel_profile.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/backends/directml/dml_device.h"
@@ -834,6 +835,40 @@ namespace us4::runtime::tests
             const auto matmulPlan = backends::cpu_avx::ExplainScalarMatMulPlan(left, right);
             EXPECT_TRUE(matmulPlan.packRightHandSide);
             EXPECT_GE(matmulPlan.tile.depthBlock, 16U);
+        }
+
+        TEST(BackendPlannerTest, CpuFallbackTracksDetectedInstructionSetLevel)
+        {
+            backends::HardwareCapabilities avx2Capabilities{};
+            avx2Capabilities.hasAvx2 = true;
+            avx2Capabilities.cpuName = "AMD Ryzen Test";
+            avx2Capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            const auto avx2Backend = backends::BackendSelector::SelectCpuFallback(avx2Capabilities);
+            EXPECT_EQ(avx2Backend.name, "cpu-avx2");
+            EXPECT_EQ(avx2Backend.displayName, "CPU (AVX2)");
+            EXPECT_EQ(avx2Backend.vendor, backends::BackendVendor::kAmd);
+            EXPECT_EQ(avx2Backend.defaultPrecision, backends::PrecisionMode::kFp32);
+
+            backends::HardwareCapabilities avx512Capabilities = avx2Capabilities;
+            avx512Capabilities.hasAvx512 = true;
+            avx512Capabilities.cpuName = "Intel Xeon Test";
+
+            const auto avx512Backend =
+                backends::BackendSelector::SelectCpuFallback(avx512Capabilities);
+            EXPECT_EQ(avx512Backend.name, "cpu-avx512");
+            EXPECT_EQ(avx512Backend.displayName, "CPU (AVX-512)");
+            EXPECT_EQ(avx512Backend.vendor, backends::BackendVendor::kIntel);
+            EXPECT_EQ(avx512Backend.defaultPrecision, backends::PrecisionMode::kFp32);
+
+            backends::HardwareCapabilities amxCapabilities = avx512Capabilities;
+            amxCapabilities.hasAmx = true;
+
+            const auto amxBackend = backends::BackendSelector::SelectCpuFallback(amxCapabilities);
+            EXPECT_EQ(amxBackend.name, "cpu-amx");
+            EXPECT_EQ(amxBackend.displayName, "CPU (AMX)");
+            EXPECT_EQ(amxBackend.vendor, backends::BackendVendor::kIntel);
+            EXPECT_EQ(amxBackend.defaultPrecision, backends::PrecisionMode::kBf16);
         }
     } // namespace
 } // namespace us4::runtime::tests
