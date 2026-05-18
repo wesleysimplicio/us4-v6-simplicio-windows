@@ -1,10 +1,24 @@
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "use-msvc-toolchain.ps1")
 
+function Invoke-AndAssert {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Command,
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw $FailureMessage
+    }
+}
+
 Write-Host "Running current repository validation"
 
-npm run test:cli
-npm run pack:dry
+Invoke-AndAssert { npm run test:cli } "npm run test:cli failed."
+Invoke-AndAssert { npm run pack:dry } "npm run pack:dry failed."
 
 $tokens = $null
 $errors = $null
@@ -52,10 +66,10 @@ if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
     if ((Get-Command cmake -ErrorAction SilentlyContinue) -and
         (Get-Command ctest -ErrorAction SilentlyContinue)) {
         Write-Host "Detected runtime scaffold/build. Refreshing CMake configuration and rebuilding before CTest."
-        cmake -S . -B build
-        cmake --build build -j 8
+        Invoke-AndAssert { cmake -S . -B build } "cmake configuration failed."
+        Invoke-AndAssert { cmake --build build -j 8 } "cmake build failed."
         Write-Host "Running CTest on the rebuilt runtime artifacts."
-        ctest --test-dir build --output-on-failure
+        Invoke-AndAssert { ctest --test-dir build --output-on-failure } "ctest failed."
     } else {
         Write-Host "Build directory found, but cmake/ctest is not available in PATH. Skipping runtime rebuild and test invocation."
     }
@@ -63,12 +77,12 @@ if ((Test-Path "CMakeLists.txt") -and (Test-Path "build")) {
 
 if (Test-Path (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")) {
     Write-Host "Detected correctness gate binary. Running CPU scalar correctness validation."
-    & (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe")
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\correctness_diff.exe") } "CPU scalar correctness gate failed."
 }
 
 if (Test-Path (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe")) {
     Write-Host "Detected hybrid planner gate binary. Running Vulkan/Windows ML correctness validation."
-    & (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe")
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\hybrid_planner_gate.exe") } "Hybrid planner gate failed."
 }
 
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
@@ -81,7 +95,7 @@ if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     }
     if (Test-Path $cliPath) {
         Write-Host "Detected us4-cli binary. Running CLI Playwright smoke validation."
-        npx playwright test --project=cli --reporter=list
+        Invoke-AndAssert { npx playwright test --project=cli --reporter=list } "Playwright CLI smoke failed."
     } else {
         Write-Host "Build directory found, but us4-cli binary is missing. Skipping CLI Playwright smoke."
     }

@@ -45,6 +45,13 @@ target_link_libraries(
         us4_build_options
         us4_build_warnings)
 
+if(WIN32)
+    target_link_libraries(
+        us4_runtime_backends
+        PRIVATE
+            dxgi)
+endif()
+
 if(US4_ENABLE_CUDA)
     target_link_libraries(
         us4_runtime_backends

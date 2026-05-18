@@ -2,13 +2,13 @@
 
 > Mapeamento gerado em 2026-05-18 a partir de `.specs/sprints/sprint-XX/SPRINT.md`.
 > Total: **12 sprint epics + 88 task issues = 100 issues**.
-> Fechados: **68** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
+> Fechados: **69** (tasks com checkbox versionado marcado como concluÃƒÂ­do).
 
 ## Sprint Epics
 
 | Sprint | Epic | Theme | Status | Done |
 |---|---|---|---|---:|
-| 01 | [#1](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/1) | Foundations & Skeleton | in_progress | 9/10 |
+| 01 | [#1](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/1) | Foundations & Skeleton | done | 10/10 |
 | 02 | [#2](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/2) | CPU Scalar Baseline Ã¢â‚¬â€ Qwen + Gemma | done | 9/9 |
 | 03 | [#3](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/3) | CUDA + DirectML Skeleton | in_progress | 3/7 |
 | 04 | [#4](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/4) | AVX Hot Paths + oneDNN | todo | 0/7 |
@@ -26,7 +26,7 @@
 ### Sprint 01 Ã¢â‚¬â€ Foundations & Skeleton (#1)
 - [#13](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/13) T01.1 Ã¢â‚¬â€ CMake/Ninja root + runtime skeleton
 - [#14](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/14) T01.2 Ã¢â‚¬â€ Interface IUS4WindowsAdapter
-- [#15](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/15) T01.3 Ã¢â‚¬â€ HardwareProbe (CUDA/DXGI/Vulkan/AVX/NPU)
+- [#15](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/15) T01.3 Ã¢â‚¬â€ HardwareProbe (CUDA/DXGI/Vulkan/AVX/NPU) **done**
 - [#16](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/16) T01.4 Ã¢â‚¬â€ BackendSelector
 - [#17](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/17) T01.5 Ã¢â‚¬â€ RuntimeMode enum + selector
 - [#18](https://github.com/wesleysimplicio/us4-v6-simplicio-windows/issues/18) T01.6 Ã¢â‚¬â€ Telemetry skeleton
@@ -141,6 +141,4 @@
 - Cada **task** tem AC mensurÃƒÂ¡vel + DoD herdado do sprint.
 - **Status real do cÃƒÂ³digo** vs **checkbox versionado**: o repo jÃƒÂ¡ implementa partes de muitas tasks anteriores ao sprint atual; mantÃƒÂ©m-se conservador no checkbox atÃƒÂ© evidÃƒÂªncia (test + correctness diff + E2E).
 - AtualizaÃƒÂ§ÃƒÂ£o de status: edite o checkbox em `.specs/sprints/sprint-XX/SPRINT.md` e rode `scripts/render-planning-status.ps1` para regenerar `STATUS.md`. Issues no GitHub fecham via PR (Conventional Commits) ou manualmente quando DoD verde.
-
-
 

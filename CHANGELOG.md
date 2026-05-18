@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.51] - 2026-05-18
+
+### Added
+- added a real-first `HardwareProbe` path with CPUID, DXGI adapter discovery and runtime presence checks for CUDA, Vulkan and Windows ML
+- added deterministic unit coverage for real-probe mode and environment override precedence
+
+### Changed
+- introduced automatic synthetic probe mode whenever `US4_*` scenario variables are present so CLI smoke and regression fixtures stay deterministic
+- hardened `scripts/test.ps1` so native command failures stop the validation loop immediately
+- increased Playwright E2E timeout for the heavier Sprint 12 release and project-status flows
+
 ## [0.1.50] - 2026-05-18
 
 ### Added

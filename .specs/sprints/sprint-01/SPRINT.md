@@ -1,6 +1,6 @@
 ---
 sprint: sprint-01
-status: in_progress
+status: done
 start: 2026-05-14
 end: 2026-05-27
 owner: us4-core
@@ -14,7 +14,7 @@ Bootstrap C++ runtime skeleton, hardware probe (CUDA, DirectML, Vulkan, AVX2/AVX
 ## Tasks
 - [x] T01.1 — CMake/Ninja root + `runtime/{core,adapters,memory,kv,cache,moe,backends/{cuda,directml,vulkan,onednn,cpu_avx,windows_ml},speculative,tuning,telemetry,benchmarks}` skeleton
 - [x] T01.2 — `runtime/core/IUS4WindowsAdapter.h` interface
-- [ ] T01.3 — `runtime/core/HardwareProbe` (CUDA driver, DXGI for DirectML, Vulkan ICD, AVX caps via cpuid, NPU via Windows ML)
+- [x] T01.3 — `runtime/core/HardwareProbe` (CUDA driver, DXGI for DirectML, Vulkan ICD, AVX caps via cpuid, NPU via Windows ML)
 - [x] T01.4 — `runtime/core/BackendSelector` (NVIDIA->CUDA, AMD/Intel->DirectML, fallback Vulkan, AVX always-on, NPU opt-in)
 - [x] T01.5 — `runtime/core/RuntimeMode` enum + selector heuristics (RAM+VRAM tier -> mode)
 - [x] T01.6 — `runtime/telemetry` skeleton

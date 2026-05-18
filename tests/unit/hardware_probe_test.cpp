@@ -30,9 +30,11 @@ namespace us4::core
         void ClearProbeEnv()
         {
 #if defined(_WIN32)
+            _putenv_s("US4_USE_SYNTHETIC_PROBE", "1");
             _putenv_s("US4_HAS_CUDA", "");
             _putenv_s("US4_HAS_DIRECTML", "");
             _putenv_s("US4_HAS_VULKAN", "");
+            _putenv_s("US4_HAS_AVX2", "");
             _putenv_s("US4_HAS_NPU", "");
             _putenv_s("US4_HAS_AVX512", "");
             _putenv_s("US4_HAS_AMX", "");
@@ -52,9 +54,11 @@ namespace us4::core
             _putenv_s("US4_ETW_THROTTLED", "");
             _putenv_s("US4_PROFILE_STORE_PATH", "");
 #else
+            setenv("US4_USE_SYNTHETIC_PROBE", "1", 1);
             unsetenv("US4_HAS_CUDA");
             unsetenv("US4_HAS_DIRECTML");
             unsetenv("US4_HAS_VULKAN");
+            unsetenv("US4_HAS_AVX2");
             unsetenv("US4_HAS_NPU");
             unsetenv("US4_HAS_AVX512");
             unsetenv("US4_HAS_AMX");
@@ -76,6 +80,15 @@ namespace us4::core
 #endif
         }
 
+        void DisableSyntheticProbe()
+        {
+#if defined(_WIN32)
+            _putenv_s("US4_USE_SYNTHETIC_PROBE", "");
+#else
+            unsetenv("US4_USE_SYNTHETIC_PROBE");
+#endif
+        }
+
         TEST(HardwareProbeTest, FallsBackToCpuWhenNoAcceleratorIsAvailable)
         {
             ClearProbeEnv();
@@ -91,6 +104,45 @@ namespace us4::core
             EXPECT_FALSE(summary.HasAccelerator());
             ASSERT_FALSE(summary.advisories.empty());
             EXPECT_EQ(summary.advisories.front().code, "fallback.cpu_only");
+        }
+
+        TEST(HardwareProbeTest, DetectHostUsesRealProbeWhenSyntheticModeIsDisabled)
+        {
+            ClearProbeEnv();
+            DisableSyntheticProbe();
+
+            const auto capabilities = us4::runtime::backends::HardwareProbe::DetectHost();
+
+            EXPECT_FALSE(capabilities.cpuName.empty());
+            EXPECT_GT(capabilities.budget.hostBytes, 0U);
+            EXPECT_GT(capabilities.budget.storageBytes, 0U);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, DetectHostLetsEnvironmentOverrideRealProbeValues)
+        {
+            ClearProbeEnv();
+            DisableSyntheticProbe();
+#if defined(_WIN32)
+            _putenv_s("US4_GPU_NAME", "Override GPU");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_DEVICE_GIB", "14");
+#endif
+
+            const auto capabilities = us4::runtime::backends::HardwareProbe::DetectHost();
+
+            EXPECT_EQ(capabilities.primaryAdapterName, "Override GPU");
+            EXPECT_EQ(capabilities.primaryAdapterVendor,
+                      us4::runtime::backends::BackendVendor::kAmd);
+            EXPECT_EQ(capabilities.primaryAdapterClass,
+                      us4::runtime::backends::DeviceClass::kDiscreteGpu);
+            EXPECT_TRUE(capabilities.hasVulkan);
+            EXPECT_EQ(capabilities.budget.deviceBytes, 14ULL * 1024ULL * 1024ULL * 1024ULL);
+
+            ClearProbeEnv();
         }
 
         TEST(HardwareProbeTest, ParsesRuntimeModesFromCliValues)
@@ -154,16 +206,13 @@ namespace us4::core
             EXPECT_GT(summary.moeTelemetry.routerEntropy, 0.0F);
             EXPECT_EQ(summary.moeTelemetry.events.size(), 7U);
             EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
-                                    summary.moeTelemetry.events.end(),
-                                    [](const auto& event)
+                                    summary.moeTelemetry.events.end(), [](const auto& event)
                                     { return event.name == "moe.hot_hit_rate_pct"; }));
             EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
-                                    summary.moeTelemetry.events.end(),
-                                    [](const auto& event)
+                                    summary.moeTelemetry.events.end(), [](const auto& event)
                                     { return event.name == "moe.eviction_count"; }));
             EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
-                                    summary.moeTelemetry.events.end(),
-                                    [](const auto& event)
+                                    summary.moeTelemetry.events.end(), [](const auto& event)
                                     { return event.name == "moe.reload_count"; }));
         }
 
@@ -183,12 +232,10 @@ namespace us4::core
             EXPECT_GT(summary.kvTelemetry.summarizeCount, 0U);
             EXPECT_EQ(summary.kvTelemetry.events.size(), 7U);
             EXPECT_TRUE(std::any_of(summary.kvTelemetry.events.begin(),
-                                    summary.kvTelemetry.events.end(),
-                                    [](const auto& event)
+                                    summary.kvTelemetry.events.end(), [](const auto& event)
                                     { return event.name == "kv.device_hit_rate_pct"; }));
             EXPECT_TRUE(std::any_of(summary.kvTelemetry.events.begin(),
-                                    summary.kvTelemetry.events.end(),
-                                    [](const auto& event)
+                                    summary.kvTelemetry.events.end(), [](const auto& event)
                                     { return event.name == "kv.summary_hit_rate_pct"; }));
         }
 
@@ -746,12 +793,9 @@ namespace us4::core
             summary.moeTelemetry.reloadCount = 1U;
             summary.moeTelemetry.routerEntropy = 1.69F;
             summary.moeTelemetry.events = {
-                {.name = "moe.hot_hit_rate_pct"},
-                {.name = "moe.warm_hit_rate_pct"},
-                {.name = "moe.cold_hit_rate_pct"},
-                {.name = "moe.eviction_count"},
-                {.name = "moe.cold_offload_count"},
-                {.name = "moe.reload_count"},
+                {.name = "moe.hot_hit_rate_pct"},   {.name = "moe.warm_hit_rate_pct"},
+                {.name = "moe.cold_hit_rate_pct"},  {.name = "moe.eviction_count"},
+                {.name = "moe.cold_offload_count"}, {.name = "moe.reload_count"},
                 {.name = "moe.router_entropy"},
             };
 
@@ -823,7 +867,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.50"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.51"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -868,7 +912,8 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("kv.segment_count: 1"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("kv.host_hit_rate_pct:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("prefix_cache.entries: 1"), std::string::npos);
-            EXPECT_NE(result.stdoutText.find("speculative.acceptance_rate_pct:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("speculative.acceptance_rate_pct:"),
+                      std::string::npos);
             EXPECT_NE(result.stdoutText.find("speculative.step_1.delta_pct:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("run_status: completed"), std::string::npos);
             EXPECT_TRUE(result.stderrText.empty());
@@ -901,8 +946,7 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"summary_hit_rate_pct\": "), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"speculative\": {"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"acceptance_rate_pct\": "), std::string::npos);
-            EXPECT_NE(result.stdoutText.find("\"token_acceptance_trace\": ["),
-                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"token_acceptance_trace\": ["), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
         }
 
@@ -911,16 +955,11 @@ namespace us4::core
             ClearProbeEnv();
 
             const std::vector<char*> argv = {
-                const_cast<char*>("us4-cli"),
-                const_cast<char*>("run"),
-                const_cast<char*>("--model"),
-                const_cast<char*>("deepseek-r1-distill"),
-                const_cast<char*>("--prompt"),
-                const_cast<char*>("moe telemetry"),
-                const_cast<char*>("--backend"),
-                const_cast<char*>("cpu"),
-                const_cast<char*>("--max-tokens"),
-                const_cast<char*>("5"),
+                const_cast<char*>("us4-cli"),      const_cast<char*>("run"),
+                const_cast<char*>("--model"),      const_cast<char*>("deepseek-r1-distill"),
+                const_cast<char*>("--prompt"),     const_cast<char*>("moe telemetry"),
+                const_cast<char*>("--backend"),    const_cast<char*>("cpu"),
+                const_cast<char*>("--max-tokens"), const_cast<char*>("5"),
             };
 
             const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
@@ -964,16 +1003,11 @@ namespace us4::core
             ClearProbeEnv();
 
             const std::vector<char*> argv = {
-                const_cast<char*>("us4-cli"),
-                const_cast<char*>("run"),
-                const_cast<char*>("--model"),
-                const_cast<char*>("minimax-m2"),
-                const_cast<char*>("--prompt"),
-                const_cast<char*>("multimodal cache"),
-                const_cast<char*>("--backend"),
-                const_cast<char*>("cpu"),
-                const_cast<char*>("--max-tokens"),
-                const_cast<char*>("5"),
+                const_cast<char*>("us4-cli"),      const_cast<char*>("run"),
+                const_cast<char*>("--model"),      const_cast<char*>("minimax-m2"),
+                const_cast<char*>("--prompt"),     const_cast<char*>("multimodal cache"),
+                const_cast<char*>("--backend"),    const_cast<char*>("cpu"),
+                const_cast<char*>("--max-tokens"), const_cast<char*>("5"),
             };
 
             const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
@@ -984,8 +1018,7 @@ namespace us4::core
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
             EXPECT_NE(result.stdoutText.find("family: minimax"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("multimodal_cache.entry_count:"), std::string::npos);
-            EXPECT_NE(result.stdoutText.find("multimodal_cache.audio_entries:"),
-                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("multimodal_cache.audio_entries:"), std::string::npos);
             EXPECT_TRUE(result.stderrText.empty());
         }
 

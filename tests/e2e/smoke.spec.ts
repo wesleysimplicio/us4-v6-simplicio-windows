@@ -2412,8 +2412,8 @@ test.describe('us4-cli smoke', () => {
         };
         expect(payload.sprint_count).toBe(12);
         expect(payload.total_tasks).toBe(88);
-        expect(payload.done_tasks).toBe(68);
-        expect(payload.remaining_tasks).toBe(20);
+        expect(payload.done_tasks).toBe(69);
+        expect(payload.remaining_tasks).toBe(19);
         expect(payload.sprints.some((entry) => entry.sprint === 'sprint-02' &&
                                                entry.status === 'done' &&
                                                entry.done_tasks === 9 &&
@@ -2453,8 +2453,8 @@ test.describe('us4-cli smoke', () => {
         expect(content).toContain('Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.');
         expect(content).toContain('- Sprints: 12');
         expect(content).toContain('- Total tasks: 88');
-        expect(content).toContain('- Done tasks: 68');
-        expect(content).toContain('- Remaining tasks: 20');
+        expect(content).toContain('- Done tasks: 69');
+        expect(content).toContain('- Remaining tasks: 19');
         expect(content).toContain('| sprint-02 | done | 9 | 0 | 9 |');
         expect(content).toContain('| sprint-06 | done | 7 | 0 | 7 |');
         expect(content).toContain('| sprint-09 | done | 6 | 0 | 6 |');
