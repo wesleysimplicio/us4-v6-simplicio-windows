@@ -4,6 +4,8 @@
 #include "runtime/core/tensor.h"
 #include "us4/runtime/adapters/adapter_factory.h"
 #include "us4/runtime/adapters/moe_model_loader.h"
+#include "us4/runtime/backends/cpu_avx/avx_attention.h"
+#include "us4/runtime/backends/cpu_avx/blocked_matmul.h"
 #include "us4/runtime/backends/cpu_avx/scalar_attention.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/cache/multimodal_cache.h"
@@ -590,14 +592,18 @@ namespace us4::core
         const auto projected = us4::runtime::backends::cpu_avx::ScalarMatMul(query, projection);
         const auto cachedKey = MakeTokenTensor({11, 17}, 0.125F);
         const auto cachedValue = MakeTokenTensor({23, 29}, 0.5F);
-        const auto attention = us4::runtime::backends::cpu_avx::ScalarAttention(
-            query, query, projected,
-            us4::runtime::backends::cpu_avx::AttentionOptions{
-                .scale = 1.0F / std::sqrt(static_cast<float>(kHiddenSize)),
-                .causalMask = true,
-                .cachedKey = &cachedKey,
-                .cachedValue = &cachedValue,
-            });
+        const us4::runtime::backends::cpu_avx::AttentionOptions attentionOptions{
+            .scale = 1.0F / std::sqrt(static_cast<float>(kHiddenSize)),
+            .causalMask = true,
+            .cachedKey = &cachedKey,
+            .cachedValue = &cachedValue,
+        };
+        const auto attention =
+            us4::runtime::backends::cpu_avx::HostSupportsAvx2MatMul()
+                ? us4::runtime::backends::cpu_avx::AvxAttention(query, query, projected,
+                                                                attentionOptions)
+                : us4::runtime::backends::cpu_avx::ScalarAttention(query, query, projected,
+                                                                   attentionOptions);
 
         us4::runtime::cache::PrefixCache prefixCache;
         const std::string sequenceId = "cpu-scalar:" + plan.model.id;

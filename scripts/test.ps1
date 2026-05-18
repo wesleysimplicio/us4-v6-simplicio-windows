@@ -90,6 +90,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_block_gemm_bench.exe"
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_block_gemm_bench.exe") } "CPU block GEMM benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_attention_bench.exe")) {
+    Write-Host "Detected CPU attention benchmark binary. Running AVX fused-attention local benchmark evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_attention_bench.exe") } "CPU attention benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

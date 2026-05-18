@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.57] - 2026-05-18
+
+### Added
+
+- `AVX2` fused attention with online softmax-rescale, a dedicated `cpu_attention_bench`, and unit coverage that checks the accelerated path against the scalar attention reference
+
+### Changed
+
+- switched the CPU runtime to prefer the new fused attention path on `AVX2` hosts while keeping the scalar fallback and recording latency evidence in `runtime/benchmarks/correctness/reports/cpu_attention_bench.json`
+
 ## [0.1.56] - 2026-05-18
 
 ### Added

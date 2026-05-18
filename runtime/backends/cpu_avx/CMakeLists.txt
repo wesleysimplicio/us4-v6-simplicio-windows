@@ -2,6 +2,7 @@ add_subdirectory(../onednn ${CMAKE_CURRENT_BINARY_DIR}/onednn)
 
 add_library(
     us4_runtime_backends_cpu_avx
+    src/avx_attention.cpp
     src/avx2_matmul.cpp
     src/avx512_matmul.cpp
     src/bitnet_reference.cpp
@@ -27,11 +28,13 @@ target_link_libraries(
         us4_runtime_backends_onednn)
 
 if(MSVC)
+    set_source_files_properties(src/avx_attention.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
     set_source_files_properties(src/avx2_matmul.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
     set_source_files_properties(src/avx512_matmul.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX512")
     set_source_files_properties(src/dequant_int4.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
     set_source_files_properties(src/dequant_int8.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
 else()
+    set_source_files_properties(src/avx_attention.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
     set_source_files_properties(src/avx2_matmul.cpp PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
     set_source_files_properties(src/dequant_int4.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
     set_source_files_properties(src/dequant_int8.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")

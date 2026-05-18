@@ -33,6 +33,11 @@ if [[ -f build/runtime/benchmarks/cpu_block_gemm_bench.exe ]]; then
   build/runtime/benchmarks/cpu_block_gemm_bench.exe
 fi
 
+if [[ -f build/runtime/benchmarks/cpu_attention_bench.exe ]]; then
+  echo "Detected CPU attention benchmark binary. Running AVX fused-attention local benchmark evidence."
+  build/runtime/benchmarks/cpu_attention_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

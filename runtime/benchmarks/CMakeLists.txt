@@ -58,6 +58,18 @@ target_link_libraries(cpu_block_gemm_bench
     us4_build_warnings
 )
 
+add_executable(cpu_attention_bench
+  src/cpu_attention_bench.cpp
+)
+
+target_link_libraries(cpu_attention_bench
+  PRIVATE
+    us4_runtime_backends
+    us4_runtime_core
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )

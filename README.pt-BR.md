@@ -130,22 +130,22 @@ Helpers de artefato de release:
 ```powershell
 .\scripts\build-portable-zip.ps1 -BuildDir build -OutputDir dist
 .\scripts\generate-checksums.ps1 -OutputDir dist
-.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.56-portable.zip
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.57-portable.zip
 .\scripts\release-dry-run.ps1 -BuildDir build -OutputDir dist -ManifestDir .\packaging\winget\manifests -Format json
 .\scripts\render-project-status.ps1 -BuildDir build -RequireEvidence -Format markdown -OutputPath .\dist\project-status.md
-.\scripts\render-winget-manifests.ps1 -Version 0.1.56
+.\scripts\render-winget-manifests.ps1 -Version 0.1.57
 .\scripts\validate-winget-manifests.ps1 -ManifestDir .\packaging\winget\manifests
 .\scripts\validate-release-assets.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
 .\scripts\validate-publish-layout.ps1 -OutputDir .\dist
 .\scripts\render-release-manifest.ps1 -OutputDir .\dist -ManifestDir .\packaging\winget\manifests
-.\scripts\render-release-notes.ps1 -Version 0.1.56 -ReleaseManifestPath .\dist\release-manifest.json
+.\scripts\render-release-notes.ps1 -Version 0.1.57 -ReleaseManifestPath .\dist\release-manifest.json
 .\scripts\render-planning-status.ps1 -Format markdown -OutputPath .\.specs\sprints\STATUS.md
 .\scripts\create-dev-signing-cert.ps1 -CertificatePassword us4-dev-pass -Format json
 .\scripts\dev-msix-smoke.ps1 -BuildDir build -CertificatePassword us4-dev-pass -Format json
-.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.56.0.msix -EnableDevMsixSmoke -DevCertificatePassword us4-dev-pass
-.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.56.0.msix
+.\scripts\post-publish-smoke.ps1 -ArtifactPath .\dist\us4-v6-windows-0.1.57.0.msix -EnableDevMsixSmoke -DevCertificatePassword us4-dev-pass
+.\scripts\sign-msix.ps1 -PackagePath .\dist\us4-v6-windows-0.1.57.0.msix
 .\scripts\preflight-release.ps1 -BuildDir build
-.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.56.0.msix
+.\scripts\install-msix-smoke.ps1 -PackagePath .\dist\us4-v6-windows-0.1.57.0.msix
 ```
 
 `release-dry-run.ps1` e `render-project-status.ps1` agora usam manifests efêmeros por padrão para não sujar `packaging/winget/manifests/` no fluxo local. Passe `-ManifestDir .\packaging\winget\manifests` apenas quando quiser renderizar manifests mantidos no repo.
