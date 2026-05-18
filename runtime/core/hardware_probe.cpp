@@ -4,8 +4,11 @@
 #include "runtime/core/runtime_mode.h"
 #include "us4/runtime/backends/backend_selector.h"
 #include "us4/runtime/backends/hardware_probe.h"
+#include "us4/runtime/moe/expert_pager.h"
+#include "us4/runtime/moe/expert_router.h"
 
 #include <cstdint>
+#include <iomanip>
 #include <sstream>
 
 namespace us4::core
@@ -13,6 +16,117 @@ namespace us4::core
     namespace
     {
         constexpr std::uint64_t kOneGiB = 1024ULL * 1024ULL * 1024ULL;
+
+        std::string FormatPercent(const float ratio)
+        {
+            std::ostringstream output;
+            output << std::fixed << std::setprecision(2) << (ratio * 100.0F);
+            return output.str();
+        }
+
+        ProbeSummary::MoeTelemetryPreview BuildMoeTelemetryPreview()
+        {
+            ProbeSummary::MoeTelemetryPreview preview{};
+
+            us4::runtime::moe::ExpertRouter router;
+            const auto routes = router.BuildPlan("probe-moe-preview",
+                                                 us4::runtime::moe::RoutingPolicy{
+                                                     .topK = 6U,
+                                                     .preferDeterministic = true,
+                                                     .allowCrossDeviceExperts = true,
+                                                 });
+            if (routes.empty())
+            {
+                return preview;
+            }
+
+            us4::runtime::moe::ExpertPager pager;
+            pager.ConfigureBudget(us4::runtime::moe::ExpertPagerBudget{
+                .hotBytes = 3072U,
+                .warmBytes = 3072U,
+                .coldBytes = 9216U,
+            });
+            for (const auto& route : routes)
+            {
+                const auto preferredResidency =
+                    route.placement == "host" ? us4::runtime::moe::ExpertResidency::kWarm
+                                              : us4::runtime::moe::ExpertResidency::kHot;
+                static_cast<void>(pager.Touch(route.expertId, 1536U, preferredResidency));
+            }
+
+            const auto routingStats = router.Evaluate(routes);
+            const auto pagerStats = pager.Stats();
+            const std::vector<std::size_t> lookupOrder = {0U, 2U, 4U, 1U, 3U, 5U};
+            std::size_t hotHits = 0U;
+            std::size_t warmHits = 0U;
+            std::size_t coldHits = 0U;
+
+            for (const auto expertId : lookupOrder)
+            {
+                const auto entry = pager.Find(expertId);
+                if (!entry.has_value())
+                {
+                    continue;
+                }
+
+                switch (entry->residency)
+                {
+                case us4::runtime::moe::ExpertResidency::kHot:
+                    ++hotHits;
+                    break;
+                case us4::runtime::moe::ExpertResidency::kWarm:
+                    ++warmHits;
+                    break;
+                case us4::runtime::moe::ExpertResidency::kCold:
+                    ++coldHits;
+                    break;
+                }
+            }
+
+            const float totalHits = static_cast<float>(hotHits + warmHits + coldHits);
+            preview.routeCount = routes.size();
+            preview.hotHitRate = totalHits == 0.0F ? 0.0F : static_cast<float>(hotHits) / totalHits;
+            preview.warmHitRate =
+                totalHits == 0.0F ? 0.0F : static_cast<float>(warmHits) / totalHits;
+            preview.coldHitRate =
+                totalHits == 0.0F ? 0.0F : static_cast<float>(coldHits) / totalHits;
+            preview.evictionCount = pagerStats.evictionCount;
+            preview.routerEntropy = routingStats.entropy;
+
+            us4::runtime::telemetry::TelemetrySink telemetry;
+            telemetry.Record({
+                .name = "moe.hot_hit_rate_pct",
+                .value = FormatPercent(preview.hotHitRate),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.hotHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "moe.warm_hit_rate_pct",
+                .value = FormatPercent(preview.warmHitRate),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.warmHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "moe.cold_hit_rate_pct",
+                .value = FormatPercent(preview.coldHitRate),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.coldHitRate * 100.0F),
+            });
+            telemetry.Record({
+                .name = "moe.eviction_count",
+                .value = std::to_string(preview.evictionCount),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.evictionCount),
+            });
+            telemetry.Record({
+                .name = "moe.router_entropy",
+                .value = std::to_string(preview.routerEntropy),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.routerEntropy),
+            });
+            preview.events = telemetry.Snapshot();
+            return preview;
+        }
 
         std::vector<ProbeAdvisory> BuildAdvisories(const ProbeSummary& summary)
         {
@@ -112,6 +226,7 @@ namespace us4::core
             }
         }
         summary.advisories = BuildAdvisories(summary);
+        summary.moeTelemetry = BuildMoeTelemetryPreview();
         return summary;
     }
 
@@ -168,6 +283,21 @@ namespace us4::core
                 output << "  - [" << advisory.severity << "] " << advisory.code << ": "
                        << advisory.message << '\n';
             }
+        }
+
+        if (summary.moeTelemetry.routeCount > 0U)
+        {
+            output << "moe.preview:\n";
+            output << "  route_count: " << summary.moeTelemetry.routeCount << '\n';
+            output << "  hot_hit_rate_pct: " << FormatPercent(summary.moeTelemetry.hotHitRate)
+                   << '\n';
+            output << "  warm_hit_rate_pct: " << FormatPercent(summary.moeTelemetry.warmHitRate)
+                   << '\n';
+            output << "  cold_hit_rate_pct: " << FormatPercent(summary.moeTelemetry.coldHitRate)
+                   << '\n';
+            output << "  eviction_count: " << summary.moeTelemetry.evictionCount << '\n';
+            output << "  router_entropy: " << summary.moeTelemetry.routerEntropy << '\n';
+            output << "  telemetry_events: " << summary.moeTelemetry.events.size() << '\n';
         }
 
         output << "next: " << BuildLaunchHint(summary) << '\n';

@@ -141,6 +141,26 @@ namespace us4::core
             ClearProbeEnv();
         }
 
+        TEST(HardwareProbeTest, ProbeIncludesMoeTelemetryPreview)
+        {
+            ClearProbeEnv();
+
+            const ProbeSummary summary = ProbeHardware();
+
+            EXPECT_GT(summary.moeTelemetry.routeCount, 0U);
+            EXPECT_GT(summary.moeTelemetry.evictionCount, 0U);
+            EXPECT_GT(summary.moeTelemetry.routerEntropy, 0.0F);
+            EXPECT_EQ(summary.moeTelemetry.events.size(), 5U);
+            EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
+                                    summary.moeTelemetry.events.end(),
+                                    [](const auto& event)
+                                    { return event.name == "moe.hot_hit_rate_pct"; }));
+            EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
+                                    summary.moeTelemetry.events.end(),
+                                    [](const auto& event)
+                                    { return event.name == "moe.eviction_count"; }));
+        }
+
         TEST(HardwareProbeTest, RuntimeContextBuildsPlanForKnownModel)
         {
             us4::runtime::backends::HardwareCapabilities capabilities{};
@@ -635,6 +655,19 @@ namespace us4::core
                     "The selected cross-vendor backend has a tight device budget.",
                 },
             };
+            summary.moeTelemetry.routeCount = 6U;
+            summary.moeTelemetry.hotHitRate = 0.3333F;
+            summary.moeTelemetry.warmHitRate = 0.3333F;
+            summary.moeTelemetry.coldHitRate = 0.3333F;
+            summary.moeTelemetry.evictionCount = 3U;
+            summary.moeTelemetry.routerEntropy = 1.69F;
+            summary.moeTelemetry.events = {
+                {.name = "moe.hot_hit_rate_pct"},
+                {.name = "moe.warm_hit_rate_pct"},
+                {.name = "moe.cold_hit_rate_pct"},
+                {.name = "moe.eviction_count"},
+                {.name = "moe.router_entropy"},
+            };
 
             const std::string rendered = FormatProbeSummary(summary);
 
@@ -643,6 +676,9 @@ namespace us4::core
             EXPECT_NE(rendered.find("mode: ULTRA_LOW"), std::string::npos);
             EXPECT_NE(rendered.find("Unit Test GPU"), std::string::npos);
             EXPECT_NE(rendered.find("advisories:"), std::string::npos);
+            EXPECT_NE(rendered.find("moe.preview:"), std::string::npos);
+            EXPECT_NE(rendered.find("hot_hit_rate_pct: 33.33"), std::string::npos);
+            EXPECT_NE(rendered.find("telemetry_events: 5"), std::string::npos);
             EXPECT_NE(rendered.find("next: us4-cli run --model qwen-0.5b --prompt \"hello\""),
                       std::string::npos);
         }
@@ -700,7 +736,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.41"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.42"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -1020,6 +1056,9 @@ namespace us4::core
             EXPECT_NE(output.stdoutText.find("\"gpu\": \"Probe Json GPU\""), std::string::npos);
             EXPECT_NE(output.stdoutText.find("\"selected_backend\": \"directml\""),
                       std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"moe\": {"), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"hot_hit_rate_pct\": "), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"eviction_count\": "), std::string::npos);
 
             ClearProbeEnv();
         }

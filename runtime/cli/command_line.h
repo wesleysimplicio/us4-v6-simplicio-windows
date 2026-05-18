@@ -126,6 +126,18 @@ namespace us4::cli
             json << '"' << EscapeJson(summary.fallbackBackends[index]) << '"';
         }
         json << "],\n";
+        json << "  \"moe\": {\n";
+        json << "    \"route_count\": " << summary.moeTelemetry.routeCount << ",\n";
+        json << "    \"hot_hit_rate_pct\": " << (summary.moeTelemetry.hotHitRate * 100.0F)
+             << ",\n";
+        json << "    \"warm_hit_rate_pct\": " << (summary.moeTelemetry.warmHitRate * 100.0F)
+             << ",\n";
+        json << "    \"cold_hit_rate_pct\": " << (summary.moeTelemetry.coldHitRate * 100.0F)
+             << ",\n";
+        json << "    \"eviction_count\": " << summary.moeTelemetry.evictionCount << ",\n";
+        json << "    \"router_entropy\": " << summary.moeTelemetry.routerEntropy << ",\n";
+        json << "    \"telemetry_events\": " << summary.moeTelemetry.events.size() << "\n";
+        json << "  },\n";
         json << "  \"advisories\": [\n";
         for (std::size_t index = 0; index < summary.advisories.size(); ++index)
         {

@@ -205,6 +205,9 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('US4 Windows Edition Probe');
         expect(stdout).toContain('backend:');
         expect(stdout).toContain('Playwright Test GPU');
+        expect(stdout).toContain('moe.preview:');
+        expect(stdout).toContain('hot_hit_rate_pct:');
+        expect(stdout).toContain('eviction_count:');
     });
 
     test('exports probe as json', async ({}, testInfo) => {
@@ -227,11 +230,19 @@ test.describe('us4-cli smoke', () => {
             cpu: string;
             gpu: string;
             selected_backend: string;
+            moe: {
+                hot_hit_rate_pct: number;
+                eviction_count: number;
+                telemetry_events: number;
+            };
         };
         expect(payload.execution).toBe('probe');
         expect(payload.cpu).toBe('Playwright Json CPU');
         expect(payload.gpu).toBe('Playwright Json GPU');
         expect(payload.selected_backend).toBe('directml');
+        expect(payload.moe.hot_hit_rate_pct).toBeGreaterThan(0);
+        expect(payload.moe.eviction_count).toBeGreaterThan(0);
+        expect(payload.moe.telemetry_events).toBe(5);
     });
 
     test('reports nano mode for low-memory cpu-only hosts', async ({}, testInfo) => {

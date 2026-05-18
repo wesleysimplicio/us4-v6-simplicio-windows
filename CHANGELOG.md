@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.42] - 2026-05-18
+
+### Added
+
+- MoE probe telemetry preview in the CLI, including hot/warm/cold hit-rate, eviction count, and router entropy surfaced in both text and JSON modes
+
+### Changed
+
+- the hardware probe now emits deterministic MoE telemetry events through the existing sink so local validation can cover Sprint 08 telemetry without Windows-only accelerators
+
 ## [0.1.41] - 2026-05-18
 
 ### Added
