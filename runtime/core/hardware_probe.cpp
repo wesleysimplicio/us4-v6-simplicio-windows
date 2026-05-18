@@ -54,6 +54,18 @@ namespace us4::core
                 static_cast<void>(pager.Touch(route.expertId, 1536U, preferredResidency));
             }
 
+            const auto coldEntry =
+                std::find_if(routes.begin(), routes.end(), [&pager](const auto& route)
+                             {
+                                 const auto entry = pager.Find(route.expertId);
+                                 return entry.has_value() && entry->offloaded;
+                             });
+            if (coldEntry != routes.end())
+            {
+                static_cast<void>(pager.Reload(coldEntry->expertId,
+                                               us4::runtime::moe::ExpertResidency::kHot));
+            }
+
             const auto routingStats = router.Evaluate(routes);
             const auto pagerStats = pager.Stats();
             const std::vector<std::size_t> lookupOrder = {0U, 2U, 4U, 1U, 3U, 5U};
@@ -91,6 +103,8 @@ namespace us4::core
             preview.coldHitRate =
                 totalHits == 0.0F ? 0.0F : static_cast<float>(coldHits) / totalHits;
             preview.evictionCount = pagerStats.evictionCount;
+            preview.coldOffloadCount = pagerStats.coldOffloadCount;
+            preview.reloadCount = pagerStats.reloadCount;
             preview.routerEntropy = routingStats.entropy;
 
             us4::runtime::telemetry::TelemetrySink telemetry;
@@ -117,6 +131,18 @@ namespace us4::core
                 .value = std::to_string(preview.evictionCount),
                 .category = "moe",
                 .numericValue = static_cast<double>(preview.evictionCount),
+            });
+            telemetry.Record({
+                .name = "moe.cold_offload_count",
+                .value = std::to_string(preview.coldOffloadCount),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.coldOffloadCount),
+            });
+            telemetry.Record({
+                .name = "moe.reload_count",
+                .value = std::to_string(preview.reloadCount),
+                .category = "moe",
+                .numericValue = static_cast<double>(preview.reloadCount),
             });
             telemetry.Record({
                 .name = "moe.router_entropy",
@@ -296,6 +322,8 @@ namespace us4::core
             output << "  cold_hit_rate_pct: " << FormatPercent(summary.moeTelemetry.coldHitRate)
                    << '\n';
             output << "  eviction_count: " << summary.moeTelemetry.evictionCount << '\n';
+            output << "  cold_offload_count: " << summary.moeTelemetry.coldOffloadCount << '\n';
+            output << "  reload_count: " << summary.moeTelemetry.reloadCount << '\n';
             output << "  router_entropy: " << summary.moeTelemetry.routerEntropy << '\n';
             output << "  telemetry_events: " << summary.moeTelemetry.events.size() << '\n';
         }

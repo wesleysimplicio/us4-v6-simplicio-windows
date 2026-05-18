@@ -149,8 +149,10 @@ namespace us4::core
 
             EXPECT_GT(summary.moeTelemetry.routeCount, 0U);
             EXPECT_GT(summary.moeTelemetry.evictionCount, 0U);
+            EXPECT_GT(summary.moeTelemetry.coldOffloadCount, 0U);
+            EXPECT_GT(summary.moeTelemetry.reloadCount, 0U);
             EXPECT_GT(summary.moeTelemetry.routerEntropy, 0.0F);
-            EXPECT_EQ(summary.moeTelemetry.events.size(), 5U);
+            EXPECT_EQ(summary.moeTelemetry.events.size(), 7U);
             EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
                                     summary.moeTelemetry.events.end(),
                                     [](const auto& event)
@@ -159,6 +161,10 @@ namespace us4::core
                                     summary.moeTelemetry.events.end(),
                                     [](const auto& event)
                                     { return event.name == "moe.eviction_count"; }));
+            EXPECT_TRUE(std::any_of(summary.moeTelemetry.events.begin(),
+                                    summary.moeTelemetry.events.end(),
+                                    [](const auto& event)
+                                    { return event.name == "moe.reload_count"; }));
         }
 
         TEST(HardwareProbeTest, RuntimeContextBuildsPlanForKnownModel)
@@ -660,12 +666,16 @@ namespace us4::core
             summary.moeTelemetry.warmHitRate = 0.3333F;
             summary.moeTelemetry.coldHitRate = 0.3333F;
             summary.moeTelemetry.evictionCount = 3U;
+            summary.moeTelemetry.coldOffloadCount = 2U;
+            summary.moeTelemetry.reloadCount = 1U;
             summary.moeTelemetry.routerEntropy = 1.69F;
             summary.moeTelemetry.events = {
                 {.name = "moe.hot_hit_rate_pct"},
                 {.name = "moe.warm_hit_rate_pct"},
                 {.name = "moe.cold_hit_rate_pct"},
                 {.name = "moe.eviction_count"},
+                {.name = "moe.cold_offload_count"},
+                {.name = "moe.reload_count"},
                 {.name = "moe.router_entropy"},
             };
 
@@ -678,7 +688,8 @@ namespace us4::core
             EXPECT_NE(rendered.find("advisories:"), std::string::npos);
             EXPECT_NE(rendered.find("moe.preview:"), std::string::npos);
             EXPECT_NE(rendered.find("hot_hit_rate_pct: 33.33"), std::string::npos);
-            EXPECT_NE(rendered.find("telemetry_events: 5"), std::string::npos);
+            EXPECT_NE(rendered.find("reload_count: 1"), std::string::npos);
+            EXPECT_NE(rendered.find("telemetry_events: 7"), std::string::npos);
             EXPECT_NE(rendered.find("next: us4-cli run --model qwen-0.5b --prompt \"hello\""),
                       std::string::npos);
         }
@@ -736,7 +747,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.42"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.43"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -1059,6 +1070,7 @@ namespace us4::core
             EXPECT_NE(output.stdoutText.find("\"moe\": {"), std::string::npos);
             EXPECT_NE(output.stdoutText.find("\"hot_hit_rate_pct\": "), std::string::npos);
             EXPECT_NE(output.stdoutText.find("\"eviction_count\": "), std::string::npos);
+            EXPECT_NE(output.stdoutText.find("\"reload_count\": "), std::string::npos);
 
             ClearProbeEnv();
         }

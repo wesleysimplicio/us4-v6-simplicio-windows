@@ -27,6 +27,8 @@ namespace us4::core
             float warmHitRate = 0.0F;
             float coldHitRate = 0.0F;
             std::size_t evictionCount = 0;
+            std::size_t coldOffloadCount = 0;
+            std::size_t reloadCount = 0;
             float routerEntropy = 0.0F;
             std::vector<us4::runtime::telemetry::TelemetryEvent> events;
         };

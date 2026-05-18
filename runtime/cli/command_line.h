@@ -135,6 +135,9 @@ namespace us4::cli
         json << "    \"cold_hit_rate_pct\": " << (summary.moeTelemetry.coldHitRate * 100.0F)
              << ",\n";
         json << "    \"eviction_count\": " << summary.moeTelemetry.evictionCount << ",\n";
+        json << "    \"cold_offload_count\": " << summary.moeTelemetry.coldOffloadCount
+             << ",\n";
+        json << "    \"reload_count\": " << summary.moeTelemetry.reloadCount << ",\n";
         json << "    \"router_entropy\": " << summary.moeTelemetry.routerEntropy << ",\n";
         json << "    \"telemetry_events\": " << summary.moeTelemetry.events.size() << "\n";
         json << "  },\n";

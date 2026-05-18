@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.43] - 2026-05-18
+
+### Added
+
+- synthetic cold offload and on-demand reload support in `runtime/moe/ExpertPager`, including checksum-preserving reload coverage for post-eviction correctness
+
+### Changed
+
+- the CLI `probe` MoE preview now surfaces cold offload and reload counts so ExpertPager behavior can be validated locally on the macOS scaffold host
+
 ## [0.1.42] - 2026-05-18
 
 ### Added

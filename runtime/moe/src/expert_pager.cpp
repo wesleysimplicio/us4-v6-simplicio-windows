@@ -1,6 +1,7 @@
 #include "us4/runtime/moe/expert_pager.h"
 
 #include <algorithm>
+#include <array>
 
 namespace us4::runtime::moe
 {
@@ -16,21 +17,55 @@ namespace us4::runtime::moe
         const auto index = FindIndex(expertId);
         if (!index.has_value())
         {
+            const auto payload = BuildPayload(expertId, residentBytes);
             entries_.push_back(ExpertEntry{
                 .expertId = expertId,
                 .residency = preferredResidency,
                 .residentBytes = residentBytes,
                 .touchCount = 1U,
                 .lastTouchTick = nextTouchTick_++,
+                .offloaded = preferredResidency == ExpertResidency::kCold,
+                .reloadCount = 0U,
+                .payloadChecksum = Checksum(payload),
             });
+            if (preferredResidency == ExpertResidency::kCold)
+            {
+                coldStore_[expertId] = ColdExpertBacking{
+                    .payload = payload,
+                    .checksum = entries_.back().payloadChecksum,
+                };
+                ++coldOffloadCount_;
+            }
         }
         else
         {
             ExpertEntry& entry = entries_[*index];
+            if (entry.offloaded && preferredResidency != ExpertResidency::kCold &&
+                !RestoreColdEntry(*index, preferredResidency))
+            {
+                return false;
+            }
+
             entry.residentBytes = residentBytes;
             entry.residency = preferredResidency;
             entry.touchCount += 1U;
             entry.lastTouchTick = nextTouchTick_++;
+            const auto payload = BuildPayload(expertId, residentBytes);
+            entry.payloadChecksum = Checksum(payload);
+            if (preferredResidency == ExpertResidency::kCold)
+            {
+                coldStore_[expertId] = ColdExpertBacking{
+                    .payload = payload,
+                    .checksum = entry.payloadChecksum,
+                };
+                entry.offloaded = true;
+                ++coldOffloadCount_;
+            }
+            else
+            {
+                entry.offloaded = false;
+                coldStore_.erase(expertId);
+            }
         }
 
         static_cast<void>(Rebalance());
@@ -48,6 +83,28 @@ namespace us4::runtime::moe
         return MoveToResidency(*index, targetResidency);
     }
 
+    bool ExpertPager::Reload(const std::size_t expertId, const ExpertResidency targetResidency)
+    {
+        const auto index = FindIndex(expertId);
+        if (!index.has_value())
+        {
+            return false;
+        }
+
+        if (!entries_[*index].offloaded)
+        {
+            return MoveToResidency(*index, targetResidency);
+        }
+
+        if (!RestoreColdEntry(*index, targetResidency))
+        {
+            return false;
+        }
+
+        static_cast<void>(Rebalance());
+        return true;
+    }
+
     std::optional<ExpertEntry> ExpertPager::Find(const std::size_t expertId) const
     {
         const auto index = FindIndex(expertId);
@@ -63,6 +120,8 @@ namespace us4::runtime::moe
         ExpertPagerStats stats{
             .promotionCount = promotionCount_,
             .evictionCount = evictionCount_,
+            .coldOffloadCount = coldOffloadCount_,
+            .reloadCount = reloadCount_,
         };
 
         for (const auto& entry : entries_)
@@ -144,8 +203,25 @@ namespace us4::runtime::moe
             return true;
         }
 
+        if (entry.offloaded && targetResidency != ExpertResidency::kCold)
+        {
+            const bool restored = RestoreColdEntry(index, targetResidency);
+            if (restored)
+            {
+                ++promotionCount_;
+            }
+            return restored;
+        }
+
         entry.residency = targetResidency;
         entry.lastTouchTick = nextTouchTick_++;
+        if (targetResidency == ExpertResidency::kCold)
+        {
+            return PersistColdEntry(index);
+        }
+
+        coldStore_.erase(entry.expertId);
+        entry.offloaded = false;
         ++promotionCount_;
         return true;
     }
@@ -200,11 +276,83 @@ namespace us4::runtime::moe
                 break;
             }
             entries_[*victim].residency = ExpertResidency::kCold;
+            static_cast<void>(PersistColdEntry(*victim));
             ++evictionCount_;
             ++moves;
         }
 
         return moves;
+    }
+
+    bool ExpertPager::PersistColdEntry(const std::size_t index)
+    {
+        if (index >= entries_.size())
+        {
+            return false;
+        }
+
+        auto& entry = entries_[index];
+        const auto payload = BuildPayload(entry.expertId, entry.residentBytes);
+        entry.payloadChecksum = Checksum(payload);
+        entry.offloaded = true;
+        coldStore_[entry.expertId] = ColdExpertBacking{
+            .payload = payload,
+            .checksum = entry.payloadChecksum,
+        };
+        ++coldOffloadCount_;
+        return true;
+    }
+
+    bool ExpertPager::RestoreColdEntry(const std::size_t index, const ExpertResidency targetResidency)
+    {
+        if (index >= entries_.size())
+        {
+            return false;
+        }
+
+        auto& entry = entries_[index];
+        const auto it = coldStore_.find(entry.expertId);
+        if (it == coldStore_.end())
+        {
+            return false;
+        }
+        if (Checksum(it->second.payload) != it->second.checksum)
+        {
+            return false;
+        }
+
+        entry.residency = targetResidency;
+        entry.offloaded = false;
+        entry.reloadCount += 1U;
+        entry.lastTouchTick = nextTouchTick_++;
+        entry.payloadChecksum = it->second.checksum;
+        coldStore_.erase(it);
+        ++reloadCount_;
+        return true;
+    }
+
+    std::vector<std::uint8_t> ExpertPager::BuildPayload(const std::size_t expertId,
+                                                        const std::size_t residentBytes)
+    {
+        const std::array<std::uint64_t, 2> payloadWords{
+            static_cast<std::uint64_t>(expertId),
+            static_cast<std::uint64_t>(residentBytes),
+        };
+        std::vector<std::uint8_t> payload(sizeof(payloadWords));
+        const auto* source = reinterpret_cast<const std::uint8_t*>(payloadWords.data());
+        std::copy(source, source + payload.size(), payload.begin());
+        return payload;
+    }
+
+    std::uint64_t ExpertPager::Checksum(const std::vector<std::uint8_t>& payload)
+    {
+        std::uint64_t fnv = 14695981039346656037ULL;
+        for (const auto byte : payload)
+        {
+            fnv ^= byte;
+            fnv *= 1099511628211ULL;
+        }
+        return fnv;
     }
 
 } // namespace us4::runtime::moe

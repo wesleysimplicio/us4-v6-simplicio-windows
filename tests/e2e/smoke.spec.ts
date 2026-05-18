@@ -208,6 +208,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('moe.preview:');
         expect(stdout).toContain('hot_hit_rate_pct:');
         expect(stdout).toContain('eviction_count:');
+        expect(stdout).toContain('cold_offload_count:');
+        expect(stdout).toContain('reload_count:');
     });
 
     test('exports probe as json', async ({}, testInfo) => {
@@ -233,6 +235,8 @@ test.describe('us4-cli smoke', () => {
             moe: {
                 hot_hit_rate_pct: number;
                 eviction_count: number;
+                cold_offload_count: number;
+                reload_count: number;
                 telemetry_events: number;
             };
         };
@@ -242,7 +246,9 @@ test.describe('us4-cli smoke', () => {
         expect(payload.selected_backend).toBe('directml');
         expect(payload.moe.hot_hit_rate_pct).toBeGreaterThan(0);
         expect(payload.moe.eviction_count).toBeGreaterThan(0);
-        expect(payload.moe.telemetry_events).toBe(5);
+        expect(payload.moe.cold_offload_count).toBeGreaterThan(0);
+        expect(payload.moe.reload_count).toBeGreaterThan(0);
+        expect(payload.moe.telemetry_events).toBe(7);
     });
 
     test('reports nano mode for low-memory cpu-only hosts', async ({}, testInfo) => {
