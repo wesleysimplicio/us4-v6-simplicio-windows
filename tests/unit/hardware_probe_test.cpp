@@ -536,6 +536,31 @@ namespace us4::core
             EXPECT_GT(runResult.report.speculativeTelemetry.rejectedTokens, 0U);
         }
 
+        TEST(HardwareProbeTest, ExecuteMoeCpuScalarRunReturnsPrefetchAndSparsityTelemetry)
+        {
+            us4::runtime::backends::HardwareCapabilities capabilities{};
+            capabilities.hasAvx2 = true;
+            capabilities.budget.hostBytes = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            us4::runtime::backends::SessionRequest request{};
+            request.modelId = "deepseek-r1-distill";
+            request.mode = us4::runtime::backends::RuntimeMode::kCpuOnly;
+            request.preferredBackend = "cpu";
+            request.maxGenerationTokens = 5U;
+
+            const RuntimePlan plan = RuntimeContext::BuildPlan(request, capabilities);
+            const auto runResult = ExecuteCpuScalarRun(plan, "moe telemetry from unit");
+
+            ASSERT_TRUE(runResult.ok);
+            EXPECT_GT(runResult.report.moeRouteCount, 0U);
+            EXPECT_GT(runResult.report.moePrefetchTelemetry.predictionCount, 0U);
+            EXPECT_GT(runResult.report.moePrefetchTelemetry.hitRatio, 0.0F);
+            EXPECT_FALSE(runResult.report.moePrefetchTelemetry.predictedExperts.empty());
+            EXPECT_GT(runResult.report.moeSparsityTelemetry.entryCount, 0U);
+            EXPECT_GT(runResult.report.moeSparsityTelemetry.hitRatio, 0.0F);
+            EXPECT_GT(runResult.report.moeSparsityTelemetry.averageSparsity, 0.0F);
+        }
+
         TEST(HardwareProbeTest, FormatsHumanReadableProbeSummary)
         {
             ProbeSummary summary{};
@@ -652,7 +677,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.39"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.40"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -730,6 +755,59 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"token_acceptance_trace\": ["),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
+        }
+
+        TEST(HardwareProbeTest, CompletesMoeCpuRunWithPrefetchAndSparsityTelemetry)
+        {
+            ClearProbeEnv();
+
+            const std::vector<char*> argv = {
+                const_cast<char*>("us4-cli"),
+                const_cast<char*>("run"),
+                const_cast<char*>("--model"),
+                const_cast<char*>("deepseek-r1-distill"),
+                const_cast<char*>("--prompt"),
+                const_cast<char*>("moe telemetry"),
+                const_cast<char*>("--backend"),
+                const_cast<char*>("cpu"),
+                const_cast<char*>("--max-tokens"),
+                const_cast<char*>("5"),
+            };
+
+            const us4::cli::ParsedCommand command = us4::cli::ParseArguments(
+                static_cast<int>(argv.size()), const_cast<char**>(argv.data()));
+            const us4::cli::CommandOutput result = us4::cli::ExecuteCommand(command);
+
+            EXPECT_EQ(command.kind, us4::cli::CommandKind::kRun);
+            EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
+            EXPECT_NE(result.stdoutText.find("supports_moe: yes"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("moe.prefetch_hit_ratio_pct:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("moe.sparsity_hit_ratio_pct:"), std::string::npos);
+            EXPECT_TRUE(result.stderrText.empty());
+        }
+
+        TEST(HardwareProbeTest, ReturnsMoeCpuRunTelemetryAsJson)
+        {
+            ClearProbeEnv();
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "deepseek-r1-distill";
+            command.prompt = "moe telemetry";
+            command.backend = "cpu";
+            command.mode = "cpu-only";
+            command.maxTokens = 5;
+            command.format = "json";
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kSuccessExitCode);
+            EXPECT_TRUE(result.stderrText.empty());
+            EXPECT_NE(result.stdoutText.find("\"moe\": {"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"prefetch\": {"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"hit_ratio_pct\": "), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"sparsity_cache\": {"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("\"predicted_experts\": ["), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidBackendValue)

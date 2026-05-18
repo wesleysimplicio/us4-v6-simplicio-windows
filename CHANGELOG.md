@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.40] - 2026-05-18
+
+### Added
+
+- MoE prefetch and sparsity telemetry to the CPU scalar CLI scaffold, including ratio output in both text and JSON modes for local smoke validation
+
+### Changed
+
+- the CPU scalar MoE path now simulates speculative prefetch outcomes and sparsity-aware cache lookups so `us4-cli run` emits deterministic telemetry for Sprint 09 smoke coverage
+
 ## [0.1.39] - 2026-05-18
 
 ### Added

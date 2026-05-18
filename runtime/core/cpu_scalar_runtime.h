@@ -38,6 +38,27 @@ namespace us4::core
         std::vector<SpeculativeStepTelemetry> steps;
     };
 
+    struct MoePrefetchTelemetryReport
+    {
+        std::size_t observationCount = 0;
+        std::size_t predictionCount = 0;
+        std::size_t hitCount = 0;
+        std::size_t missCount = 0;
+        float hitRatio = 0.0F;
+        std::vector<std::size_t> predictedExperts;
+    };
+
+    struct MoeSparsityTelemetryReport
+    {
+        std::size_t entryCount = 0;
+        std::size_t hitCount = 0;
+        std::size_t missCount = 0;
+        std::size_t evictedEntries = 0;
+        std::size_t residentBytes = 0;
+        float averageSparsity = 0.0F;
+        float hitRatio = 0.0F;
+    };
+
     struct CpuScalarRunReport
     {
         std::string modelPath;
@@ -59,6 +80,8 @@ namespace us4::core
         std::size_t moeHotExperts = 0;
         std::size_t moeWarmExperts = 0;
         std::size_t moeColdExperts = 0;
+        MoePrefetchTelemetryReport moePrefetchTelemetry;
+        MoeSparsityTelemetryReport moeSparsityTelemetry;
         SpeculativeTelemetryReport speculativeTelemetry;
     };
 

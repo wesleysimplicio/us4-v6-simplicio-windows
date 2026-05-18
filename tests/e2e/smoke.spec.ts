@@ -334,6 +334,77 @@ test.describe('us4-cli smoke', () => {
         expect(Array.isArray(payload.speculative.token_acceptance_trace)).toBeTruthy();
     });
 
+    test('shows MoE prefetch and sparsity telemetry in text mode', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'deepseek-r1-distill', '--prompt', 'moe telemetry from playwright',
+                '--backend', 'cpu', '--max-tokens', '5'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-moe-telemetry', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('supports_moe: yes');
+        expect(stdout).toContain('moe.prefetch_hit_ratio_pct:');
+        expect(stdout).toContain('moe.sparsity_hit_ratio_pct:');
+    });
+
+    test('exports MoE prefetch and sparsity telemetry as json', async ({}, testInfo) => {
+        const cliPath = await requireCliBinary(testInfo);
+
+        const {stdout, stderr, exitCode} = await runCli(
+            cliPath,
+            [
+                'run', '--model', 'deepseek-r1-distill', '--prompt', 'moe telemetry from playwright',
+                '--backend', 'cpu', '--max-tokens', '5', '--format', 'json'
+            ],
+            {
+                ...process.env,
+                US4_HAS_CUDA : '',
+                US4_HAS_DIRECTML : '',
+                US4_HAS_VULKAN : '',
+                US4_HAS_NPU : '',
+            },
+        );
+
+        await attachProcessOutput(testInfo, 'run-moe-telemetry-json', stdout, stderr);
+
+        expect(exitCode).toBe(0);
+        expect(stderr).toBe('');
+        const payload = JSON.parse(stdout) as
+        {
+            moe: {
+                route_count: number;
+                prefetch: {
+                    prediction_count: number;
+                    hit_ratio_pct: number;
+                    predicted_experts: number[];
+                };
+                sparsity_cache: {
+                    entry_count: number;
+                    hit_ratio_pct: number;
+                };
+            };
+        };
+        expect(payload.moe.route_count).toBeGreaterThan(0);
+        expect(payload.moe.prefetch.prediction_count).toBeGreaterThan(0);
+        expect(payload.moe.prefetch.hit_ratio_pct).toBeGreaterThan(0);
+        expect(Array.isArray(payload.moe.prefetch.predicted_experts)).toBeTruthy();
+        expect(payload.moe.sparsity_cache.entry_count).toBeGreaterThan(0);
+        expect(payload.moe.sparsity_cache.hit_ratio_pct).toBeGreaterThan(0);
+    });
+
     test('renders a DirectML dry-run plan', async ({}, testInfo) => {
         const cliPath = await requireCliBinary(testInfo);
 

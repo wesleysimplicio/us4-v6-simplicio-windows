@@ -266,7 +266,43 @@ namespace us4::cli
         json << "    \"router_entropy\": " << runResult.report.moeRouterEntropy << ",\n";
         json << "    \"hot_experts\": " << runResult.report.moeHotExperts << ",\n";
         json << "    \"warm_experts\": " << runResult.report.moeWarmExperts << ",\n";
-        json << "    \"cold_experts\": " << runResult.report.moeColdExperts << "\n";
+        json << "    \"cold_experts\": " << runResult.report.moeColdExperts << ",\n";
+        json << "    \"prefetch\": {\n";
+        json << "      \"observation_count\": "
+             << runResult.report.moePrefetchTelemetry.observationCount << ",\n";
+        json << "      \"prediction_count\": "
+             << runResult.report.moePrefetchTelemetry.predictionCount << ",\n";
+        json << "      \"hit_count\": " << runResult.report.moePrefetchTelemetry.hitCount << ",\n";
+        json << "      \"miss_count\": " << runResult.report.moePrefetchTelemetry.missCount << ",\n";
+        json << "      \"hit_ratio_pct\": "
+             << (runResult.report.moePrefetchTelemetry.hitRatio * 100.0F) << ",\n";
+        json << "      \"predicted_experts\": [";
+        for (std::size_t index = 0;
+             index < runResult.report.moePrefetchTelemetry.predictedExperts.size(); ++index)
+        {
+            if (index > 0U)
+            {
+                json << ", ";
+            }
+            json << runResult.report.moePrefetchTelemetry.predictedExperts[index];
+        }
+        json << "]\n";
+        json << "    },\n";
+        json << "    \"sparsity_cache\": {\n";
+        json << "      \"entry_count\": " << runResult.report.moeSparsityTelemetry.entryCount
+             << ",\n";
+        json << "      \"hit_count\": " << runResult.report.moeSparsityTelemetry.hitCount << ",\n";
+        json << "      \"miss_count\": " << runResult.report.moeSparsityTelemetry.missCount
+             << ",\n";
+        json << "      \"evicted_entries\": "
+             << runResult.report.moeSparsityTelemetry.evictedEntries << ",\n";
+        json << "      \"resident_bytes\": "
+             << runResult.report.moeSparsityTelemetry.residentBytes << ",\n";
+        json << "      \"average_sparsity_pct\": "
+             << (runResult.report.moeSparsityTelemetry.averageSparsity * 100.0F) << ",\n";
+        json << "      \"hit_ratio_pct\": "
+             << (runResult.report.moeSparsityTelemetry.hitRatio * 100.0F) << "\n";
+        json << "    }\n";
         json << "  },\n";
         json << "  \"telemetry\": {\n";
         json << "    \"events\": " << runResult.report.telemetryEventCount << "\n";
@@ -1230,6 +1266,28 @@ namespace us4::cli
             output << "moe.hot_experts: " << runResult.report.moeHotExperts << '\n';
             output << "moe.warm_experts: " << runResult.report.moeWarmExperts << '\n';
             output << "moe.cold_experts: " << runResult.report.moeColdExperts << '\n';
+            output << "moe.prefetch_observation_count: "
+                   << runResult.report.moePrefetchTelemetry.observationCount << '\n';
+            output << "moe.prefetch_prediction_count: "
+                   << runResult.report.moePrefetchTelemetry.predictionCount << '\n';
+            output << "moe.prefetch_hit_count: " << runResult.report.moePrefetchTelemetry.hitCount
+                   << '\n';
+            output << "moe.prefetch_miss_count: " << runResult.report.moePrefetchTelemetry.missCount
+                   << '\n';
+            output << "moe.prefetch_hit_ratio_pct: "
+                   << (runResult.report.moePrefetchTelemetry.hitRatio * 100.0F) << '\n';
+            output << "moe.sparsity_cache_entries: "
+                   << runResult.report.moeSparsityTelemetry.entryCount << '\n';
+            output << "moe.sparsity_cache_hit_count: "
+                   << runResult.report.moeSparsityTelemetry.hitCount << '\n';
+            output << "moe.sparsity_cache_miss_count: "
+                   << runResult.report.moeSparsityTelemetry.missCount << '\n';
+            output << "moe.sparsity_cache_evicted_entries: "
+                   << runResult.report.moeSparsityTelemetry.evictedEntries << '\n';
+            output << "moe.sparsity_average_pct: "
+                   << (runResult.report.moeSparsityTelemetry.averageSparsity * 100.0F) << '\n';
+            output << "moe.sparsity_hit_ratio_pct: "
+                   << (runResult.report.moeSparsityTelemetry.hitRatio * 100.0F) << '\n';
             output << "telemetry.events: " << runResult.report.telemetryEventCount << '\n';
             output << "speculative.active: "
                    << (runResult.report.speculativeTelemetry.active ? "yes" : "no") << '\n';

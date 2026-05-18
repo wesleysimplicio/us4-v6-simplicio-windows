@@ -6,8 +6,10 @@
 #include "us4/runtime/backends/cpu_avx/scalar_attention.h"
 #include "us4/runtime/backends/cpu_avx/scalar_matmul.h"
 #include "us4/runtime/cache/prefix_cache.h"
+#include "us4/runtime/cache/sparsity_aware_cache.h"
 #include "us4/runtime/moe/expert_pager.h"
 #include "us4/runtime/moe/expert_router.h"
+#include "us4/runtime/moe/speculative_prefetch.h"
 #include "us4/runtime/kv/summarizer.h"
 #include "us4/runtime/speculative/draft_model_loader.h"
 #include "us4/runtime/speculative/eagle3_decoder.h"
@@ -373,6 +375,92 @@ namespace us4::core
 
             return report;
         }
+
+        void SimulateMoeTelemetry(const std::vector<us4::runtime::moe::ExpertRoute>& routes,
+                                  CpuScalarRunReport& report,
+                                  us4::runtime::telemetry::TelemetrySink& telemetry)
+        {
+            if (routes.empty())
+            {
+                return;
+            }
+
+            us4::runtime::moe::SpeculativePrefetch prefetch;
+            prefetch.Configure(std::max<std::size_t>(routes.size(), 2U), 2U);
+            for (const auto& route : routes)
+            {
+                prefetch.Observe(route.expertId);
+            }
+            prefetch.Observe(routes.front().expertId);
+
+            const auto predictions = prefetch.PredictNext();
+            report.moePrefetchTelemetry.predictedExperts = predictions;
+            for (const auto predictedExpert : predictions)
+            {
+                prefetch.RecordPrefetchOutcome(predictedExpert, predictedExpert == routes.front().expertId);
+            }
+            const auto prefetchStats = prefetch.Stats();
+            report.moePrefetchTelemetry.observationCount = prefetchStats.observationCount;
+            report.moePrefetchTelemetry.predictionCount = prefetchStats.predictionCount;
+            report.moePrefetchTelemetry.hitCount = prefetchStats.prefetchHitCount;
+            report.moePrefetchTelemetry.missCount = prefetchStats.prefetchMissCount;
+            report.moePrefetchTelemetry.hitRatio = prefetchStats.hitRatio;
+
+            telemetry.Record({
+                .name = "moe.prefetch_hit_ratio_pct",
+                .value = FormatPercentValue(prefetchStats.hitRatio),
+                .category = "moe",
+                .numericValue = static_cast<double>(prefetchStats.hitRatio * 100.0F),
+            });
+            telemetry.Record({
+                .name = "moe.prefetch_prediction_count",
+                .value = std::to_string(prefetchStats.predictionCount),
+                .category = "moe",
+                .numericValue = static_cast<double>(prefetchStats.predictionCount),
+            });
+
+            us4::runtime::cache::SparsityAwareCache sparsityCache;
+            sparsityCache.Configure(1024U, 0.5F);
+            for (const auto& route : routes)
+            {
+                us4::runtime::cache::SparsityCacheEntry entry{};
+                entry.key = "expert-" + std::to_string(route.expertId);
+                entry.activeChannels = route.placement == "host" ? 192U : 64U;
+                entry.totalChannels = 256U;
+                entry.residentBytes = 2048U + route.expertId * 256U;
+                sparsityCache.Upsert(std::move(entry));
+            }
+            report.moeSparsityTelemetry.evictedEntries = sparsityCache.EvictBelowThreshold();
+            for (const auto& route : routes)
+            {
+                static_cast<void>(sparsityCache.TryGet("expert-" + std::to_string(route.expertId)));
+            }
+            const auto sparsityStats = sparsityCache.Stats();
+            const auto totalSparsityLookups = sparsityStats.hitCount + sparsityStats.missCount;
+            report.moeSparsityTelemetry.entryCount = sparsityStats.entryCount;
+            report.moeSparsityTelemetry.hitCount = sparsityStats.hitCount;
+            report.moeSparsityTelemetry.missCount = sparsityStats.missCount;
+            report.moeSparsityTelemetry.residentBytes = sparsityStats.residentBytes;
+            report.moeSparsityTelemetry.averageSparsity = sparsityStats.averageSparsity;
+            report.moeSparsityTelemetry.hitRatio =
+                totalSparsityLookups == 0U
+                    ? 0.0F
+                    : static_cast<float>(sparsityStats.hitCount) /
+                          static_cast<float>(totalSparsityLookups);
+
+            telemetry.Record({
+                .name = "moe.sparsity_hit_ratio_pct",
+                .value = FormatPercentValue(report.moeSparsityTelemetry.hitRatio),
+                .category = "moe",
+                .numericValue = static_cast<double>(report.moeSparsityTelemetry.hitRatio * 100.0F),
+            });
+            telemetry.Record({
+                .name = "moe.sparsity_cache_entries",
+                .value = std::to_string(sparsityStats.entryCount),
+                .category = "moe",
+                .numericValue = static_cast<double>(sparsityStats.entryCount),
+            });
+        }
     } // namespace
 
     CpuScalarRunResult ExecuteCpuScalarRun(const RuntimePlan& plan, std::string_view prompt,
@@ -545,6 +633,7 @@ namespace us4::core
                 .category = "moe",
                 .numericValue = static_cast<double>(moeStats.entropy),
             });
+            SimulateMoeTelemetry(routes, result.report, telemetry);
         }
 
         result.ok = true;
