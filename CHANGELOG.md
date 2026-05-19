@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.68] - 2026-05-18
+
+### Added
+
+- a committed `Llama 3.x 8B` cross-backend contract benchmark for `CPU/AVX`, `CUDA`, and `DirectML`, including a stable JSON report and Sprint 07 benchmark notes
+
+### Changed
+
+- extended the benchmark registry and validation loop to carry the new `llama_8b_*_contract` cases as local evidence without claiming production hardware throughput
+
 ## [0.1.67] - 2026-05-18
 
 ### Added

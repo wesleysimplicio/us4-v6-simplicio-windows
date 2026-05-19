@@ -63,6 +63,11 @@ if [[ -f build/runtime/benchmarks/cuda_bitnet_bench.exe ]]; then
   build/runtime/benchmarks/cuda_bitnet_bench.exe
 fi
 
+if [[ -f build/runtime/benchmarks/llama_backend_contract_bench.exe ]]; then
+  echo "Detected Llama backend contract benchmark binary. Running AVX/CUDA/DirectML local benchmark evidence."
+  build/runtime/benchmarks/llama_backend_contract_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

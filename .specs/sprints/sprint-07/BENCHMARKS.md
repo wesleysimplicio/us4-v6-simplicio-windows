@@ -21,3 +21,28 @@ full validation loop driven by `scripts/test.ps1`.
 - Synthetic and planner-only flows remain intact because `LlamaScalarAdapter` now
   falls back to `DenseAdapterBase::LoadModel` whenever a full `Llama` asset load is
   not available.
+
+## T07.6 - Llama 3.x 8B cross-backend contract bench
+
+Local evidence is captured through `build/runtime/benchmarks/llama_backend_contract_bench.exe`
+and written to `runtime/benchmarks/correctness/reports/llama_backend_contract_bench.json`.
+
+### Historical snapshot
+
+| Variant | Backend | Status | Elapsed (ms) | Tokens/s | Latency per token (ms) | Peak bytes | Detail |
+|---|---|---|---:|---:|---:|---:|---|
+| `llama_8b_cpu_avx_contract` | `cpu` | `pass` | `1.460100` | `5479.076776` | `0.182512` | `16384` | `cpu-scalar-avx-contract` |
+| `llama_8b_cuda_contract` | `cuda` | `pass` | `0.028200` | `2269503.546099` | `0.000441` | `11077156864` | `cuda-graph-captured` |
+| `llama_8b_directml_contract` | `directml` | `pass` | `0.001800` | `35555555.555556` | `0.000028` | `6484395520` | `directml-graph-contract` |
+
+### Reading
+
+- `T07.6` is satisfied locally as a benchmark harness and committed evidence surface for
+  `Llama 3.x 8B` across `CPU/AVX`, `CUDA`, and `DirectML`.
+- The measurements are explicitly scoped as `synthetic-local-contract`, not as claims of
+  real RTX 4090, Radeon RX 7900, or AVX-512 production throughput.
+- `CPU/AVX` runs through `RuntimeContext` + `ExecuteCpuScalarRun`, while `CUDA` and
+  `DirectML` run through their current deterministic backend contract paths.
+- The report preserves `tokens/s`, `latency`, `peak_bytes`, `issue_codes`, and
+  `confidence` so later hardware-backed reruns can replace these baselines without
+  changing the schema.

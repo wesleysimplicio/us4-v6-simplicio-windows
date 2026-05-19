@@ -120,6 +120,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_bitnet_bench.exe")) 
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_bitnet_bench.exe") } "CUDA BitNet benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\llama_backend_contract_bench.exe")) {
+    Write-Host "Detected Llama backend contract benchmark binary. Running AVX/CUDA/DirectML local benchmark evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\llama_backend_contract_bench.exe") } "Llama backend contract benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

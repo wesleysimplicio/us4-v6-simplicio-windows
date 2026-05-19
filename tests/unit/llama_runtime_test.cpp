@@ -274,5 +274,37 @@ namespace us4::runtime::tests
                                     }));
         }
 
+        TEST(LlamaRuntimeTest, BenchmarkRegistryIncludesLlama8bCrossBackendContractCases)
+        {
+            const auto cpuCases =
+                us4::runtime::benchmarks::BenchmarkRegistry::CasesForBackend("cpu");
+            const auto cudaCases =
+                us4::runtime::benchmarks::BenchmarkRegistry::CasesForBackend("cuda");
+            const auto directmlCases =
+                us4::runtime::benchmarks::BenchmarkRegistry::CasesForBackend("directml");
+
+            EXPECT_TRUE(std::any_of(cpuCases.begin(), cpuCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "llama_8b_cpu_avx_contract" &&
+                                               benchmark.modelId == "llama-3.1-8b" &&
+                                               benchmark.adapterId == "dense-llama";
+                                    }));
+            EXPECT_TRUE(std::any_of(cudaCases.begin(), cudaCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "llama_8b_cuda_contract" &&
+                                               benchmark.modelId == "llama-3.1-8b" &&
+                                               benchmark.adapterId == "dense-llama";
+                                    }));
+            EXPECT_TRUE(std::any_of(directmlCases.begin(), directmlCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "llama_8b_directml_contract" &&
+                                               benchmark.modelId == "llama-3.1-8b" &&
+                                               benchmark.adapterId == "dense-llama";
+                                    }));
+        }
+
     } // namespace
 } // namespace us4::runtime::tests

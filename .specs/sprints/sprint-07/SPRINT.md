@@ -6,18 +6,18 @@ end: 2026-08-19
 owner: us4-core
 ---
 
-# Sprint 07 — Llama Adapter (Windows)
+# Sprint 07 - Llama Adapter (Windows)
 
 ## Objetivo
 Llama 3/4 adapter com GQA, RoPE scaling (linear/dynamic/YaRN), ALiBi opcional. Full attention em todos backends.
 
 ## Tasks
-- [x] T07.1 — `runtime/adapters/llama/LlamaConfig`
-- [ ] T07.2 — `runtime/adapters/llama/LlamaAdapter`
-- [x] T07.3 — `runtime/core/rope.{h,cpp}` (linear + dynamic + YaRN)
-- [x] T07.4 — `runtime/core/gqa_attention.{h,cpp}`
-- [x] T07.5 — Loader Llama GGUF + safetensors + tokenizer.json
-- [ ] T07.6 — Bench Llama 3.x 8B em CUDA + DirectML + AVX
+- [x] T07.1 - `runtime/adapters/llama/LlamaConfig`
+- [ ] T07.2 - `runtime/adapters/llama/LlamaAdapter`
+- [x] T07.3 - `runtime/core/rope.{h,cpp}` (linear + dynamic + YaRN)
+- [x] T07.4 - `runtime/core/gqa_attention.{h,cpp}`
+- [x] T07.5 - Loader Llama GGUF + safetensors + tokenizer.json
+- [x] T07.6 - Bench Llama 3.x 8B em CUDA + DirectML + AVX
 
 ## Test plan
 - Unit: RoPE vs Python reference (atol 1e-5); GQA shape.

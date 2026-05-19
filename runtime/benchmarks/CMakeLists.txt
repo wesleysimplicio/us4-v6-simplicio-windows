@@ -127,6 +127,22 @@ target_link_libraries(cuda_bitnet_bench
     us4_build_warnings
 )
 
+add_executable(llama_backend_contract_bench
+  src/llama_backend_contract_bench.cpp
+)
+
+target_link_libraries(llama_backend_contract_bench
+  PRIVATE
+    us4_runtime_benchmark_registry
+    us4_runtime_backends
+    us4_runtime_backends_cuda
+    us4_runtime_backends_directml
+    us4_runtime_core
+    us4_profiles
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )
