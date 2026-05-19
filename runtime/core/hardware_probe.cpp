@@ -9,6 +9,7 @@
 #include "us4/runtime/moe/expert_pager.h"
 #include "us4/runtime/moe/expert_router.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>

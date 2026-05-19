@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.60] - 2026-05-18
+
+### Added
+
+- WIP scaffolds for the open sprint issues that do not require GPU hardware
+- `runtime/backends/cpu_avx/AmxDispatcher` capability detection + AVX-512 fallback plan for Sprint 04 T04.2 (#40)
+- `runtime/backends/cuda/CudaGraphCache` graph reuse contract with hit/miss + eviction stats for Sprint 10 T10.6 (#83)
+- `runtime/backends/cuda/CublasFallback` dispatch policy (custom kernel / cublasLt / cublas legacy / host fallback) for Sprint 03 T03.3 (#34)
+- `runtime/benchmarks/BenchCsvWriter` CSV serializer for cross-backend bench rows shared by Sprint 04 T04.7 (#45), Sprint 07 T07.6 (#65), and Sprint 11 T11.7 (#91)
+- 16 new unit tests covering the four scaffolds (100% green on host)
+
 ## [0.1.59] - 2026-05-18
 
 ### Added

@@ -7,7 +7,19 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+#if defined(_WIN32)
 #include <windows.h>
+#else
+#include <cstdint>
+using HANDLE = void*;
+inline HANDLE GetInvalidHandle()
+{
+    return reinterpret_cast<HANDLE>(static_cast<std::intptr_t>(-1));
+}
+#define INVALID_HANDLE_VALUE GetInvalidHandle()
+inline bool UnmapViewOfFile(void* /*view*/) { return false; }
+inline bool CloseHandle(HANDLE /*h*/) { return false; }
+#endif
 
 namespace us4::runtime::adapters
 {
@@ -159,6 +171,7 @@ namespace us4::runtime::adapters
         }
 
         ActiveMapping mapping{};
+#if defined(_WIN32)
         mapping.fileHandle =
             CreateFileW(known->second.path.wstring().c_str(), GENERIC_READ, FILE_SHARE_READ,
                         nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -181,6 +194,11 @@ namespace us4::runtime::adapters
             CloseMapping(mapping);
             return std::nullopt;
         }
+#else
+        // Non-Windows host scaffold: surface the shard registry without touching the OS mapping
+        // API so the host test suite can still exercise discovery + bookkeeping behaviour.
+        mapping.mappedView = reinterpret_cast<void*>(static_cast<std::intptr_t>(expertId + 1));
+#endif
 
         mapping.mappedBytes = known->second.fileBytes;
         mapping.path = known->second.path;
