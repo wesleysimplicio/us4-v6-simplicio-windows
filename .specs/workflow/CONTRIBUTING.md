@@ -131,7 +131,9 @@ gh pr merge --squash --delete-branch
 
 ### 8. Distribuicao
 
-Hoje merge em `main` valida engenharia, mas nao gera release do runtime. O repo ainda nao tem `release.yml`, `packaging/msix/` nem publicacao via winget.
+Hoje merge em `main` valida engenharia, e o repositorio ja possui a trilha local de release em `.github/workflows/release.yml`, `packaging/msix/`, `packaging/winget/`, `scripts/release-dry-run.ps1`, `scripts/preflight-release.ps1`, `scripts/post-publish-smoke.ps1` e `scripts/render-project-status.ps1`.
+
+O que ainda nao esta fechado localmente e depende de ambiente externo eh a assinatura publica do MSIX com certificado confiavel, o smoke de instalacao em host real e a publicacao real de `winget`/GitHub Release.
 
 Veja [`.specs/workflow/RELEASE.md`](C:/Users/wesley.simplicio/Pictures/m/us4-v6-simplicio-windows/.specs/workflow/RELEASE.md).
 
