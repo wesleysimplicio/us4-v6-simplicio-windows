@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.66] - 2026-05-18
+
+### Added
+
+- local Sprint 11 benchmark notes for `Vulkan` and `Windows ML`, including a new `windows_ml_llama_opt_in` correctness-gate case
+
+### Changed
+
+- taught the hybrid planner gate and autotuner to carry `Llama` across the existing `Vulkan` and `Windows ML` local benchmark surface
 ## [0.1.65] - 2026-05-18
 
 ### Changed

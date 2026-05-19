@@ -39,6 +39,11 @@ namespace us4::runtime::tuning
             return request.preferredBackend == "windows-ml" || request.preferredBackend == "npu";
         }
 
+        bool IsLlamaModel(std::string_view modelId)
+        {
+            return modelId.find("llama") != std::string_view::npos;
+        }
+
         void AddProbeIfMissing(std::vector<TuningProbe>* probes, TuningProbe probe)
         {
             const auto exists =
@@ -67,6 +72,7 @@ namespace us4::runtime::tuning
         const bool explicitWindowsMlRequest = IsExplicitWindowsMlRequest(request);
         const bool noNpuFallbackRegression =
             request.allowNpu && explicitWindowsMlRequest && !capabilities.hasNpu;
+        const bool llamaModel = IsLlamaModel(request.modelId);
 
         plan.decisions.push_back(TuningDecision{
             .key = "mode",
@@ -145,15 +151,19 @@ namespace us4::runtime::tuning
         {
             AddProbeIfMissing(&plan.probes,
                               TuningProbe{
-                                  .benchmarkName = "vulkan_qwen_balanced",
+                                  .benchmarkName =
+                                      llamaModel ? "vulkan_llama_balanced" : "vulkan_qwen_balanced",
                                   .backend = "vulkan",
                                   .profileId = "balanced",
                                   .promptTokens = 256U,
                                   .generationTokens = 32U,
                                   .regressionCritical = false,
                                   .rationale =
-                                      "Cross-vendor Vulkan remains the broadest GPU probe for the "
-                                      "hybrid tuning path.",
+                                      llamaModel
+                                          ? "Cross-vendor Vulkan remains the broadest GPU probe "
+                                            "for the Llama hybrid tuning path."
+                                          : "Cross-vendor Vulkan remains the broadest GPU probe "
+                                            "for the hybrid tuning path.",
                               });
         }
 
@@ -161,15 +171,19 @@ namespace us4::runtime::tuning
         {
             AddProbeIfMissing(&plan.probes,
                               TuningProbe{
-                                  .benchmarkName = "windows_ml_qwen_opt_in",
+                                  .benchmarkName = llamaModel ? "windows_ml_llama_opt_in"
+                                                              : "windows_ml_qwen_opt_in",
                                   .backend = "windows-ml",
                                   .profileId = "micro",
                                   .promptTokens = 256U,
                                   .generationTokens = 32U,
                                   .regressionCritical = true,
                                   .rationale =
-                                      "Windows ML opt-in should be sampled when the host NPU is "
-                                      "available.",
+                                      llamaModel
+                                          ? "Windows ML opt-in should be sampled for Llama when "
+                                            "the host NPU is available."
+                                          : "Windows ML opt-in should be sampled when the host "
+                                            "NPU is available.",
                               });
         }
 

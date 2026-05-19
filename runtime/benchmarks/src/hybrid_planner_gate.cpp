@@ -23,6 +23,12 @@ namespace
 
     using Clock = std::chrono::steady_clock;
 
+    bool IsWindowsMlOptInCase(std::string_view benchmarkName)
+    {
+        return benchmarkName == "windows_ml_qwen_opt_in" ||
+               benchmarkName == "windows_ml_llama_opt_in";
+    }
+
     struct TimingBreakdown
     {
         double planMs = 0.0;
@@ -547,7 +553,7 @@ namespace
             }
         }
 
-        if (benchmark.name == "windows_ml_qwen_opt_in")
+        if (IsWindowsMlOptInCase(benchmark.name))
         {
             if (powerPolicy != PowerDispatchPolicy::kNominal)
             {

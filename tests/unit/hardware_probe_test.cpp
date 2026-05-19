@@ -414,6 +414,14 @@ namespace us4::core
                                                !benchmark.requiresGpu &&
                                                benchmark.participatesInCorrectnessGate;
                                     }));
+            EXPECT_TRUE(std::any_of(windowsMlCases.begin(), windowsMlCases.end(),
+                                    [](const auto& benchmark)
+                                    {
+                                        return benchmark.name == "windows_ml_llama_opt_in" &&
+                                               benchmark.adapterId == "dense-llama" &&
+                                               benchmark.scenario == "npu-gqa-offload-opt-in" &&
+                                               benchmark.participatesInCorrectnessGate;
+                                    }));
             EXPECT_TRUE(std::any_of(
                 windowsMlCases.begin(), windowsMlCases.end(),
                 [](const auto& benchmark)
@@ -900,7 +908,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.65"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.66"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)

@@ -100,6 +100,36 @@ namespace us4::runtime::tests
                                     { return probe.benchmarkName == "windows_ml_qwen_opt_in"; }));
         }
 
+        TEST(AutoTunerTest, BuildsLlamaHybridProbePlanForVulkanAndWinMlHosts)
+        {
+            ClearProfileStoreEnv();
+            backends::HardwareCapabilities capabilities{};
+            capabilities.hasVulkan = true;
+            capabilities.hasNpu = true;
+            capabilities.primaryAdapterVendor = backends::BackendVendor::kAmd;
+            capabilities.primaryAdapterClass = backends::DeviceClass::kDiscreteGpu;
+            capabilities.npuVendor = backends::BackendVendor::kMicrosoft;
+            capabilities.budget.deviceBytes = 12ULL * 1024ULL * 1024ULL * 1024ULL;
+            capabilities.budget.hostBytes = 32ULL * 1024ULL * 1024ULL * 1024ULL;
+
+            backends::SessionRequest request{};
+            request.modelId = "llama-3.2-3b";
+            request.mode = backends::RuntimeMode::kBalanced;
+            request.preferredBackend = "windows-ml";
+            request.allowNpu = true;
+            request.enableSpeculative = true;
+
+            tuning::AutoTuner tuner;
+            const auto plan = tuner.BuildPlan(request, capabilities);
+
+            EXPECT_TRUE(std::any_of(plan.probes.begin(), plan.probes.end(),
+                                    [](const tuning::TuningProbe& probe)
+                                    { return probe.benchmarkName == "vulkan_llama_balanced"; }));
+            EXPECT_TRUE(std::any_of(plan.probes.begin(), plan.probes.end(),
+                                    [](const tuning::TuningProbe& probe)
+                                    { return probe.benchmarkName == "windows_ml_llama_opt_in"; }));
+        }
+
         TEST(AutoTunerTest, PreservesNoNpuFallbackRegressionProbeForExplicitWinMlRequests)
         {
             ClearProfileStoreEnv();
