@@ -1,5 +1,25 @@
 # Sprint 03 Bench Notes
 
+## T03.1 - CudaContext
+
+Local evidence is captured through `tests/unit/cuda_context_test.cpp` and the synthetic
+reuse benchmark `build/runtime/benchmarks/cuda_graph_reuse_bench.exe`, which writes
+`runtime/benchmarks/correctness/reports/cuda_graph_reuse_bench.json`.
+
+### Historical snapshot
+
+| Check | Evidence |
+|---|---|
+| stream isolation | distinct `prefill`, `decode`, and `transfer` lanes, with dedicated transfer tagging |
+| pool reuse | released scratch block is recycled on the next async allocation |
+| graph capture + replay | deterministic replay tokens and execution trace without `cudaDeviceSynchronize` marker |
+| speculative graph reuse | `graph_captures=1`, `cache_hits=511`, `graph_replays=512`, `speedup_vs_reset=1.180370x` |
+
+## Reading
+
+- `T03.1` is satisfied locally as a deterministic CUDA runtime scaffold: `CudaContext` exposes device metadata, lane-isolated stream handles, async pool leases, graph capture, graph replay, and cross-step graph reuse without forcing a global device synchronize marker into the hot path.
+- The local benchmark is intentionally a synthetic graph lifecycle bench, not a device-side GPU latency claim. It proves the reuse contract and bookkeeping behavior of the shared CUDA context on this host.
+
 ## T03.2 - CUDA kernels matmul/softmax/rmsnorm
 
 Local evidence is captured through `build/runtime/benchmarks/cuda_kernel_correctness_bench.exe`

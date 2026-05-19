@@ -12,7 +12,7 @@ owner: us4-core
 Backends GPU principais. CUDA: streams + memory pool + CUDA Graphs + GEMM kernels. DirectML: device init + graph compile + dispatch.
 
 ## Tasks
-- [ ] T03.1 - `runtime/backends/cuda/CudaContext` (device, streams, memory pool, CUDA Graphs)
+- [x] T03.1 - `runtime/backends/cuda/CudaContext` (device, streams, memory pool, CUDA Graphs)
 - [x] T03.2 - `runtime/backends/cuda/kernels/{matmul,softmax,rmsnorm}.cu` (FP16/BF16)
 - [x] T03.3 - cuBLAS/cuBLASLt fallback wrapper
 - [x] T03.4 - `runtime/backends/directml/DmlDevice` (D3D12, command queue)

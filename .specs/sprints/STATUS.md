@@ -2,17 +2,17 @@
 
 > Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.
 
-- Generated: 2026-05-19T02:08:09.8552400Z
+- Generated: 2026-05-19T02:10:09.8792934Z
 - Sprints: 12
 - Total tasks: 88
-- Done tasks: 75
-- Remaining tasks: 13
+- Done tasks: 76
+- Remaining tasks: 12
 
 | Sprint | Status | Done | Remaining | Total |
 |---|---|---:|---:|---:|
 | sprint-01 | done | 10 | 0 | 10 |
 | sprint-02 | done | 9 | 0 | 9 |
-| sprint-03 | in_progress | 5 | 2 | 7 |
+| sprint-03 | in_progress | 6 | 1 | 7 |
 | sprint-04 | in_progress | 2 | 5 | 7 |
 | sprint-05 | in_progress | 6 | 1 | 7 |
 | sprint-06 | done | 7 | 0 | 7 |

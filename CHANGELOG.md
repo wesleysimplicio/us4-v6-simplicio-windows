@@ -4,6 +4,12 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.63] - 2026-05-18
+
+### Changed
+
+- marked Sprint 03 `T03.1` complete in the versioned planning files and added committed local evidence for `CudaContext` stream isolation, async pool reuse, graph capture/replay, and speculative graph reuse
+
 ## [0.1.62] - 2026-05-18
 
 ### Added
