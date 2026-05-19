@@ -104,6 +104,17 @@ target_link_libraries(cuda_graph_reuse_bench
     us4_build_warnings
 )
 
+add_executable(cuda_kernel_correctness_bench
+  src/cuda_kernel_correctness_bench.cpp
+)
+
+target_link_libraries(cuda_kernel_correctness_bench
+  PRIVATE
+    us4_runtime_backends_cuda
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )

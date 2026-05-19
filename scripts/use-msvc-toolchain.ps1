@@ -118,6 +118,13 @@ function Enable-MsvcToolchain {
         $sdkBin
     )
 
+    $vcpkgRoot = Join-Path $env:USERPROFILE "vcpkg"
+    $vcpkgInstalledRoot = Join-Path $vcpkgRoot "installed\\x64-windows"
+    $vcpkgBin = Join-Path $vcpkgInstalledRoot "bin"
+    if (Test-Path $vcpkgBin) {
+        $pathsToPrepend += $vcpkgBin
+    }
+
     $env:PATH = (($pathsToPrepend + @($env:PATH)) -join ";")
     $env:INCLUDE = @(
         $msvcInclude
@@ -140,6 +147,14 @@ function Enable-MsvcToolchain {
         (Join-Path $snapshot.MsvcToolsPath "lib\\x86\\store\\references")
         "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319"
     ) -join ";"
+
+    if (Test-Path $vcpkgInstalledRoot) {
+        if ($env:CMAKE_PREFIX_PATH) {
+            $env:CMAKE_PREFIX_PATH = $vcpkgInstalledRoot + ";" + $env:CMAKE_PREFIX_PATH
+        } else {
+            $env:CMAKE_PREFIX_PATH = $vcpkgInstalledRoot
+        }
+    }
 
     return (Get-Command cl -ErrorAction SilentlyContinue) -and
            (Get-Command cmake -ErrorAction SilentlyContinue) -and

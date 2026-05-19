@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.62] - 2026-05-18
+
+### Added
+
+- host-compiled CUDA kernel scaffolds for `matmul`, `softmax`, and `rmsnorm`, plus a dedicated local correctness bench report for Sprint 03
+
+### Changed
+
+- extended Sprint 03 local evidence with deterministic `FP16/BF16` correctness coverage for the new CUDA kernel surface, including unit tests and validation-loop integration
+
 ## [0.1.61] - 2026-05-18
 
 ### Added

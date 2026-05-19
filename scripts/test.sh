@@ -53,6 +53,11 @@ if [[ -f build/runtime/benchmarks/cuda_graph_reuse_bench.exe ]]; then
   build/runtime/benchmarks/cuda_graph_reuse_bench.exe
 fi
 
+if [[ -f build/runtime/benchmarks/cuda_kernel_correctness_bench.exe ]]; then
+  echo "Detected CUDA kernel correctness benchmark binary. Running FP16/BF16 diff evidence."
+  build/runtime/benchmarks/cuda_kernel_correctness_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

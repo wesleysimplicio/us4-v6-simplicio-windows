@@ -110,6 +110,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_graph_reuse_bench.ex
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_graph_reuse_bench.exe") } "CUDA graph reuse benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_kernel_correctness_bench.exe")) {
+    Write-Host "Detected CUDA kernel correctness benchmark binary. Running FP16/BF16 diff evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_kernel_correctness_bench.exe") } "CUDA kernel correctness benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH
