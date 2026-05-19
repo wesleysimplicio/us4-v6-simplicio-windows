@@ -21,11 +21,11 @@ Auto-tuning hardware-aware (tile/batch por profile). Matriz benchmark (8 hardwar
 - [ ] T12.7 - Release v1.0: tag, changelog, GitHub Releases
 - [x] T12.8 - Migration guide + troubleshooting
 
-## Status snapshot (2026-05-18)
+## Status snapshot (2026-05-19)
 
 - Planejamento versionado: 12 sprints, 88 tasks totais.
-- Checkboxes marcados hoje: 63 concluidas, 25 ainda abertas.
-- Sprint 12 segue em progresso porque os blocos restantes dependem de assinatura/publicacao real, apesar da trilha local de release ja cobrir preflight, dry-run encadeado, manifests, checksums, release manifest e release notes.
+- Checkboxes marcados hoje: 80 concluidas, 8 ainda abertas.
+- Sprint 12 segue em progresso porque so restam `T12.6` e `T12.7`, ambos dependentes de assinatura/publicacao real, apesar da trilha local de release ja cobrir preflight, dry-run encadeado, manifests, checksums, release manifest, release notes, smoke de zip e smoke dev-only de MSIX.
 
 ## Test plan
 - Unit: auto-tuner converges; profile cache load/save.

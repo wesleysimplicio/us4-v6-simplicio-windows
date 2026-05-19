@@ -49,25 +49,26 @@ Conclusao pratica: o repo esta em fase avancada de fechamento da Sprint 12, com 
 
 ---
 
-## 2. O que precisa existir antes da primeira release real
+## 2. O que ainda falta antes da primeira release real
 
-Antes de cortar uma release publica do runtime, o repositorio precisa ganhar pelo menos:
+Antes de cortar uma release publica do runtime, o repositorio ainda precisa fechar estes blocos que nao dependem apenas de codigo local:
 
-1. um workflow de release dedicado
-2. versionamento canonico do runtime
-3. `CHANGELOG.md`
-4. pipeline de empacotamento
-5. estrategia de assinatura
-6. smoke de pos-publicacao
-7. criterio de rollback documentado
+1. certificado confiavel para assinatura publica do `MSIX`
+2. smoke de instalacao do `MSIX` em host real e confiavel
+3. credenciais e rito real de publicacao em GitHub Releases
+4. submissao/publicacao real de manifest no ecossistema `winget`
+5. branch protection atualizada se novos checks de release virarem obrigatorios
 
-Itens recomendados:
+O que ja existe hoje e nao deve mais ser tratado como gap:
 
 - `release.yml` para tags `v*`
-- artefatos `portable zip` e `MSIX`
+- artefatos `portable zip` e `MSIX` em fluxo local
 - checksum SHA256
-- publicacao em GitHub Releases
-- submissao de manifest quando `winget` entrar de fato no escopo
+- `CHANGELOG.md`
+- versionamento canonico do runtime no build C++
+- `release-manifest.json` e `release-notes.md`
+- `release preflight`, `release dry-run` e smoke local de pos-publicacao
+- estrategia de rollback documentada
 
 ---
 
