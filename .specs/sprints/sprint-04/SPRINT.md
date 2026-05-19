@@ -6,19 +6,19 @@ end: 2026-07-08
 owner: us4-core
 ---
 
-# Sprint 04 — AVX Hot Paths + oneDNN (Windows)
+# Sprint 04 - AVX Hot Paths + oneDNN (Windows)
 
 ## Objetivo
 Caminhos quentes CPU: AVX2, AVX-512, AMX (Intel BF16/INT8). oneDNN para block GEMM. Dequant INT8/INT4.
 
 ## Tasks
-- [ ] T04.1 — `runtime/backends/cpu_avx/avx2_matmul.cpp` + `avx512_matmul.cpp`
-- [ ] T04.2 — `runtime/backends/cpu_avx/amx_bf16_int8.cpp` (Intel Sapphire Rapids+)
-- [ ] T04.3 — `runtime/backends/cpu_avx/avx_attention.cpp` (fused softmax-rescale)
-- [ ] T04.4 — `runtime/backends/cpu_avx/dequant_{int8,int4}.cpp` (group-wise scales)
-- [x] T04.5 — `runtime/backends/onednn/OneDnnBackend` (block GEMM via primitives)
-- [x] T04.6 — Auto-select AVX level via cpuid (AVX2 / AVX-512 / AMX)
-- [ ] T04.7 — Re-bench Qwen/Gemma CPU AVX vs scalar
+- [ ] T04.1 - `runtime/backends/cpu_avx/avx2_matmul.cpp` + `avx512_matmul.cpp`
+- [ ] T04.2 - `runtime/backends/cpu_avx/amx_bf16_int8.cpp` (Intel Sapphire Rapids+)
+- [x] T04.3 - `runtime/backends/cpu_avx/avx_attention.cpp` (fused softmax-rescale)
+- [x] T04.4 - `runtime/backends/cpu_avx/dequant_{int8,int4}.cpp` (group-wise scales)
+- [x] T04.5 - `runtime/backends/onednn/OneDnnBackend` (block GEMM via primitives)
+- [x] T04.6 - Auto-select AVX level via cpuid (AVX2 / AVX-512 / AMX)
+- [ ] T04.7 - Re-bench Qwen/Gemma CPU AVX vs scalar
 
 ## Test plan
 - Unit: AVX matmul vs scalar (atol 1e-3); AMX path vs AVX-512 fallback; oneDNN block GEMM correctness.

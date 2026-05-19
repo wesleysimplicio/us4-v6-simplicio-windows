@@ -2412,8 +2412,8 @@ test.describe('us4-cli smoke', () => {
         };
         expect(payload.sprint_count).toBe(12);
         expect(payload.total_tasks).toBe(88);
-        expect(payload.done_tasks).toBe(77);
-        expect(payload.remaining_tasks).toBe(11);
+        expect(payload.done_tasks).toBe(79);
+        expect(payload.remaining_tasks).toBe(9);
         expect(payload.sprints.some((entry) => entry.sprint === 'sprint-02' &&
                                                entry.status === 'done' &&
                                                entry.done_tasks === 9 &&
@@ -2422,10 +2422,10 @@ test.describe('us4-cli smoke', () => {
                                                entry.status === 'done' &&
                                                entry.done_tasks === 6 &&
                                                entry.remaining_tasks === 0)).toBeTruthy();
-        expect(payload.sprints.some((entry) => entry.sprint === 'sprint-12' &&
+        expect(payload.sprints.some((entry) => entry.sprint === 'sprint-04' &&
                                                entry.status === 'in_progress' &&
-                                               entry.done_tasks === 6 &&
-                                               entry.remaining_tasks === 2)).toBeTruthy();
+                                               entry.done_tasks === 4 &&
+                                               entry.remaining_tasks === 3)).toBeTruthy();
     });
 
     test('renders planning status markdown artifact', async ({}, testInfo) => {
@@ -2453,12 +2453,12 @@ test.describe('us4-cli smoke', () => {
         expect(content).toContain('Generated from `sprint-XX/SPRINT.md` frontmatter and versioned task checkboxes.');
         expect(content).toContain('- Sprints: 12');
         expect(content).toContain('- Total tasks: 88');
-        expect(content).toContain('- Done tasks: 77');
-        expect(content).toContain('- Remaining tasks: 11');
+        expect(content).toContain('- Done tasks: 79');
+        expect(content).toContain('- Remaining tasks: 9');
         expect(content).toContain('| sprint-02 | done | 9 | 0 | 9 |');
         expect(content).toContain('| sprint-06 | done | 7 | 0 | 7 |');
         expect(content).toContain('| sprint-09 | done | 6 | 0 | 6 |');
-        expect(content).toContain('| sprint-12 | in_progress | 6 | 2 | 8 |');
+        expect(content).toContain('| sprint-04 | in_progress | 4 | 3 | 7 |');
     });
 
     test('fails MSIX signing with a clear certificate prerequisite message', async ({}, testInfo) => {

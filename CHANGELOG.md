@@ -4,6 +4,11 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.65] - 2026-05-18
+
+### Changed
+
+- aligned the Sprint 04 planning snapshot with the already-landed `AVX attention` and `INT8/INT4 dequant` implementations, reducing the versioned backlog to `79` completed tasks and `9` remaining
 ## [0.1.64] - 2026-05-18
 
 ### Added
