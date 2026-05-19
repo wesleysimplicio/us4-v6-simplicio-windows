@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.64] - 2026-05-18
+
+### Added
+
+- a host-compiled CUDA BitNet `1.58-bit` matmul scaffold in `runtime/backends/cuda/kernels/bitnet_matmul.cu`, plus local correctness and throughput evidence for Sprint 05
+
+### Changed
+
+- completed Sprint 05 in the versioned planning files and added committed benchmark notes for the CUDA BitNet scaffold
+
 ## [0.1.63] - 2026-05-18
 
 ### Changed

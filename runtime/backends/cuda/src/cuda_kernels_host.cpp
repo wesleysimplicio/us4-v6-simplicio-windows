@@ -45,10 +45,16 @@ namespace us4::runtime::backends::cuda
         {
             return tensor.Rank() == 2U;
         }
+
+        void SetBit(std::vector<std::uint8_t>& bytes, const std::size_t index)
+        {
+            bytes[index / 8U] |= static_cast<std::uint8_t>(1U << (index % 8U));
+        }
     } // namespace
 
 } // namespace us4::runtime::backends::cuda
 
+#include "../kernels/bitnet_matmul.cu"
 #include "../kernels/matmul.cu"
 #include "../kernels/rmsnorm.cu"
 #include "../kernels/softmax.cu"
@@ -123,6 +129,45 @@ namespace us4::runtime::backends::cuda
 
         return kernels::RmsNormHostKernel(input, gamma, options.epsilon, [&](const float value)
                                           { return Quantize(value, options.precision); });
+    }
+
+    CudaBitNetPackedRow PackCudaBitNetRow(const std::vector<float>& values,
+                                          const float ternaryThreshold)
+    {
+        CudaBitNetPackedRow packed;
+        packed.elementCount = values.size();
+        const std::size_t byteCount = (values.size() + 7U) / 8U;
+        packed.positiveBits.assign(byteCount, 0U);
+        packed.negativeBits.assign(byteCount, 0U);
+
+        for (std::size_t index = 0U; index < values.size(); ++index)
+        {
+            if (values[index] >= ternaryThreshold)
+            {
+                SetBit(packed.positiveBits, index);
+            }
+            else if (values[index] <= -ternaryThreshold)
+            {
+                SetBit(packed.negativeBits, index);
+            }
+        }
+
+        return packed;
+    }
+
+    float CudaBitNetMatMul(const std::vector<float>& activations, const CudaBitNetPackedRow& packed)
+    {
+        if (activations.size() != packed.elementCount)
+        {
+            throw std::invalid_argument("CudaBitNetMatMul activation length mismatch.");
+        }
+        if (packed.positiveBits.size() != packed.negativeBits.size())
+        {
+            throw std::invalid_argument(
+                "CudaBitNetMatMul packed bit lanes must have matching sizes.");
+        }
+
+        return kernels::BitNetMatMulHostKernel(activations, packed);
     }
 
 } // namespace us4::runtime::backends::cuda

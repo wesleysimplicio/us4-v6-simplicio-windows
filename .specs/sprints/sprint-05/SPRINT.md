@@ -1,6 +1,6 @@
 ---
 sprint: sprint-05
-status: in_progress
+status: done
 start: 2026-07-09
 end: 2026-07-22
 owner: us4-core
@@ -12,7 +12,7 @@ owner: us4-core
 BitNet 1.58-bit (CUDA + AVX) + Ternary (PT-BitNet). MICRO + NANO modes.
 
 ## Tasks
-- [ ] T05.1 — `runtime/backends/cuda/kernels/bitnet_matmul.cu` (packed 1.58-bit)
+- [x] T05.1 — `runtime/backends/cuda/kernels/bitnet_matmul.cu` (packed 1.58-bit)
 - [x] T05.2 — `runtime/backends/cpu_avx/bitnet_matmul.cpp` (AVX2 popcount + lookup)
 - [x] T05.3 — `runtime/adapters/bitnet/BitNetAdapter` (load packed weights)
 - [x] T05.4 — `runtime/adapters/ternary/TernaryAdapter` (PT-BitNet -1/0/+1)

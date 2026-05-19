@@ -1,5 +1,23 @@
 # Sprint 05 Bench Notes
 
+## T05.1 - CUDA BitNet matmul
+
+Local benchmark evidence is captured through `build/runtime/benchmarks/cuda_bitnet_bench.exe`
+and written to `runtime/benchmarks/correctness/reports/cuda_bitnet_bench.json`.
+
+### Current local evidence
+
+| Variant | Width | Iterations | Elapsed (ms) | Speedup vs scalar | Tokens/s |
+|---|---:|---:|---:|---:|---:|
+| `scalar-bitnet-cuda` | `4096` | `4096` | `36.406` | `1.000x` | `461403427.024` |
+| `cuda-bitnet` | `4096` | `4096` | `41.339` | `0.881x` | `405842783.605` |
+
+## Reading
+
+- `T05.1` is satisfied locally as a host-compiled CUDA scaffold for packed `1.58-bit` ternary weights, using explicit positive/negative bit lanes and a dedicated `bitnet_matmul.cu` surface.
+- Correctness is paired with `tests/unit/cuda_bitnet_test.cpp`, which compares `CudaBitNetMatMul` directly against the scalar packed BitNet reference with `atol 5e-3`.
+- The local host scaffold is currently slower than the scalar CPU reference, which is expected on this machine because the bench validates the CUDA contract without a real device-side kernel launch path. The bench still records deterministic `tokens_per_second` and checksum parity for regression tracking.
+
 ## T05.2 - AVX2 BitNet matmul
 
 Local benchmark evidence is captured through `build/runtime/benchmarks/cpu_bitnet_bench.exe`

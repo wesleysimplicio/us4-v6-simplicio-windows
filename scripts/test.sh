@@ -58,6 +58,11 @@ if [[ -f build/runtime/benchmarks/cuda_kernel_correctness_bench.exe ]]; then
   build/runtime/benchmarks/cuda_kernel_correctness_bench.exe
 fi
 
+if [[ -f build/runtime/benchmarks/cuda_bitnet_bench.exe ]]; then
+  echo "Detected CUDA BitNet benchmark binary. Running packed 1.58-bit local benchmark evidence."
+  build/runtime/benchmarks/cuda_bitnet_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

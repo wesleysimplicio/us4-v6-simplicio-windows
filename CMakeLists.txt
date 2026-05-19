@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.63
+    VERSION 0.1.64
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
@@ -93,6 +93,7 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             target_sources(
                 us4_core_tests
                 PRIVATE
+                    tests/unit/cuda_bitnet_test.cpp
                     tests/unit/cuda_kernel_test.cpp
                     tests/unit/cuda_context_test.cpp
                     tests/unit/cublas_fallback_test.cpp)

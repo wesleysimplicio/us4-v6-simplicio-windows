@@ -115,6 +115,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_kernel_correctness_b
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_kernel_correctness_bench.exe") } "CUDA kernel correctness benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_bitnet_bench.exe")) {
+    Write-Host "Detected CUDA BitNet benchmark binary. Running packed 1.58-bit local benchmark evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_bitnet_bench.exe") } "CUDA BitNet benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

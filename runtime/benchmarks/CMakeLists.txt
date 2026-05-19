@@ -115,6 +115,18 @@ target_link_libraries(cuda_kernel_correctness_bench
     us4_build_warnings
 )
 
+add_executable(cuda_bitnet_bench
+  src/cuda_bitnet_bench.cpp
+)
+
+target_link_libraries(cuda_bitnet_bench
+  PRIVATE
+    us4_runtime_backends_cpu_avx
+    us4_runtime_backends_cuda
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )

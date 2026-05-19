@@ -2,7 +2,10 @@
 
 #include "runtime/core/tensor.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 namespace us4::runtime::backends::cuda
 {
@@ -25,6 +28,13 @@ namespace us4::runtime::backends::cuda
         CudaKernelPrecision precision = CudaKernelPrecision::kFp16;
     };
 
+    struct CudaBitNetPackedRow
+    {
+        std::vector<std::uint8_t> positiveBits;
+        std::vector<std::uint8_t> negativeBits;
+        std::size_t elementCount = 0U;
+    };
+
     [[nodiscard]] CudaKernelValidation ValidateCudaMatMul(const us4::core::Tensor& left,
                                                           const us4::core::Tensor& right);
     [[nodiscard]] us4::core::Tensor CudaMatMul(const us4::core::Tensor& left,
@@ -40,5 +50,9 @@ namespace us4::runtime::backends::cuda
     [[nodiscard]] us4::core::Tensor CudaRmsNorm(const us4::core::Tensor& input,
                                                 const us4::core::Tensor& gamma,
                                                 const CudaRmsNormOptions& options);
+    [[nodiscard]] CudaBitNetPackedRow PackCudaBitNetRow(
+        const std::vector<float>& values, float ternaryThreshold = 0.25F);
+    [[nodiscard]] float CudaBitNetMatMul(const std::vector<float>& activations,
+                                         const CudaBitNetPackedRow& packed);
 
 } // namespace us4::runtime::backends::cuda
