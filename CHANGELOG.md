@@ -4,16 +4,6 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
-## [0.1.69] - 2026-05-18
-
-### Added
-
-- adapter-aware `CUDA` and `DirectML` dry-run evidence for `Qwen` and `Gemma`, including resolved model path, model format, adapter residency estimates, and prefill token telemetry in the CLI report surface
-
-### Changed
-
-- taught the GPU dry-run CLI path to instantiate the resolved adapter contract instead of emitting backend-only skeleton output, while keeping Sprint 03 `T03.7` open until real device execution and correctness gates are satisfied
-
 ## [0.1.70] - 2026-05-18
 
 ### Added
@@ -23,6 +13,26 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 ### Changed
 
 - promoted the local Sprint 11 gate from planner-only timing blobs into a benchmark-shaped report surface that is easier to compare and document, while still keeping the issue open until real `Radeon RX 7900` and `Snapdragon X Elite` runs exist
+
+## [0.1.71] - 2026-05-18
+
+### Added
+
+- adapter-aware `Vulkan` and `Windows ML` dry-run evidence for `Qwen` and `Llama`, including adapter id, load result, residency estimates, and prefill token telemetry in the CLI report surface
+
+### Changed
+
+- taught the remaining GPU/NPU dry-run CLI paths to instantiate the resolved adapter contract instead of stopping at backend-only planning output, while keeping Sprint 07 `T07.2` open until real Llama full-attention execution lands on every backend
+
+## [0.1.69] - 2026-05-18
+
+### Added
+
+- adapter-aware `CUDA` and `DirectML` dry-run evidence for `Qwen` and `Gemma`, including resolved model path, model format, adapter residency estimates, and prefill token telemetry in the CLI report surface
+
+### Changed
+
+- taught the GPU dry-run CLI path to instantiate the resolved adapter contract instead of emitting backend-only skeleton output, while keeping Sprint 03 `T03.7` open until real device execution and correctness gates are satisfied
 
 ## [0.1.68] - 2026-05-18
 

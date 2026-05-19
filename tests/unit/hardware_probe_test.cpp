@@ -908,7 +908,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.70"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.71"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -1775,9 +1775,55 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("vulkan.kernel_count:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.required_kernel_count:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.timeline_semaphores:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.adapter_id: dense-qwen"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("vulkan.adapter_model_loaded: yes"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("vulkan.issue_codes: vulkan.npu.bypass"),
                       std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsWindowsMlDryRunPlanForLlamaAdapterContract)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_CUDA", "");
+            _putenv_s("US4_HAS_DIRECTML", "");
+            _putenv_s("US4_HAS_VULKAN", "1");
+            _putenv_s("US4_HAS_NPU", "1");
+            _putenv_s("US4_GPU_NAME", "Radeon RX Test");
+            _putenv_s("US4_GPU_VENDOR", "amd");
+            _putenv_s("US4_GPU_CLASS", "discrete");
+            _putenv_s("US4_NPU_NAME", "Ryzen AI Test");
+            _putenv_s("US4_NPU_VENDOR", "microsoft");
+            _putenv_s("US4_DEVICE_GIB", "8");
+            _putenv_s("US4_POWER_SOURCE", "ac");
+            _putenv_s("US4_BATTERY_PERCENT", "100");
+            _putenv_s("US4_BATTERY_SAVER", "0");
+            _putenv_s("US4_THERMAL_STATE", "nominal");
+            _putenv_s("US4_ETW_THROTTLED", "0");
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "llama-3.2-3b";
+            command.prompt = "hello llama hybrid";
+            command.backend = "windows-ml";
+            command.allowNpu = true;
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("execution: windows-ml-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.adapter_id: dense-llama"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.adapter_model_loaded: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.adapter_prefill_tokens:"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("windows_ml.compile_target: npu"),
+                      std::string::npos);
 
             ClearProbeEnv();
         }

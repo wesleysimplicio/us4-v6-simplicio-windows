@@ -615,7 +615,8 @@ namespace us4::cli
     }
 
     inline void AppendVulkanDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
-                                   const us4::runtime::backends::HardwareCapabilities& capabilities)
+                                   const us4::runtime::backends::HardwareCapabilities& capabilities,
+                                   std::string_view prompt, std::string_view modelPath)
     {
         const auto executionPlan = us4::runtime::backends::vulkan::BuildVulkanExecutionPlan({
             .binding = plan.binding,
@@ -657,6 +658,7 @@ namespace us4::cli
         output << "vulkan.host_moe_route: " << (executionPlan.routeMoEOnHost ? "yes" : "no")
                << '\n';
         output << "vulkan.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendAdapterDryRun(output, "vulkan", plan, prompt, modelPath);
         AppendIssueCodes(output, "vulkan", executionPlan.issues);
         if (!executionPlan.steps.empty())
         {
@@ -671,7 +673,8 @@ namespace us4::cli
 
     inline void
     AppendWindowsMlDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
-                          const us4::runtime::backends::HardwareCapabilities& capabilities)
+                          const us4::runtime::backends::HardwareCapabilities& capabilities,
+                          std::string_view prompt, std::string_view modelPath)
     {
         const auto executionPlan = us4::runtime::backends::windows_ml::BuildWindowsMlExecutionPlan({
             .binding = plan.binding,
@@ -742,6 +745,7 @@ namespace us4::cli
         output << "windows_ml.batch_hint: " << executionPlan.batchSizeHint << '\n';
         output << "windows_ml.context_hint: " << executionPlan.contextTokenHint << '\n';
         output << "windows_ml.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendAdapterDryRun(output, "windows_ml", plan, prompt, modelPath);
         const auto sessionArtifact = adapter.SessionArtifact();
         if (sessionArtifact.has_value())
         {
@@ -1484,11 +1488,11 @@ namespace us4::cli
             break;
         case us4::runtime::backends::BackendKind::kVulkan:
             executionKind = "vulkan-dry-run";
-            AppendVulkanDryRun(output, plan, capabilities);
+            AppendVulkanDryRun(output, plan, capabilities, command.prompt, command.modelPath);
             break;
         case us4::runtime::backends::BackendKind::kWindowsMl:
             executionKind = "windows-ml-dry-run";
-            AppendWindowsMlDryRun(output, plan, capabilities);
+            AppendWindowsMlDryRun(output, plan, capabilities, command.prompt, command.modelPath);
             break;
         case us4::runtime::backends::BackendKind::kCpu:
             executionKind = "scaffold-only";

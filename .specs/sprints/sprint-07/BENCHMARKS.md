@@ -18,9 +18,20 @@ full validation loop driven by `scripts/test.ps1`.
 - The new runtime test locks in prompt tokenization for `"hello llama runtime"` as
   `{0, 1, 2, 1, 3}` and verifies deterministic detokenization back to the original
   prompt.
+- The dry-run CLI surface now also proves that `Vulkan` and `Windows ML` bind a real
+  `dense-llama` adapter contract instead of emitting backend-only planning output.
 - Synthetic and planner-only flows remain intact because `LlamaScalarAdapter` now
   falls back to `DenseAdapterBase::LoadModel` whenever a full `Llama` asset load is
   not available.
+
+### Current dry-run contract snapshot
+
+| Backend | Model | Adapter | Contract evidence |
+|---|---|---|---|
+| `cuda` | `qwen-0.5b` | `dense-qwen` | adapter id, residency estimates, prefill telemetry |
+| `directml` | `qwen-0.5b` | `dense-qwen` | adapter id, residency estimates, prefill telemetry |
+| `vulkan` | `qwen-0.5b` | `dense-qwen` | adapter id, residency estimates, prefill telemetry |
+| `windows-ml` | `llama-3.2-3b` | `dense-llama` | adapter id, residency estimates, prefill telemetry |
 
 ## T07.6 - Llama 3.x 8B cross-backend contract bench
 

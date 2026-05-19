@@ -693,6 +693,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('vulkan.kernel_count:');
         expect(stdout).toContain('vulkan.required_kernel_count:');
         expect(stdout).toContain('vulkan.timeline_semaphores:');
+        expect(stdout).toContain('vulkan.adapter_id: dense-qwen');
+        expect(stdout).toContain('vulkan.adapter_model_loaded: yes');
         expect(stderr).toContain('not implemented yet');
     });
 
@@ -736,6 +738,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('windows_ml.graph_reusable: yes');
         expect(stdout).toContain('windows_ml.npu_partitions:');
         expect(stdout).toContain('windows_ml.dispatch_table_size: 5');
+        expect(stdout).toContain('windows_ml.adapter_id: dense-qwen');
+        expect(stdout).toContain('windows_ml.adapter_model_loaded: yes');
         expect(stdout).toContain('windows_ml.first_dispatch_target: npu');
         expect(stdout).toContain('windows_ml.power_policy: nominal');
         expect(stdout).toContain('windows_ml.synthetic_power_telemetry: yes');
