@@ -582,6 +582,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('execution: directml-dry-run');
         expect(stdout).toContain('directml.graph_state: ready');
         expect(stdout).toContain('directml.dispatch_ok: yes');
+        expect(stdout).toContain('directml.adapter_id: dense-qwen');
+        expect(stdout).toContain('directml.adapter_model_loaded: yes');
         expect(stderr).toContain('not implemented yet');
     });
 
@@ -624,6 +626,7 @@ test.describe('us4-cli smoke', () => {
         expect(payload.plan_execution).toBe('directml-dry-run');
         expect(payload.backend).toBe('directml');
         expect(payload.report_text).toContain('directml.graph_state: ready');
+        expect(payload.report_text).toContain('directml.adapter_id: dense-qwen');
         expect(stderr).toContain('not implemented yet');
     });
 
@@ -654,6 +657,8 @@ test.describe('us4-cli smoke', () => {
         expect(stdout).toContain('execution: cuda-dry-run');
         expect(stdout).toContain('cuda.execution_flavor:');
         expect(stdout).toContain('cuda.prefill_chunk_tokens:');
+        expect(stdout).toContain('cuda.adapter_id: dense-qwen');
+        expect(stdout).toContain('cuda.adapter_model_loaded: yes');
         expect(stderr).toContain('not implemented yet');
     });
 

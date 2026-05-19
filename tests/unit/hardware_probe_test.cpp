@@ -908,7 +908,7 @@ namespace us4::core
 
             EXPECT_EQ(command.kind, us4::cli::CommandKind::kVersion);
             EXPECT_EQ(result.exitCode, us4::cli::kSuccessExitCode);
-            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.68"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("us4-cli 0.1.69"), std::string::npos);
         }
 
         TEST(HardwareProbeTest, RejectsRunWithInvalidModeValue)
@@ -1129,6 +1129,9 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("backend: directml"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("execution: directml-dry-run"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("directml.graph_state: ready"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_id: dense-qwen"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_model_loaded: yes"),
+                      std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
 
             ClearProbeEnv();
@@ -1158,6 +1161,7 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("\"plan_execution\": \"directml-dry-run\""),
                       std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"backend\": \"directml\""), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_id: dense-qwen"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("\"report_text\": \""), std::string::npos);
             EXPECT_NE(result.stderrText.find("not implemented yet"), std::string::npos);
 
@@ -1480,6 +1484,39 @@ namespace us4::core
             EXPECT_NE(result.stdoutText.find("execution: cuda-dry-run"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("cuda.execution_flavor:"), std::string::npos);
             EXPECT_NE(result.stdoutText.find("cuda.prefill_chunk_tokens:"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("cuda.adapter_id: dense-qwen"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("cuda.adapter_model_loaded: yes"), std::string::npos);
+
+            ClearProbeEnv();
+        }
+
+        TEST(HardwareProbeTest, ReturnsDirectMlDryRunPlanForGemmaAdapterContract)
+        {
+            ClearProbeEnv();
+#if defined(_WIN32)
+            _putenv_s("US4_HAS_DIRECTML", "1");
+            _putenv_s("US4_GPU_NAME", "Intel Arc Test");
+            _putenv_s("US4_GPU_VENDOR", "intel");
+            _putenv_s("US4_GPU_CLASS", "integrated");
+            _putenv_s("US4_DEVICE_GIB", "8");
+#endif
+
+            cli::ParsedCommand command{};
+            command.kind = cli::CommandKind::kRun;
+            command.modelId = "gemma-3-4b";
+            command.prompt = "hello gemma";
+            command.backend = "directml";
+
+            const auto result = cli::ExecuteCommand(command);
+
+            EXPECT_EQ(result.exitCode, cli::kNotImplementedExitCode);
+            EXPECT_NE(result.stdoutText.find("execution: directml-dry-run"), std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_id: dense-gemma"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_model_loaded: yes"),
+                      std::string::npos);
+            EXPECT_NE(result.stdoutText.find("directml.adapter_prefill_tokens:"),
+                      std::string::npos);
 
             ClearProbeEnv();
         }

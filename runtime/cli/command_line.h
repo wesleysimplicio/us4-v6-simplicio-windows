@@ -4,6 +4,7 @@
 #include "runtime/core/hardware_probe.h"
 #include "runtime/core/runtime_context.h"
 #include "runtime/core/runtime_mode.h"
+#include "us4/runtime/adapters/adapter_factory.h"
 #include "us4/runtime/adapters/model_loader.h"
 #include "us4/runtime/backends/cuda/cuda_backend.h"
 #include "us4/runtime/backends/directml/dml_device.h"
@@ -456,9 +457,58 @@ namespace us4::cli
         output << '\n';
     }
 
+    inline void AppendAdapterDryRun(std::ostringstream& output, std::string_view prefix,
+                                    const us4::core::RuntimePlan& plan, std::string_view prompt,
+                                    std::string_view modelPath)
+    {
+        const std::string resolvedModelPath =
+            modelPath.empty() ? "builtin://" + plan.model.id : std::string(modelPath);
+        const auto adapter = us4::runtime::adapters::CreateAdapterForModelId(plan.model.id);
+        output << prefix << ".adapter_id: " << plan.model.adapterId << '\n';
+        output << prefix << ".model_path: " << resolvedModelPath << '\n';
+
+        const auto asset =
+            us4::runtime::adapters::LoadModelAsset(resolvedModelPath, plan.model.id);
+        output << prefix << ".model_format: "
+               << us4::runtime::adapters::ToString(asset.descriptor.format) << '\n';
+
+        if (!adapter)
+        {
+            output << prefix << ".adapter_created: no\n";
+            return;
+        }
+
+        output << prefix << ".adapter_created: yes\n";
+        const bool attached = adapter->Attach(plan.binding);
+        output << prefix << ".adapter_attached: " << (attached ? "yes" : "no") << '\n';
+
+        if (!attached)
+        {
+            return;
+        }
+
+        const bool loaded = adapter->LoadModel(resolvedModelPath);
+        output << prefix << ".adapter_model_loaded: " << (loaded ? "yes" : "no") << '\n';
+
+        const auto residency = adapter->BuildResidencyPlan(plan.request);
+        output << prefix << ".adapter_expected_host_bytes: " << residency.expectedHostBytes << '\n';
+        output << prefix << ".adapter_expected_device_bytes: " << residency.expectedDeviceBytes
+               << '\n';
+
+        if (!loaded)
+        {
+            return;
+        }
+
+        const auto prefill = adapter->Prefill(std::string(prompt));
+        output << prefix << ".adapter_prefill_tokens: " << prefill.tokens.size() << '\n';
+        output << prefix << ".adapter_prefill_terminal: " << (prefill.isTerminal ? "yes" : "no")
+               << '\n';
+    }
+
     inline void AppendCudaDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
                                  const us4::runtime::backends::HardwareCapabilities& capabilities,
-                                 std::string_view prompt)
+                                 std::string_view prompt, std::string_view modelPath)
     {
         const auto executionPlan = us4::runtime::backends::cuda::CudaBackend::BuildExecutionPlan(
             plan.request, capabilities);
@@ -485,13 +535,14 @@ namespace us4::cli
         output << "cuda.prefill_bytes_touched: " << prefill.deviceBytesTouched << '\n';
         output << "cuda.decode_bytes_touched: " << decode.deviceBytesTouched << '\n';
         output << "cuda.plan_issues: " << executionPlan.issues.size() << '\n';
+        AppendAdapterDryRun(output, "cuda", plan, prompt, modelPath);
         AppendIssueCodes(output, "cuda", executionPlan.issues);
     }
 
     inline void
     AppendDirectMlDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
                          const us4::runtime::backends::HardwareCapabilities& capabilities,
-                         std::string_view prompt)
+                         std::string_view prompt, std::string_view modelPath)
     {
         using namespace us4::runtime::backends::directml;
 
@@ -560,6 +611,7 @@ namespace us4::cli
         output << "directml.node_count: " << graph.Nodes().size() << '\n';
         output << "directml.dispatch_count: " << graph.Stats().dispatchCount << '\n';
         output << "directml.fence: " << graph.Stats().lastFenceValue << '\n';
+        AppendAdapterDryRun(output, "directml", plan, prompt, modelPath);
     }
 
     inline void AppendVulkanDryRun(std::ostringstream& output, const us4::core::RuntimePlan& plan,
@@ -1424,11 +1476,11 @@ namespace us4::cli
         {
         case us4::runtime::backends::BackendKind::kCuda:
             executionKind = "cuda-dry-run";
-            AppendCudaDryRun(output, plan, capabilities, command.prompt);
+            AppendCudaDryRun(output, plan, capabilities, command.prompt, command.modelPath);
             break;
         case us4::runtime::backends::BackendKind::kDirectML:
             executionKind = "directml-dry-run";
-            AppendDirectMlDryRun(output, plan, capabilities, command.prompt);
+            AppendDirectMlDryRun(output, plan, capabilities, command.prompt, command.modelPath);
             break;
         case us4::runtime::backends::BackendKind::kVulkan:
             executionKind = "vulkan-dry-run";

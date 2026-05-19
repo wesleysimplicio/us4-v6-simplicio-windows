@@ -6,6 +6,18 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 
 ## [0.1.68] - 2026-05-18
 
+## [0.1.69] - 2026-05-18
+
+### Added
+
+- adapter-aware `CUDA` and `DirectML` dry-run evidence for `Qwen` and `Gemma`, including resolved model path, model format, adapter residency estimates, and prefill token telemetry in the CLI report surface
+
+### Changed
+
+- taught the GPU dry-run CLI path to instantiate the resolved adapter contract instead of emitting backend-only skeleton output, while keeping Sprint 03 `T03.7` open until real device execution and correctness gates are satisfied
+
+## [0.1.68] - 2026-05-18
+
 ### Added
 
 - a committed `Llama 3.x 8B` cross-backend contract benchmark for `CPU/AVX`, `CUDA`, and `DirectML`, including a stable JSON report and Sprint 07 benchmark notes

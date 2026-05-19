@@ -56,3 +56,21 @@ and written to `runtime/benchmarks/correctness/reports/cuda_fallback_policy_benc
 - `T03.3` is satisfied locally as a policy-and-wrapper scaffold: aligned `FP16/BF16` shapes stay on the custom-kernel lane, while irregular or deterministic shapes degrade to `cuBLAS` / `cuBLASLt` without hiding the fallback reason.
 - The current bench is intentionally a dispatch-policy bench, not a device-side CUDA throughput benchmark. It documents the local expected policy delta while Sprint 03 still keeps the shared CUDA runtime on the deterministic reference path.
 - The deterministic case intentionally favors `cuBLAS` over the synthetic `cuBLASLt` estimate, which is why `speedup_vs_fallback` can fall below `1.0x` for that row.
+
+## T03.7 - Qwen + Gemma adapters in CUDA + DirectML paths
+
+Local evidence is currently captured through `tests/unit/hardware_probe_test.cpp`,
+`tests/e2e/smoke.spec.ts`, and the `us4-cli run --backend {cuda|directml}` dry-run output.
+
+### Current local snapshot
+
+| Backend | Model | Adapter | Contract evidence |
+|---|---|---|---|
+| `cuda` | `qwen-0.5b` | `dense-qwen` | adapter id, model format, residency estimates, and prefill telemetry |
+| `directml` | `qwen-0.5b` | `dense-qwen` | adapter id, model format, residency estimates, and prefill telemetry |
+| `directml` | `gemma-3-4b` | `dense-gemma` | adapter id, model format, residency estimates, and prefill telemetry |
+
+## Reading
+
+- `T03.7` is now partially evidenced locally: the CLI dry-run path no longer stops at backend-only planning and instead binds the resolved `Qwen` / `Gemma` adapter contract into the `CUDA` and `DirectML` reports.
+- This is still not the full task acceptance target. Real device execution, backend correctness diffs against CPU, and target-hardware latency evidence remain open requirements for closing Sprint 03.
