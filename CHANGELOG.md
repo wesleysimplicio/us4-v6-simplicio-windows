@@ -4,8 +4,6 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
-## [0.1.68] - 2026-05-18
-
 ## [0.1.69] - 2026-05-18
 
 ### Added
@@ -15,6 +13,18 @@ The format is based on Keep a Changelog and the project follows Semantic Version
 ### Changed
 
 - taught the GPU dry-run CLI path to instantiate the resolved adapter contract instead of emitting backend-only skeleton output, while keeping Sprint 03 `T03.7` open until real device execution and correctness gates are satisfied
+
+## [0.1.70] - 2026-05-18
+
+### Added
+
+- explicit `generation_tokens`, `tokens_per_second`, and `latency_per_token_ms` metrics to the committed Sprint 11 `hybrid_planner_gate` JSON report for `Qwen` and `Llama` on `Vulkan` and `Windows ML`
+
+### Changed
+
+- promoted the local Sprint 11 gate from planner-only timing blobs into a benchmark-shaped report surface that is easier to compare and document, while still keeping the issue open until real `Radeon RX 7900` and `Snapdragon X Elite` runs exist
+
+## [0.1.68] - 2026-05-18
 
 ## [0.1.68] - 2026-05-18
 

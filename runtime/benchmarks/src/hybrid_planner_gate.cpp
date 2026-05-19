@@ -9,6 +9,7 @@
 #include "us4/runtime/benchmarks/benchmark_registry.h"
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -42,7 +43,10 @@ namespace
         std::string name;
         std::string backend;
         std::string status;
+        std::uint32_t generationTokens = 0U;
         TimingBreakdown timing;
+        double tokensPerSecond = 0.0;
+        double latencyPerTokenMs = 0.0;
         std::vector<std::string> details;
         std::string jsonFingerprint;
     };
@@ -315,6 +319,15 @@ namespace
         return json.str();
     }
 
+    void PopulateThroughputMetrics(GateResult& result)
+    {
+        const double safeTotalMs = result.timing.totalMs > 0.0 ? result.timing.totalMs : 0.001;
+        const double safeTokenCount =
+            static_cast<double>(std::max<std::uint32_t>(result.generationTokens, 1U));
+        result.latencyPerTokenMs = safeTotalMs / safeTokenCount;
+        result.tokensPerSecond = safeTokenCount / (safeTotalMs / 1000.0);
+    }
+
     GateResult RunVulkanCase(const us4::runtime::benchmarks::BenchmarkCase& benchmark)
     {
         using namespace us4::runtime::backends;
@@ -416,14 +429,18 @@ namespace
                     << "\"descriptor_set_count\":" << context.DescriptorArena().setCount << ','
                     << "\"issue_codes\":" << RenderArray(issues) << '}';
 
-        return GateResult{
+        GateResult result{
             .name = benchmark.name,
             .backend = benchmark.backend,
             .status = failures.empty() ? "pass" : "fail",
+            .generationTokens = static_cast<std::uint32_t>(
+                benchmark.generationTokens > 0 ? benchmark.generationTokens : 1U),
             .timing = timing,
             .details = std::move(failures),
             .jsonFingerprint = fingerprint.str(),
         };
+        PopulateThroughputMetrics(result);
+        return result;
     }
 
     GateResult RunWindowsMlCase(const us4::runtime::benchmarks::BenchmarkCase& benchmark)
@@ -673,14 +690,18 @@ namespace
                     << "\"issue_codes\":" << RenderArray(issueCodes) << ','
                     << "\"power_issue_codes\":" << RenderArray(powerIssueCodes) << '}';
 
-        return GateResult{
+        GateResult result{
             .name = benchmark.name,
             .backend = benchmark.backend,
             .status = failures.empty() ? "pass" : "fail",
+            .generationTokens = static_cast<std::uint32_t>(
+                benchmark.generationTokens > 0 ? benchmark.generationTokens : 1U),
             .timing = timing,
             .details = std::move(failures),
             .jsonFingerprint = fingerprint.str(),
         };
+        PopulateThroughputMetrics(result);
+        return result;
     }
 
     std::string RenderReport(const std::vector<GateResult>& results)
@@ -696,9 +717,12 @@ namespace
             report << "      \"name\": \"" << EscapeJson(result.name) << "\",\n";
             report << "      \"backend\": \"" << EscapeJson(result.backend) << "\",\n";
             report << "      \"status\": \"" << result.status << "\",\n";
+            report << "      \"generation_tokens\": " << result.generationTokens << ",\n";
+            report << "      \"tokens_per_second\": " << std::fixed << std::setprecision(6)
+                   << result.tokensPerSecond << ",\n";
+            report << "      \"latency_per_token_ms\": " << result.latencyPerTokenMs << ",\n";
             report << "      \"timing_ms\": {\n";
-            report << "        \"plan\": " << std::fixed << std::setprecision(3)
-                   << result.timing.planMs << ",\n";
+            report << "        \"plan\": " << std::setprecision(3) << result.timing.planMs << ",\n";
             report << "        \"initialize\": " << result.timing.initializeMs << ",\n";
             report << "        \"phase\": " << result.timing.phaseMs << ",\n";
             report << "        \"total\": " << result.timing.totalMs << "\n";
@@ -746,6 +770,10 @@ int main()
     {
         failed = failed || result.status != "pass";
         std::cout << result.name << " backend=" << result.backend << " status=" << result.status
+                  << " generation_tokens=" << result.generationTokens
+                  << " tokens_per_second=" << std::fixed << std::setprecision(6)
+                  << result.tokensPerSecond << " latency_per_token_ms="
+                  << result.latencyPerTokenMs
                   << " plan_ms=" << std::fixed << std::setprecision(3) << result.timing.planMs
                   << " initialize_ms=" << result.timing.initializeMs
                   << " phase_ms=" << result.timing.phaseMs << " total_ms=" << result.timing.totalMs;
