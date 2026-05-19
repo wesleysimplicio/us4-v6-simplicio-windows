@@ -230,25 +230,20 @@ namespace us4::runtime::adapters
             LoadModelAsset(modelPath, binding_.has_value() ? binding_->modelId : config_.adapterId);
         if (!loadResult.ok)
         {
-            status_ = backends::RuntimeStatus::kError;
-            lifecycle_ = AdapterLifecycle::kFaulted;
-            loadedModel_.reset();
+            MarkModelLoadFailed();
             return false;
         }
 
-        loadedModel_ = loadResult.descriptor;
-        lifecycle_ = AdapterLifecycle::kModelLoaded;
-        status_ = binding_.has_value() ? backends::RuntimeStatus::kReady
-                                       : backends::RuntimeStatus::kLoading;
-        if (!binding_.has_value())
-        {
-            status_ = backends::RuntimeStatus::kIdle;
-        }
-        return true;
+        return CommitLoadedModel(std::move(loadResult.descriptor));
     }
 
     std::vector<std::int32_t> DenseAdapterBase::TokenizePrompt(std::string_view prompt) const
     {
+        if (const auto specialized = TryTokenizePrompt(prompt); specialized.has_value())
+        {
+            return *specialized;
+        }
+
         std::vector<std::int32_t> tokens;
         tokens.reserve(prompt.size());
         for (const unsigned char byte : std::string(prompt))
@@ -265,6 +260,11 @@ namespace us4::runtime::adapters
     std::string
     DenseAdapterBase::DetokenizePromptTokens(const std::vector<std::int32_t>& tokens) const
     {
+        if (const auto specialized = TryDetokenizePromptTokens(tokens); specialized.has_value())
+        {
+            return *specialized;
+        }
+
         std::string prompt;
         prompt.reserve(tokens.size());
         for (const std::int32_t token : tokens)
@@ -439,6 +439,18 @@ namespace us4::runtime::adapters
         return true;
     }
 
+    std::optional<std::vector<std::int32_t>>
+    DenseAdapterBase::TryTokenizePrompt(std::string_view /*prompt*/) const
+    {
+        return std::nullopt;
+    }
+
+    std::optional<std::string>
+    DenseAdapterBase::TryDetokenizePromptTokens(const std::vector<std::int32_t>& /*tokens*/) const
+    {
+        return std::nullopt;
+    }
+
     std::int32_t DenseAdapterBase::EmitTerminalToken(const backends::SessionRequest& request) const
     {
         return config_.terminalTokenBase +
@@ -485,6 +497,31 @@ namespace us4::runtime::adapters
             .storageBytes = storageBytes,
             .summaryBytes = summaryBytes,
         });
+    }
+
+    bool DenseAdapterBase::CommitLoadedModel(ModelAssetDescriptor descriptor)
+    {
+        loadedModel_ = std::move(descriptor);
+        lifecycle_ = AdapterLifecycle::kModelLoaded;
+        status_ = binding_.has_value() ? backends::RuntimeStatus::kReady
+                                       : backends::RuntimeStatus::kLoading;
+        if (!binding_.has_value())
+        {
+            status_ = backends::RuntimeStatus::kIdle;
+        }
+        return true;
+    }
+
+    void DenseAdapterBase::MarkModelLoadFailed()
+    {
+        status_ = backends::RuntimeStatus::kError;
+        lifecycle_ = AdapterLifecycle::kFaulted;
+        loadedModel_.reset();
+    }
+
+    void DenseAdapterBase::ClearLoadedModelState()
+    {
+        loadedModel_.reset();
     }
 
 } // namespace us4::runtime::adapters

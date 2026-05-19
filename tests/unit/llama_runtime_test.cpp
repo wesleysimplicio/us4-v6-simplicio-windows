@@ -8,12 +8,114 @@
 #include "us4/runtime/benchmarks/benchmark_registry.h"
 
 #include <algorithm>
+#include <array>
+#include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 
 namespace us4::runtime::tests
 {
     namespace
     {
+        namespace fs = std::filesystem;
+
+        class ScopedLlamaRuntimeFixtureDirectory
+        {
+          public:
+            ScopedLlamaRuntimeFixtureDirectory()
+            {
+                path_ = fs::temp_directory_path() /
+                        fs::path("us4-llama-runtime-" + std::to_string(counter_++));
+                fs::create_directories(path_);
+            }
+
+            ~ScopedLlamaRuntimeFixtureDirectory()
+            {
+                std::error_code ignored;
+                fs::remove_all(path_, ignored);
+            }
+
+            [[nodiscard]] const fs::path& Path() const
+            {
+                return path_;
+            }
+
+          private:
+            fs::path path_;
+            inline static std::size_t counter_ = 0U;
+        };
+
+        void WriteRuntimeTextFile(const fs::path& path, const std::string& content)
+        {
+            std::ofstream stream(path, std::ios::binary);
+            ASSERT_TRUE(stream.is_open());
+            stream << content;
+        }
+
+        template <typename TValue>
+        void WriteRuntimeBinaryValue(std::ofstream& stream, const TValue value)
+        {
+            stream.write(reinterpret_cast<const char*>(&value),
+                         static_cast<std::streamsize>(sizeof(TValue)));
+        }
+
+        void WriteRuntimeMinimalTokenizer(const fs::path& directory)
+        {
+            WriteRuntimeTextFile(directory / "tokenizer.json",
+                                 R"({
+  "model": {
+    "type": "BPE",
+    "vocab": {
+      "hello": 0,
+      " ": 1,
+      "llama": 2,
+      "runtime": 3,
+      "<unk>": 4
+    },
+    "merges": []
+  },
+  "added_tokens": [
+    { "id": 128000, "content": "<|begin_of_text|>", "special": true }
+  ]
+})");
+        }
+
+        void WriteRuntimeMinimalConfig(const fs::path& directory)
+        {
+            WriteRuntimeTextFile(directory / "config.json",
+                                 R"({
+  "model_type": "llama",
+  "hidden_size": 3072,
+  "intermediate_size": 8192,
+  "num_attention_heads": 24,
+  "num_key_value_heads": 8,
+  "num_hidden_layers": 28,
+  "vocab_size": 128000,
+  "max_position_embeddings": 8192,
+  "rope_theta": 500000.0
+})");
+        }
+
+        void WriteRuntimeMinimalSafeTensors(const fs::path& path)
+        {
+            const std::string header = R"({
+  "token_embd.weight": {"dtype":"F16","shape":[128000,3072],"data_offsets":[0,16]},
+  "output.weight": {"dtype":"F16","shape":[128000,3072],"data_offsets":[16,32]},
+  "blk.0.attn_q.weight": {"dtype":"F16","shape":[3072,3072],"data_offsets":[32,48]},
+  "blk.0.attn_k.weight": {"dtype":"F16","shape":[3072,1024],"data_offsets":[48,64]},
+  "blk.0.attn_v.weight": {"dtype":"F16","shape":[3072,1024],"data_offsets":[64,80]},
+  "blk.0.ffn_up.weight": {"dtype":"F16","shape":[8192,3072],"data_offsets":[80,96]},
+  "blk.0.ffn_down.weight": {"dtype":"F16","shape":[3072,8192],"data_offsets":[96,112]}
+})";
+
+            std::ofstream stream(path, std::ios::binary);
+            ASSERT_TRUE(stream.is_open());
+            const std::uint64_t headerSize = static_cast<std::uint64_t>(header.size());
+            WriteRuntimeBinaryValue(stream, headerSize);
+            stream.write(header.data(), static_cast<std::streamsize>(header.size()));
+            const std::array<char, 128> payload{};
+            stream.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+        }
 
         TEST(LlamaRuntimeTest, RopeKeepsVectorAtPositionZero)
         {
@@ -102,6 +204,39 @@ namespace us4::runtime::tests
 
             EXPECT_EQ(dense->DetokenizePromptTokens(tokens), prompt);
             EXPECT_EQ(tokens.size(), prompt.size());
+        }
+
+        TEST(LlamaRuntimeTest, LlamaScalarAdapterUsesLoadedTokenizerWhenModelIsAvailable)
+        {
+            ScopedLlamaRuntimeFixtureDirectory fixture;
+            WriteRuntimeMinimalTokenizer(fixture.Path());
+            WriteRuntimeMinimalConfig(fixture.Path());
+            WriteRuntimeMinimalSafeTensors(fixture.Path() / "model.safetensors");
+
+            auto adapter = us4::runtime::adapters::CreateLlamaScalarAdapter();
+            auto* dense = dynamic_cast<us4::runtime::adapters::DenseAdapterBase*>(adapter.get());
+            ASSERT_NE(dense, nullptr);
+
+            us4::runtime::adapters::RuntimeBinding binding{
+                .backend = us4::runtime::backends::BackendDescriptor{
+                    .kind = us4::runtime::backends::BackendKind::kCpu,
+                    .name = "cpu",
+                    .displayName = "CPU",
+                    .availability = us4::runtime::backends::BackendAvailability::kAvailable,
+                },
+                .profileId = "cpu-only",
+                .mode = us4::runtime::backends::RuntimeMode::kCpuOnly,
+                .modelId = "llama-3.2-3b",
+            };
+
+            ASSERT_TRUE(dense->Attach(binding));
+            ASSERT_TRUE(dense->LoadModel(fixture.Path().string()));
+
+            const std::string prompt = "hello llama runtime";
+            const auto tokens = dense->TokenizePrompt(prompt);
+
+            EXPECT_EQ(tokens, (std::vector<std::int32_t>{0, 1, 2, 1, 3}));
+            EXPECT_EQ(dense->DetokenizePromptTokens(tokens), prompt);
         }
 
         TEST(LlamaRuntimeTest, CpuScalarRunServesLlamaPlan)

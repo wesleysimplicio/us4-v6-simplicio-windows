@@ -1,7 +1,9 @@
 #include "us4/runtime/adapters/dense_adapter_base.h"
+#include "us4/runtime/adapters/llama_model_loader.h"
 #include "us4/runtime/adapters/scalar_family_adapters.h"
 
 #include <memory>
+#include <optional>
 #include <string_view>
 
 namespace us4::runtime::adapters
@@ -49,12 +51,58 @@ namespace us4::runtime::adapters
           public:
             LlamaScalarAdapter() : DenseAdapterBase(MakeLlamaConfig()) {}
 
+            bool LoadModel(const std::string& modelPath) override
+            {
+                const auto binding = Binding();
+                const auto modelId = binding.has_value() ? binding->modelId : "llama";
+                const auto loadResult = LoadLlamaModelAsset(modelPath, modelId);
+                if (!loadResult.ok)
+                {
+                    loadedDescriptor_.reset();
+                    return DenseAdapterBase::LoadModel(modelPath);
+                }
+
+                loadedDescriptor_ = loadResult.descriptor;
+                return CommitLoadedModel(loadResult.descriptor.asset);
+            }
+
+            void Reset() override
+            {
+                loadedDescriptor_.reset();
+                DenseAdapterBase::Reset();
+            }
+
           protected:
             [[nodiscard]] std::int32_t
             EncodePromptTokenEstimate(std::string_view prompt) const override
             {
                 return DenseAdapterBase::EncodePromptTokenEstimate(prompt) + 42;
             }
+
+            [[nodiscard]] std::optional<std::vector<std::int32_t>>
+            TryTokenizePrompt(std::string_view prompt) const override
+            {
+                if (!loadedDescriptor_.has_value())
+                {
+                    return std::nullopt;
+                }
+
+                return TokenizeLlamaPrompt(loadedDescriptor_->tokenizer, prompt);
+            }
+
+            [[nodiscard]] std::optional<std::string>
+            TryDetokenizePromptTokens(const std::vector<std::int32_t>& tokens) const override
+            {
+                if (!loadedDescriptor_.has_value())
+                {
+                    return std::nullopt;
+                }
+
+                return DetokenizeLlamaTokens(loadedDescriptor_->tokenizer, tokens);
+            }
+
+          private:
+            std::optional<LlamaModelDescriptor> loadedDescriptor_;
         };
     } // namespace
 

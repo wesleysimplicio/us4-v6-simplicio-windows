@@ -5,6 +5,7 @@
 #include "us4/runtime/kv/kv_pager.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -78,6 +79,10 @@ namespace us4::runtime::adapters
         [[nodiscard]] virtual std::int32_t EncodePromptTokenEstimate(std::string_view prompt) const;
         [[nodiscard]] virtual std::int32_t EncodePromptByte(unsigned char byte) const;
         [[nodiscard]] virtual bool TryDecodePromptToken(std::int32_t token, char& decoded) const;
+        [[nodiscard]] virtual std::optional<std::vector<std::int32_t>>
+        TryTokenizePrompt(std::string_view prompt) const;
+        [[nodiscard]] virtual std::optional<std::string>
+        TryDetokenizePromptTokens(const std::vector<std::int32_t>& tokens) const;
         [[nodiscard]] virtual std::int32_t
         EmitTerminalToken(const backends::SessionRequest& request) const;
         [[nodiscard]] virtual std::size_t
@@ -85,6 +90,9 @@ namespace us4::runtime::adapters
         [[nodiscard]] virtual std::size_t
         EstimateDeviceBytes(const backends::SessionRequest& request) const;
         void ConfigureKvPagerBudget();
+        bool CommitLoadedModel(ModelAssetDescriptor descriptor);
+        void MarkModelLoadFailed();
+        void ClearLoadedModelState();
 
       private:
         DenseAdapterConfig config_;

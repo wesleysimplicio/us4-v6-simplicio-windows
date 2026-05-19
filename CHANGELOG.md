@@ -4,6 +4,16 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.67] - 2026-05-18
+
+### Added
+
+- a real-tokenizer `Llama` runtime test that loads a minimal `tokenizer.json` + `config.json` + `safetensors` fixture and verifies prompt tokenization round-trips through the scalar adapter
+
+### Changed
+
+- taught `LlamaScalarAdapter` to reuse the loaded tokenizer/model descriptor when a concrete asset directory is available, while preserving the generic dense fallback path for synthetic and planner-only runs
+
 ## [0.1.66] - 2026-05-18
 
 ### Added
