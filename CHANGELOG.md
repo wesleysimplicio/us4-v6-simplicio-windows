@@ -4,6 +4,17 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.61] - 2026-05-18
+
+### Added
+
+- speculative CUDA graph reuse support in `CudaContext`, keyed by stable step fingerprints, plus a dedicated local `cuda_graph_reuse_bench` report and Sprint 10 benchmark notes
+
+### Changed
+
+- extended the local CUDA scaffold so repeated speculative decode steps reuse captured graphs instead of recapturing every step, with unit coverage for cache hits and recapture after cache clear
+- extended the validation scripts to run the speculative CUDA graph reuse benchmark when the binary is available
+
 ## [0.1.60] - 2026-05-18
 
 ### Added

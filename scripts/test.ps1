@@ -105,6 +105,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_fallback_policy_benc
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_fallback_policy_bench.exe") } "CUDA fallback policy benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_graph_reuse_bench.exe")) {
+    Write-Host "Detected CUDA graph reuse benchmark binary. Running reset-vs-reuse speculative evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_graph_reuse_bench.exe") } "CUDA graph reuse benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

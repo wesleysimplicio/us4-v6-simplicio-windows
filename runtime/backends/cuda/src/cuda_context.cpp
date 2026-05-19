@@ -180,12 +180,63 @@ namespace us4::runtime::backends::cuda
         CudaGraphExecutable executable{
             .id = nextGraphId_++,
             .name = std::string(name),
+            .cacheKey = "",
             .persistent = plan_.graph.preferPersistentGraph,
             .warmupIterations = plan_.graph.warmupIterations,
             .operations = operations,
         };
+        ++graphCaptureCount_;
         executionTrace_.push_back(MakeTraceLine("graph.capture", executable.name));
         return executable;
+    }
+
+    std::optional<CudaGraphLease>
+    CudaContext::AcquireSpeculativeGraph(const std::string_view cacheKey,
+                                         const std::string_view name,
+                                         const std::vector<std::string>& operations)
+    {
+        if (!plan_.graph.enableGraphCapture)
+        {
+            executionTrace_.push_back(
+                MakeTraceLine("graph.acquire.skipped", std::string(cacheKey)));
+            return std::nullopt;
+        }
+
+        const auto cacheKeyString = std::string(cacheKey);
+        for (auto& entry : graphCache_)
+        {
+            if (entry.cacheKey == cacheKeyString)
+            {
+                ++entry.reuseCount;
+                ++graphCacheHitCount_;
+                executionTrace_.push_back(MakeTraceLine("graph.cache.hit", cacheKeyString));
+                return CudaGraphLease{
+                    .executable = entry.executable,
+                    .reusedExistingGraph = true,
+                    .reuseCount = entry.reuseCount,
+                };
+            }
+        }
+
+        const auto executable = CaptureGraph(name, operations);
+        if (!executable.has_value())
+        {
+            return std::nullopt;
+        }
+
+        CachedGraphEntry entry{
+            .cacheKey = cacheKeyString,
+            .executable = *executable,
+            .reuseCount = 0U,
+        };
+        entry.executable.cacheKey = cacheKeyString;
+        graphCache_.push_back(entry);
+        executionTrace_.push_back(MakeTraceLine("graph.cache.store", cacheKeyString));
+        return CudaGraphLease{
+            .executable = graphCache_.back().executable,
+            .reusedExistingGraph = false,
+            .reuseCount = 0U,
+        };
     }
 
     std::vector<std::int32_t> CudaContext::BuildReferenceTokens(const std::uint32_t tokenCount,
@@ -220,6 +271,12 @@ namespace us4::runtime::backends::cuda
         return chunk;
     }
 
+    void CudaContext::ClearGraphCache()
+    {
+        graphCache_.clear();
+        executionTrace_.push_back(MakeTraceLine("graph.cache.clear", "all"));
+    }
+
     std::size_t CudaContext::PoolCapacityBytes() const noexcept
     {
         std::size_t total = 0U;
@@ -243,6 +300,21 @@ namespace us4::runtime::backends::cuda
     std::uint32_t CudaContext::ActiveStreamCount() const noexcept
     {
         return static_cast<std::uint32_t>(activeStreams_.size());
+    }
+
+    std::uint32_t CudaContext::CachedGraphCount() const noexcept
+    {
+        return static_cast<std::uint32_t>(graphCache_.size());
+    }
+
+    std::uint32_t CudaContext::GraphCaptureCount() const noexcept
+    {
+        return graphCaptureCount_;
+    }
+
+    std::uint32_t CudaContext::GraphCacheHitCount() const noexcept
+    {
+        return graphCacheHitCount_;
     }
 
     std::uint32_t CudaContext::GraphReplayCount() const noexcept

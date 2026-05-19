@@ -145,5 +145,61 @@ namespace us4::runtime::tests
             EXPECT_FALSE(allocationStatus.ok);
             EXPECT_EQ(allocationStatus.code, "cuda.pool.unknown_allocation");
         }
+
+        TEST(CudaContextTest, SpeculativeGraphReuseCachesByStepFingerprint)
+        {
+            using namespace us4::runtime::backends::cuda;
+
+            const auto plan =
+                CudaBackend::BuildExecutionPlan(MakeCudaRequest(), MakeCudaCapabilities());
+            ASSERT_TRUE(plan.graph.enableGraphCapture);
+
+            auto context = CudaContext::Create(plan);
+            const auto first = context.AcquireSpeculativeGraph(
+                "peagle:decode:batch1:tree4", "decode-step", {"draft", "verify", "sample"});
+            ASSERT_TRUE(first.has_value());
+            EXPECT_FALSE(first->reusedExistingGraph);
+            EXPECT_EQ(context.CachedGraphCount(), 1U);
+            EXPECT_EQ(context.GraphCaptureCount(), 1U);
+            EXPECT_EQ(context.GraphCacheHitCount(), 0U);
+
+            const auto second = context.AcquireSpeculativeGraph(
+                "peagle:decode:batch1:tree4", "decode-step", {"draft", "verify", "sample"});
+            ASSERT_TRUE(second.has_value());
+            EXPECT_TRUE(second->reusedExistingGraph);
+            EXPECT_EQ(first->executable.id, second->executable.id);
+            EXPECT_EQ(second->reuseCount, 1U);
+            EXPECT_EQ(context.CachedGraphCount(), 1U);
+            EXPECT_EQ(context.GraphCaptureCount(), 1U);
+            EXPECT_EQ(context.GraphCacheHitCount(), 1U);
+
+            const auto replayA = context.ReplayGraph(first->executable, 6U, 13U);
+            const auto replayB = context.ReplayGraph(second->executable, 6U, 13U);
+            EXPECT_EQ(replayA.tokens, replayB.tokens);
+        }
+
+        TEST(CudaContextTest, ClearingGraphCacheForcesRecaptureOnNextSpeculativeStep)
+        {
+            using namespace us4::runtime::backends::cuda;
+
+            const auto plan =
+                CudaBackend::BuildExecutionPlan(MakeCudaRequest(), MakeCudaCapabilities());
+            auto context = CudaContext::Create(plan);
+
+            const auto first = context.AcquireSpeculativeGraph(
+                "eagle3:decode:batch2:tree3", "decode-step", {"draft", "verify", "sample"});
+            ASSERT_TRUE(first.has_value());
+            ASSERT_EQ(context.GraphCaptureCount(), 1U);
+
+            context.ClearGraphCache();
+            EXPECT_EQ(context.CachedGraphCount(), 0U);
+
+            const auto second = context.AcquireSpeculativeGraph(
+                "eagle3:decode:batch2:tree3", "decode-step", {"draft", "verify", "sample"});
+            ASSERT_TRUE(second.has_value());
+            EXPECT_FALSE(second->reusedExistingGraph);
+            EXPECT_NE(first->executable.id, second->executable.id);
+            EXPECT_EQ(context.GraphCaptureCount(), 2U);
+        }
     } // namespace
 } // namespace us4::runtime::tests
