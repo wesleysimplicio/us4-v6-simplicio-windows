@@ -100,6 +100,11 @@ if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cpu_bitnet_bench.exe")) {
     Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cpu_bitnet_bench.exe") } "CPU BitNet benchmark failed."
 }
 
+if (Test-Path (Join-Path "build" "runtime\\benchmarks\\cuda_fallback_policy_bench.exe")) {
+    Write-Host "Detected CUDA fallback policy benchmark binary. Running custom-vs-library policy evidence."
+    Invoke-AndAssert { & (Join-Path "build" "runtime\\benchmarks\\cuda_fallback_policy_bench.exe") } "CUDA fallback policy benchmark failed."
+}
+
 if ((Test-Path "build") -and (Get-Command npx -ErrorAction SilentlyContinue)) {
     $cliPath = if ($env:US4_CLI_PATH) {
         $env:US4_CLI_PATH

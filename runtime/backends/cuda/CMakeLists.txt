@@ -1,6 +1,8 @@
 add_library(
     us4_runtime_backends_cuda
-    src/cuda_backend.cpp)
+    src/cuda_backend.cpp
+    src/cublas_fallback.cpp
+    src/cuda_context.cpp)
 
 target_include_directories(
     us4_runtime_backends_cuda

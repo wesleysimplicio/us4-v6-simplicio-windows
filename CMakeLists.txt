@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27)
 
 project(
     us4_v6_simplicio_windows
-    VERSION 0.1.59
+    VERSION 0.1.60
     DESCRIPTION "US4 V6 Windows Edition runtime scaffold"
     LANGUAGES CXX)
 
@@ -89,6 +89,14 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
             tests/unit/speculative_prefetch_test.cpp
             tests/unit/ssd_cold_store_test.cpp)
 
+        if(US4_ENABLE_CUDA)
+            target_sources(
+                us4_core_tests
+                PRIVATE
+                    tests/unit/cuda_context_test.cpp
+                    tests/unit/cublas_fallback_test.cpp)
+        endif()
+
         target_link_libraries(
             us4_core_tests
             PRIVATE
@@ -104,6 +112,13 @@ if(BUILD_TESTING AND US4_ENABLE_TESTS)
                 GTest::gtest_main
                 us4_build_options
                 us4_build_warnings)
+
+        if(US4_ENABLE_CUDA)
+            target_link_libraries(
+                us4_core_tests
+                PRIVATE
+                    us4_runtime_backends_cuda)
+        endif()
 
         include(GoogleTest)
         gtest_discover_tests(us4_core_tests)

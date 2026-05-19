@@ -69,3 +69,19 @@ Adotamos uma estrategia de execucao CUDA baseada em streams explicitas, memory p
 
 - Documentos relacionados: [DESIGN](./DESIGN.md), [PATTERNS](./PATTERNS.md)
 - ADRs relacionados: [ADR-001](./ADR-001-adapter-interface.md), [ADR-002](./ADR-002-backend-selection.md), [ADR-003](./ADR-003-runtime-mode.md)
+
+## Evidencia local de fallback policy
+
+O wrapper de fallback `cuBLAS/cuBLASLt` agora tem evidencia local versionada em
+`runtime/benchmarks/correctness/reports/cuda_fallback_policy_bench.json`, gerada por
+`build/runtime/benchmarks/cuda_fallback_policy_bench.exe`.
+
+Snapshot local mais recente:
+
+| Caso | Primario | Fallback | Latencia primaria (us) | Latencia fallback (us) | Delta |
+|---|---|---|---:|---:|---:|
+| `aligned_fp16_decode` | `custom-kernel` | `cublas` | `9.640439` | `20.684355` | `2.145582x` mais rapido no custom kernel |
+| `irregular_batched_prefill` | `cublaslt` | `cublas` | `562.134621` | `733.483735` | `1.304819x` mais rapido no `cublaslt` |
+| `deterministic_small_step` | `cublas` | `cublaslt` | `18.671089` | `15.500473` | `0.830186x` - politica prioriza determinismo sobre throughput |
+
+Esses numeros documentam a politica de dispatch do wrapper nesta fase do projeto. Eles nao substituem benchmark device-side real de CUDA kernels, que continua dependente de completar `T03.1` e `T03.2`.

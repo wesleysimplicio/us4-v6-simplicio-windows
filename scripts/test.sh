@@ -43,6 +43,11 @@ if [[ -f build/runtime/benchmarks/cpu_bitnet_bench.exe ]]; then
   build/runtime/benchmarks/cpu_bitnet_bench.exe
 fi
 
+if [[ -f build/runtime/benchmarks/cuda_fallback_policy_bench.exe ]]; then
+  echo "Detected CUDA fallback policy benchmark binary. Running custom-vs-library policy evidence."
+  build/runtime/benchmarks/cuda_fallback_policy_bench.exe
+fi
+
 if [[ -d build ]] && command -v npx >/dev/null 2>&1; then
   if [[ -n "${US4_CLI_PATH:-}" ]]; then
     CLI_PATH="$US4_CLI_PATH"

@@ -4,6 +4,19 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog and the project follows Semantic Versioning for the public CLI/runtime surface as it becomes operationally canonical.
 
+## [0.1.60] - 2026-05-18
+
+### Added
+
+- a CUDA fallback policy wrapper that chooses between custom kernels, `cuBLAS`, and `cuBLASLt`, plus dedicated unit coverage and a local dispatch-policy benchmark report
+- Sprint 03 benchmark notes for the CUDA fallback wrapper in `.specs/sprints/sprint-03/BENCHMARKS.md`
+
+### Changed
+
+- hardened the local `CudaContext` scaffold so stream/pool release failures are structured instead of exception-based, and aligned its synthetic graph replay tokens with the shared CUDA backend reference path
+- gated CUDA-only tests behind `US4_ENABLE_CUDA` and linked them explicitly so non-CUDA build matrices stay valid
+- extended the validation scripts to run the CUDA fallback policy benchmark when the binary is available
+
 ## [0.1.59] - 2026-05-18
 
 ### Added

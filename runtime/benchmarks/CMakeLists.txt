@@ -82,6 +82,17 @@ target_link_libraries(cpu_bitnet_bench
     us4_build_warnings
 )
 
+add_executable(cuda_fallback_policy_bench
+  src/cuda_fallback_policy_bench.cpp
+)
+
+target_link_libraries(cuda_fallback_policy_bench
+  PRIVATE
+    us4_runtime_backends_cuda
+    us4_build_options
+    us4_build_warnings
+)
+
 add_executable(moe_throughput
   src/moe_throughput.cpp
 )
